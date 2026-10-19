@@ -3,16 +3,17 @@
 const {JSDOM}=require("jsdom");
 const fs=require("fs"),path=require("path");
 const ROOT=path.join(__dirname,"..");
-const SCRIPTS=["config","app","engine","setup","schedule","results","share","main"];
+// Script files in the same order as index.html (the Firebase module is skipped)
+const SCRIPTS=[...fs.readFileSync(path.join(ROOT,"index.html"),"utf8").matchAll(/<script src="js\/([\w-]+)\.js"><\/script>/g)].map(m=>m[1]);
 
 function loadApp({phone=false}={}){
   const html=fs.readFileSync(path.join(ROOT,"index.html"),"utf8");
   const errors=[];
   const dom=new JSDOM(html,{runScripts:"dangerously",pretendToBeVisual:true,url:"https://padeltx.netlify.app/",beforeParse(w){
     w.addEventListener("error",e=>errors.push(e.message));
-    w.confirm=()=>true;w.print=()=>{};w.opened=[];w.open=u=>{w.opened.push(u)};
+    w.confirm=()=>true;w.print=()=>{};w.scrollTo=()=>{};w.opened=[];w.open=u=>{w.opened.push(u)};
     w.matchMedia=()=>({matches:phone,addEventListener(){}});
-    w.HTMLDialogElement.prototype.showModal=function(){this.open=true};
+    w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false};
   }});
   const w=dom.window,doc=w.document;
   // Same order as index.html; inline <script> tags share globals exactly like the real page
@@ -155,5 +156,43 @@ section("Printing court sheets",()=>{
   check(doc.querySelectorAll(".psheet").length>=3,"sheets for all three courts");
 });
 
-console.log(`\n${passed} passed, ${failed} failed`);
-process.exit(failed?1:0);
+// Marketplace: uses a fake online layer instead of Firebase
+async function marketTests(){
+  console.log("• Marketplace");
+  try{
+    const {E,w,doc,errors}=loadApp();
+    const store=[{id:"L1",category:"gear",title:"Bullpadel Vertex",description:"One season",price:"60 €",location:"Stuttgart",phone:"491701234567",ownerUid:"u1",createdAt:Date.now()-3600e3},
+                 {id:"L2",category:"partner",title:"Need a partner",description:"",price:"Intermediate",location:"",phone:"201001234567",ownerUid:"u2",createdAt:Date.now()}];
+    w.__cloud={listListings:async()=>({ok:true,list:store.map(x=>({...x}))}),
+      createListing:async d=>{store.unshift({...d,id:"L3",ownerUid:"u1",createdAt:Date.now()});return {ok:true,id:"L3"}},
+      updateListing:async()=>({ok:true}),deleteListing:async id=>{store.splice(store.findIndex(x=>x.id===id),1);return {ok:true}}};
+    E('window.CLOUD_ON=true;authUser={email:"a@b.c",uid:"u1"};showMarket()');
+    await new Promise(r=>setTimeout(r,30));
+    check(!doc.getElementById("marketView").hidden,"marketplace page opens");
+    check(doc.querySelectorAll(".lcard").length===2,"shows all listings");
+    E('setMktCat("partner")');
+    check(doc.querySelectorAll(".lcard").length===1&&/Need a partner/.test(doc.getElementById("mktList").textContent),"category filter");
+    E('setMktCat("all");mkt.q="vertex";renderMarket()');
+    check(doc.querySelectorAll(".lcard").length===1,"search");
+    E('mkt.q="";renderMarket()');
+    check(doc.querySelector('.lcard a.wa').href.startsWith("https://wa.me/"),"WhatsApp button");
+    check(doc.querySelectorAll('.lcard button.danger').length===1,"only the owner can remove their listing");
+    check(E('normalizePhone("+49 170 1234567").phone')==="491701234567","phone with +country code");
+    check(E('normalizePhone("0049 170 1234567").phone')==="491701234567","phone with 00 country code");
+    check(!!E('normalizePhone("0170 1234567").error'),"phone without country code is rejected");
+    E('startPost()');
+    doc.getElementById("lCat").value="gift";E("mktCatChanged()");
+    check(doc.getElementById("lPriceLbl").textContent.startsWith("Suggested donation"),"donation gifts ask for a suggested donation");
+    doc.getElementById("lTitle").value="Padel Tour T-shirt";doc.getElementById("lPhone").value="+49 170 1234567";
+    await E('saveListing({preventDefault(){}})');await new Promise(r=>setTimeout(r,30));
+    check(store[0].title==="Padel Tour T-shirt"&&store[0].category==="gift"&&store[0].phone==="491701234567","posting a listing");
+    E('confirm=()=>true');await E('removeListing("L3")');
+    check(!store.some(x=>x.id==="L3"),"removing a listing");
+    check(errors.length===0,"no script errors: "+errors.join(" | "));
+  }catch(e){failed++;console.log("  ✗ crashed: "+e.stack.split("\n").slice(0,3).join(" | "))}
+}
+
+marketTests().then(()=>{
+  console.log(`\n${passed} passed, ${failed} failed`);
+  process.exit(failed?1:0);
+});

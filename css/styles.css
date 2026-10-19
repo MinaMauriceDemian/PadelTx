@@ -311,3 +311,37 @@ input.score.prog{border-style:dashed;border-color:#e0a63a;background:#fffaf0}
   .tabs{width:100%}
   .actions button{flex:1}
 }
+
+/* ---------- Marketplace ---------- */
+textarea{width:100%;font:inherit;border:1px solid #c5d2de;border-radius:10px;padding:9px 12px;color:var(--ink);resize:vertical}
+textarea:focus{outline:3px solid #0d948840;border-color:var(--accent)}
+a.btn{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:10px 16px;border-radius:10px;font-weight:700;text-decoration:none}
+.mkt-teaser{display:flex;flex-direction:column;gap:10px}
+.mkt-teaser .note{margin:0}
+.mkt-mini{display:flex;flex-wrap:wrap;gap:6px}
+.mkt-mini span{background:#f1f5f9;border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:13px;font-weight:600;color:#3d5167}
+.mkt-hero{padding-top:20px}
+.mkt-top{max-width:1100px;margin:0 auto 18px;display:flex}
+.mkt-wrap{max-width:1100px;margin:-48px auto 40px;padding:0 14px;display:flex;flex-direction:column;gap:14px}
+.mkt-bar{display:flex;flex-direction:column;gap:12px}
+.mkt-cats{margin:0}
+.mkt-actions{display:flex;gap:10px;flex-wrap:wrap}
+.mkt-actions input{flex:1;min-width:200px}
+#mktMine.on{background:var(--navy);color:#fff}
+.mkt-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:14px;align-items:start}
+.lcard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px;box-shadow:0 2px 10px #14263a0d}
+.lcard-h{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.lcard-h small{color:var(--muted)}
+.lcard h3{font-size:17px;overflow-wrap:anywhere}
+.lprice{margin:0;font-weight:800;color:var(--navy)}
+.lprice span{font-weight:600;color:var(--muted)}
+.ldesc{margin:0;white-space:pre-line;overflow-wrap:anywhere;color:#2c3e52}
+.lloc{margin:0}
+.lcard-f{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.lcard-f .wa{flex:1}
+.lcard-f .danger{margin-left:0}
+.lcat-partner{background:#e3ecfd;color:#1e4fa3}.lcat-gear{background:#d1f2ec;color:#0b6b62}.lcat-coach{background:#ede5fb;color:#5b2ea6}.lcat-gift{background:#fde68a;color:#6b4a00}
+.mkt-empty{grid-column:1/-1;text-align:center;background:#fff;border:1px dashed #b7c4d1;border-radius:14px;padding:28px}
+.mkt-empty p{margin:4px 0}
+.mkt-foot{text-align:center}
+#mktDlg .dlg{max-height:calc(100vh - 40px);overflow:auto}

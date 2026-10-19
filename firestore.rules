@@ -11,6 +11,29 @@ service cloud.firestore {
       return roleIn(get(/databases/$(database)/documents/tournaments/$(tid)).data, roles);
     }
 
+    // Marketplace: anyone can read, signed-in users post and manage their own listings,
+    // the site admin (by verified email) can remove any listing.
+    function isSiteAdmin() {
+      return signedIn() && request.auth.token.email_verified == true
+        && request.auth.token.email in ['minamorise@gmail.com'];
+    }
+    function validListing(d) {
+      return d.keys().hasOnly(['category','title','description','price','location','phone','ownerUid','createdAt','updatedAt'])
+        && d.category in ['partner','gear','coach','gift']
+        && d.title is string && d.title.size() > 0 && d.title.size() <= 80
+        && d.description is string && d.description.size() <= 1000
+        && d.price is string && d.price.size() <= 40
+        && d.location is string && d.location.size() <= 60
+        && d.phone is string && d.phone.matches('^[0-9]{7,15}$');
+    }
+    match /listings/{lid} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid && validListing(request.resource.data);
+      allow update: if signedIn() && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid && validListing(request.resource.data);
+      allow delete: if signedIn() && (resource.data.ownerUid == request.auth.uid || isSiteAdmin());
+    }
+
     match /tournaments/{tid} {
       // Anyone can follow results (viewers don't need an account)
       allow read: if true;

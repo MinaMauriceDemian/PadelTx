@@ -24,7 +24,7 @@ function cloudWrite(u){if(window.CLOUD_ON&&window.__cloud)window.__cloud.write(u
 let toastTimer;
 function toast(msg){const t=$("toast");t.textContent=msg;t.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.hidden=true,5000)}
 window.__toast=toast;
-function showView(v){view=v;$("loginView").hidden=v!=="login";$("landing").hidden=v!=="landing";$("appView").hidden=v!=="app"}
+function showView(v){view=v;$("loginView").hidden=v!=="login";$("landing").hidden=v!=="landing";$("appView").hidden=v!=="app";$("marketView").hidden=v!=="market"}
 // Where "home" is: signed-in people and viewers go to the tournament list, everyone else to the login page
 const homeView=()=>authUser||guest?"landing":"login";
 function continueAsViewer(){setGuest(true);$("loginMsg").textContent="";showView("landing");renderLanding();setTimeout(()=>$("findId").focus(),0)}
@@ -63,12 +63,14 @@ authUser=u;
 if(u&&view==="login"){$("loginMsg").textContent="";showView("landing")}
 else if(!u&&view==="landing"&&!guest)showView("login");
 if(view==="landing"){renderLanding();if(booted&&u&&autoOpen)autoOpenMine()}
+if(view==="market")renderMarket();
 if($("authDlg").open)updateAuthDlg();
 };
 window.__cloudReady=function(){
 booted=true;
 const id=hashId();
-if(id){enterTournament(id,"findMsg")}
+if(location.hash==="#market")showMarket();
+else if(id){enterTournament(id,"findMsg")}
 else if(authUser&&autoOpen)autoOpenMine()
 };
 function applyRole(){
@@ -177,6 +179,7 @@ if(navigator.clipboard)navigator.clipboard.writeText(url).then(()=>toast("Link c
 function copyId(){if(currentTid&&navigator.clipboard)navigator.clipboard.writeText(currentTid).then(()=>toast("ID copied: "+currentTid))}
 window.addEventListener("hashchange",()=>{
 if(!window.CLOUD_ON||!booted)return;
+if(location.hash==="#market"){if(currentTid&&window.__cloud){window.__cloud.leave();currentTid=null}showMarket();return}
 const id=hashId();
 if(!id&&currentTid)goHome();
 else if(id&&id!==currentTid)enterTournament(id,"findMsg")
@@ -203,6 +206,7 @@ function openAuth(){updateAuthDlg();$("authMsg").textContent="";$("authDlg").sho
 function updateAuthDlg(){
 const u=authUser;$("authOut").hidden=!!u;$("authIn").hidden=!u;
 if(u){$("authWho").textContent=u.email;$("authRole").textContent=role==="admin"?"Admin":role==="editor"?"Editor":"Viewer"}
+$("authRole").parentElement.hidden=view!=="app";
 }
 const AUTH_ERR={"auth/invalid-credential":"Wrong email or password.","auth/wrong-password":"Wrong email or password.","auth/user-not-found":"No account with this email. Use Register.","auth/email-already-in-use":"This email already has an account. Use Sign in (or Continue with Google if you registered that way).","auth/weak-password":"Password must be at least 6 characters.","auth/invalid-email":"That email address is not valid.","auth/too-many-requests":"Too many attempts. Try again later.","auth/network-request-failed":"Network problem. Check your connection.","auth/operation-not-allowed":"This sign-in method is not switched on in Firebase yet.","auth/unauthorized-domain":"This website is not on the Firebase authorized-domains list.","auth/popup-blocked":"The Google window was blocked. Allow pop-ups and try again.","auth/account-exists-with-different-credential":"This email already uses another sign-in method."};
 async function doAuth(kind,p="auth"){

@@ -1,6 +1,6 @@
 # Padel Tour
 
-Tournament manager for padel: groups + knockout, live scores, roles (admin / editor / viewer), WhatsApp sharing.
+Tournament manager for padel: groups + knockout, live scores, roles (admin / editor / viewer), WhatsApp sharing, and a community marketplace.
 Live site: https://padeltx.netlify.app
 
 ## Files
@@ -16,6 +16,7 @@ Live site: https://padeltx.netlify.app
 | `js/schedule.js` | Schedule & scores: table (computer), match cards (phone), +/− buttons, live "now" marker, printing |
 | `js/results.js` | Standings, knockout bracket, final ranking |
 | `js/share.js` | Share dialog and WhatsApp messages |
+| `js/market.js` | Marketplace: partner search, used gear, coaches & lessons, donation gifts |
 | `js/main.js` | Starts the app |
 | `js/cloud.js` | Firebase login and live database sync |
 | `firestore.rules` | Database security rules (paste into Firebase → Firestore → Rules) |

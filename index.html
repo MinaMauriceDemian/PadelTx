@@ -119,11 +119,19 @@
 <div id="landing" class="landing" hidden>
 <div class="land-hero"><h1>🎾 Padel Tour</h1><p>Run a tournament, or follow one live.</p></div>
 <div class="land-grid">
+<div class="stack">
 <div class="card land-card">
 <h2>Find a tournament</h2>
 <p class="note">Enter the tournament ID you were given. You can follow the results without an account.</p>
 <div class="idrow"><input id="findId" placeholder="e.g. K7M2QXA" maxlength="12" autocapitalize="characters" autocomplete="off" onkeydown="if(event.key==='Enter')findTournament()"><button class="primary" onclick="findTournament()">Open</button></div>
 <p id="findMsg" class="note" style="margin-top:10px"></p>
+</div>
+<div class="card land-card mkt-teaser">
+<h2>🛒 Marketplace</h2>
+<p class="note">Find a partner, buy used gear, book a coach, or get a gift for a donation.</p>
+<div class="mkt-mini"><span>🤝 Partners</span><span>🎾 Used gear</span><span>🧑‍🏫 Coaches</span><span>🎁 Donation gifts</span></div>
+<button class="primary" onclick="openMarket()">Open marketplace</button>
+</div>
 </div>
 <div class="card land-card">
 <div id="lOut" class="stack">
@@ -150,6 +158,30 @@
 </div>
 </div>
 </div>
+<div id="marketView" class="landing" hidden>
+<div class="land-hero mkt-hero"><div class="mkt-top"><button class="hbtn" onclick="closeMarket()">← Tournaments</button></div><h1>🛒 Padel Tour Marketplace</h1><p id="mktIntro"></p></div>
+<div class="mkt-wrap">
+<div class="card mkt-bar">
+<div class="seg mkt-cats" id="mktCats"></div>
+<div class="mkt-actions"><input id="mktQ" type="search" placeholder="Search listings…" oninput="mkt.q=this.value;renderMarket()" aria-label="Search listings"><button id="mktMine" class="secondary" onclick="toggleMine()" hidden>My listings</button><button id="mktPost" class="primary" onclick="startPost()">+ Post a listing</button></div>
+</div>
+<div id="mktList" class="mkt-list"></div>
+<p class="note mkt-foot">Deals are made directly between people on WhatsApp. Padel Tour doesn't handle payments; meet in a safe place and check items before paying.</p>
+</div>
+</div>
+<dialog id="mktDlg"><form class="dlg" onsubmit="saveListing(event)">
+<h2 id="mktDlgTitle">Post a listing</h2>
+<label>Category<select id="lCat" onchange="mktCatChanged()"></select></label>
+<p class="note" id="lCatHint"></p>
+<label>Title<input id="lTitle" maxlength="80"></label>
+<label>Description<textarea id="lDesc" maxlength="1000" rows="4" placeholder="Condition, details, availability…"></textarea></label>
+<label><span id="lPriceLbl">Price</span><input id="lPrice" maxlength="40"></label>
+<label>Location / club (optional)<input id="lLoc" maxlength="60" placeholder="e.g. Padel Club Stuttgart"></label>
+<label>WhatsApp number<input id="lPhone" type="tel" inputmode="tel" placeholder="+49 170 1234567"></label>
+<p class="note">Include your country code. Everyone who views the listing can see this number so they can message you.</p>
+<p id="lMsgM" class="note" role="status"></p>
+<div class="actions" style="margin:0"><button type="submit" class="primary" id="lSave">Publish</button><button type="button" class="secondary" onclick="$('mktDlg').close()">Cancel</button></div>
+</form></dialog>
 <div id="toast" class="toast" role="status" hidden></div>
 <dialog id="authDlg"><div class="dlg">
 <h2>Account</h2>
@@ -187,6 +219,7 @@
 <script src="js/schedule.js"></script>
 <script src="js/results.js"></script>
 <script src="js/share.js"></script>
+<script src="js/market.js"></script>
 <script src="js/main.js"></script>
 <script type="module" src="js/cloud.js"></script>
 </body>

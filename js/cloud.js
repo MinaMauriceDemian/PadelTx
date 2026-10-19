@@ -68,6 +68,26 @@ if(window.CLOUD_ON){
           return {ok:true,list}
         }catch(e){return {ok:false,error:err(e)}}
       },
+      // Marketplace listings (newest first)
+      async listListings(){
+        try{
+          const s=await F.getDocs(F.query(F.collection(db,"listings"),F.orderBy("createdAt","desc"),F.limit(200)));
+          return {ok:true,list:s.docs.map(d=>({id:d.id,...d.data()}))}
+        }catch(e){return {ok:false,error:err(e)}}
+      },
+      async createListing(data){
+        const u=auth.currentUser;if(!u)return {ok:false,error:"not signed in"};
+        try{const ref=await F.addDoc(F.collection(db,"listings"),{...data,ownerUid:u.uid,createdAt:Date.now(),updatedAt:Date.now()});return {ok:true,id:ref.id}}
+        catch(e){return {ok:false,error:err(e)}}
+      },
+      async updateListing(id,data){
+        try{await F.updateDoc(F.doc(db,"listings",id),{...data,updatedAt:Date.now()});return {ok:true}}
+        catch(e){return {ok:false,error:err(e)}}
+      },
+      async deleteListing(id){
+        try{await F.deleteDoc(F.doc(db,"listings",id));return {ok:true}}
+        catch(e){return {ok:false,error:err(e)}}
+      },
       async write(upd){
         if(!tid)return;
         const m={};for(const [k,v] of Object.entries(upd))m[k]=v==="__DEL__"?F.deleteField():v;

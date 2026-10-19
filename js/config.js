@@ -10,3 +10,5 @@ window.FIREBASE_CONFIG = {
   appId: "1:426314614472:web:d930b37269610dac20c7fd"
 };
 window.CLOUD_ON = !!(window.FIREBASE_CONFIG.apiKey && !/^PASTE/.test(window.FIREBASE_CONFIG.apiKey));
+// People who can remove any marketplace listing (must match isSiteAdmin in firestore.rules)
+window.MARKET_ADMINS = ["minamorise@gmail.com"];
