@@ -78,7 +78,7 @@ return {list:[],over:false}
 // each knockout round starts after the previous one.
 let _mc=null,_mk="";
 function allMatches(){
-const key=[teamCount(),state.sfPairing||0,state.settings.start,slotDur(),JSON.stringify(courtsCfg())].join("|");
+const key=[teamCount(),state.sfPairing||0,state.settings.start,slotDur(),JSON.stringify(courtsCfg()),spareCount(),JSON.stringify(state.moves||{})].join("|");
 if(_mc&&_mk===key)return _mc;
 const gm=groupMembers(),gl=Object.keys(gm),rr={},cnt={};
 gl.forEach(g=>{rr[g]=rrRounds(gm[g].length,g);cnt[g]=0});
@@ -99,10 +99,69 @@ tpl.rounds.forEach(round=>{
   const rest=[...round];
   while(rest.length){const cs=nextCourts();rest.splice(0,cs.list.length).forEach(([id,sa,sb],k)=>m.push({id,slot,court:cs.list[k]+1,over:cs.over,stage:koStage(id),ko:true,sourceA:sa,sourceB:sb}));slot++}
 });
-m.groupSlots=groupSlots;m.lastSlot=slot-1;m.tpl=tpl;m.byId=Object.fromEntries(m.map(x=>[x.id,x]));
+const autoLast=slot-1;
+m.autoSlots=[...new Set(m.map(x=>x.slot))];
+applyMoves(m,autoLast+spareCount());
+m.groupSlots=groupSlots;m.autoLast=autoLast;m.totalSlots=autoLast+spareCount();m.tpl=tpl;m.byId=Object.fromEntries(m.map(x=>[x.id,x]));
 m.slots=[...new Set(m.map(x=>x.slot))].sort((a,b)=>a-b);
+m.lastSlot=m.slots[m.slots.length-1];
 m.overCount=m.filter(x=>x.over).length;
+m.warnings=scheduleWarnings(m);
 _mc=m;_mk=key;return m
+}
+
+/* ---------- Moving matches (admin drag & drop) ---------- */
+// Extra-time slots kept free after the last scheduled slot (admin can add more)
+function spareCount(){const v=state.settings.spare;return Math.max(0,Math.min(10,v==null||v===""?2:+v||0))}
+// state.moves = {matchId: {slot, court}}. A move into a cell that is taken (or no longer exists) is ignored.
+function applyMoves(m,total){
+const moves=state.moves||{},C=courtsCfg().length;
+m.forEach(x=>{x.autoSlot=x.slot;x.autoCourt=x.court});
+const occ=new Set(m.filter(x=>!moves[x.id]).map(x=>x.slot+":"+x.court));
+m.forEach(x=>{
+  const mv=moves[x.id];if(!mv)return;
+  const s=+mv.slot,c=+mv.court;
+  if(!(s>=1&&s<=total&&c>=1&&c<=C)||occ.has(s+":"+c)){x.moveIgnored=true;occ.add(x.slot+":"+x.court);return}
+  x.slot=s;x.court=c;x.moved=true;occ.add(s+":"+c);
+  const ca=courtsAt(s);x.over=ca.over||!ca.list.includes(c-1);
+});
+}
+// Problems caused by moves: a team booked twice in one slot, or a match placed before the matches that decide its teams
+function scheduleWarnings(m){
+const w=[],lastOf={};
+m.forEach(x=>{if(x.group)lastOf["G"+x.group]=Math.max(lastOf["G"+x.group]||0,x.slot)});
+const bySlot={};m.filter(x=>x.group).forEach(x=>(bySlot[x.slot]=bySlot[x.slot]||[]).push(x));
+Object.entries(bySlot).forEach(([s,list])=>{const seen={};list.forEach(x=>[x.a,x.b].forEach(t=>{if(seen[t])w.push(`${teamName(t)} plays two matches in slot ${s}.`);seen[t]=1}))});
+m.filter(x=>x.ko).forEach(x=>{
+  [x.sourceA,x.sourceB].forEach(r=>{
+    let dep=null,what="";
+    const g=/^\d+([A-Z])$/.exec(r||"");
+    if(g){dep=lastOf["G"+g[1]];what=`Group ${g[1]} finishes`}
+    else if(/^[WL]:/.test(r||"")){const d=m.find(y=>y.id===r.slice(2));if(d){dep=d.slot;what=koTitle(d.id)+" is played"}}
+    if(dep!=null&&x.slot<=dep)w.push(`${koTitle(x.id)} (slot ${x.slot}) is before ${what} (slot ${dep}).`)
+  })
+});
+return [...new Set(w)]
+}
+function moveMatch(id,slot,court){
+if(!isAdmin())return false;
+const ms=allMatches(),m=ms.byId[id];if(!m)return false;
+if(m.slot===slot&&m.court===court)return false;
+if(ms.some(x=>x.slot===slot&&x.court===court)){toast("That court is already taken in this slot.");return false}
+const back=m.autoSlot===slot&&m.autoCourt===court;
+state.moves={...(state.moves||{})};
+if(back)delete state.moves[id];else state.moves[id]={slot,court};
+save();renderAll();cloudWrite({["moves."+id]:back?DEL:{slot,court}});
+const warn=allMatches().warnings.length;
+toast((back?"Moved back to its original slot.":`Moved to slot ${slot} · ${courtName(court)} at ${timeFor(slot)}.`)+(warn?" ⚠ Check the warning above the schedule.":""));
+return true
+}
+function resetMove(id){const m=allMatches().byId[id];if(m)moveMatch(id,m.autoSlot,m.autoCourt)}
+function addSpare(d){
+if(!isAdmin())return;
+const ms=allMatches(),n=Math.max(0,Math.min(10,spareCount()+d));
+if(d<0&&ms.some(x=>x.slot>ms.autoLast+n)){toast("Move the matches out of the last extra-time slot first.");return}
+state.settings={...state.settings,spare:n};save();renderAll();cloudWrite({"settings.spare":n})
 }
 
 /* ---------- Match length (best of) ---------- */

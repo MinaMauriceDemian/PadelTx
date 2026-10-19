@@ -201,6 +201,13 @@
 <p id="authMsg" class="note" role="status"></p>
 <div class="actions" style="margin:0"><button class="secondary" onclick="$('authDlg').close()">Close</button></div>
 </div></dialog>
+<dialog id="moveDlg"><div class="dlg">
+<h2>Move match</h2>
+<p class="note" id="moveWhat"></p>
+<label>Move to a free court<select id="moveTo"></select></label>
+<p class="note">Extra-time slots are listed with “extra time”. Moving never changes the score.</p>
+<div class="actions" style="margin:0"><button class="primary" onclick="confirmMove()">Move</button><button class="secondary" onclick="$('moveDlg').close()">Cancel</button></div>
+</div></dialog>
 <dialog id="shareDlg"><div class="dlg">
 <h2>Share</h2>
 <p class="note" id="shareInfo"></p>

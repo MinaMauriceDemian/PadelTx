@@ -307,7 +307,9 @@ input.score.prog{border-style:dashed;border-color:#e0a63a;background:#fffaf0}
   .card{padding:14px}
   .fields{grid-template-columns:1fr}
   .courtrow{grid-template-columns:26px 1fr 1fr}
-  .courtrow label:first-of-type{grid-column:2/-1}
+  .courtrow label:nth-of-type(1){grid-column:2/-1}
+  .courtrow label:nth-of-type(2){grid-column:2}
+  .courtrow label:nth-of-type(3){grid-column:3}
   .tabs{width:100%}
   .actions button{flex:1}
 }
@@ -345,3 +347,31 @@ a.btn{display:inline-flex;align-items:center;justify-content:center;min-height:4
 .mkt-empty p{margin:4px 0}
 .mkt-foot{text-align:center}
 #mktDlg .dlg{max-height:calc(100vh - 40px);overflow:auto}
+
+/* ---------- Moving matches (admin) ---------- */
+.adminonly{display:none!important}
+body.can-move .adminonly{display:inline-flex!important}
+.drag-hint{align-items:center;margin:0 0 12px 10px;font-size:13px;color:var(--muted)}
+.mvtools{gap:4px;margin-left:4px;flex-wrap:wrap}
+.mvbtn{min-height:28px;padding:3px 8px;font-size:12px;border-radius:8px;background:#eef3f8;color:var(--navy);border:1px solid var(--line)}
+.mvbtn:hover{background:#e0e8ef}
+.mvbtn.undo{color:#8a4a00;background:#fff6e8;border-color:#f3dca0}
+.sched td.stage .bol{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;margin-top:6px;font-size:12px;color:var(--muted);font-weight:600}
+body.can-move .sched td[data-drag]{cursor:grab}
+body.can-move .sched td[data-drag]:hover{outline:2px dashed #93b4d6;outline-offset:-3px}
+.sched td.dragsrc{opacity:.45}
+.dropcell .dropmsg{display:none}
+body.dragging .dropcell{background:#eaf6ff!important;outline:2px dashed #5b9bd5;outline-offset:-6px}
+body.dragging .dropcell .dropmsg{display:inline;color:#1e4fa3;font-weight:700}
+body.dragging .dropcell .emptymsg{display:none}
+.dropcell.dropover{background:#cfe6ff!important;outline-style:solid!important}
+.sched tr.rowX td{background:#fff8ec}
+.sched tr.band.xband td{background:#fde9c4;color:#6b4a00}
+.sched tr.band.xband .spare-tools{margin-left:12px;gap:6px}
+.sched td.movedcell{box-shadow:inset 0 0 0 2px #e0a63a}
+.mslot.xslot{border-color:#f3dca0}
+.mslot.xslot .mslot-h{background:#8a5a00}
+.mtile.movedtile{box-shadow:inset 4px 0 0 #e0a63a}
+.mfree{margin:0;padding:12px}
+.mband .spare-tools{margin-left:8px;gap:6px;vertical-align:middle}
+#schedWarn ul{margin:6px 0 0;padding-left:20px}

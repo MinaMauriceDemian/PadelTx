@@ -8,59 +8,110 @@ const scoreInput=(id,side)=>{const r=rawScore(id);const v=r?r[side]:"";return `<
 const boSelect=id=>`<select class="bosel" data-admin data-bo="${id}" onchange="setBestOf('${id}',this.value)" aria-label="Match length">${boOptions()}</select>`;
 const sfPicker=()=>`<label for="sfSel">Semi-final pairing <select id="sfSel" data-admin onchange="setSF(this.value)"></select></label>`;
 function slotsBySection(ms){
-const gs=ms.slots.filter(s=>s<=ms.groupSlots),ks=ms.slots.filter(s=>s>ms.groupSlots);
-return {gs,ks,range:a=>a.length?(a[0]===a[a.length-1]?`slot ${a[0]}`:`slots ${a[0]}–${a[a.length-1]}`):""}
+// Every slot that has (or originally had) matches, plus the extra-time slots
+const all=[...new Set([...ms.autoSlots,...ms.slots,...Array.from({length:ms.totalSlots-ms.autoLast},(_,i)=>ms.autoLast+1+i)])].sort((a,b)=>a-b);
+const gs=all.filter(s=>s<=ms.groupSlots),ks=all.filter(s=>s>ms.groupSlots&&s<=ms.autoLast),xs=all.filter(s=>s>ms.autoLast);
+return {gs,ks,xs,range:a=>a.length?(a[0]===a[a.length-1]?`slot ${a[0]}`:`slots ${a[0]}–${a[a.length-1]}`):""}
 }
+// Admin tools shown next to each match: move button, and "undo" when it was moved
+const moveTools=x=>`<span class="adminonly mvtools"><button type="button" class="mvbtn" onclick="openMove('${x.id}')" title="Move this match">⇄ Move</button>${x.moved?`<button type="button" class="mvbtn undo" onclick="resetMove('${x.id}')" title="Back to its original slot">↺ Undo</button>`:""}</span>`;
+const spareTools=()=>`<span class="adminonly spare-tools"><button type="button" class="mvbtn" onclick="addSpare(1)">+ Add extra-time slot</button><button type="button" class="mvbtn" onclick="addSpare(-1)">− Remove one</button></span>`;
 
 /* ---------- Building ---------- */
 function buildSchedule(){
 const ms=allMatches();
 $("schedBox").innerHTML=isPhone()?buildCards(ms):buildTable(ms);
-$("schedTools").innerHTML=`<div class="seg" role="group" aria-label="Show">${[["all","All matches"],["now","Now & next"],["open","Not played yet"]].map(([f,l])=>`<button class="${schedFilter===f?"on":""}" onclick="setFilter('${f}')">${l}</button>`).join("")}</div>`;
+$("schedTools").innerHTML=`<div class="seg" role="group" aria-label="Show">${[["all","All matches"],["now","Now & next"],["open","Not played yet"]].map(([f,l])=>`<button class="${schedFilter===f?"on":""}" onclick="setFilter('${f}')">${l}</button>`).join("")}</div><span class="adminonly drag-hint">Admin: drag a team name to a free court (for example an extra-time slot) to move that match.</span>`;
 }
 function buildTable(ms){
 const C=courtsCfg().length,bySlot={};
 ms.forEach(m=>(bySlot[m.slot]=bySlot[m.slot]||[]).push(m));
-const span=3+3*C,{gs,ks,range}=slotsBySection(ms);
-const band=(t,sm,cls)=>`<tr class="band ${cls||""}"><td colspan="${span}">${t}${sm?`<small>${sm}</small>`:""}</td></tr>`;
+const span=3+3*C,{gs,ks,xs,range}=slotsBySection(ms);
+const band=(t,sm,cls,extra)=>`<tr class="band ${cls||""}"><td colspan="${span}">${t}${sm?`<small>${sm}</small>`:""}${extra||""}</td></tr>`;
 const stageCell=(s,arr)=>{
+  if(!arr.length)return `<td class="stage" rowspan="2"><small class="note">${s>ms.autoLast?"Extra time: free":"Free"}</small></td>`;
   const chips=[...new Set(arr.map(x=>`<span class="chip ${chipFor(x)}">${esc(x.stage)}</span>`))].join(" ");
-  const bos=arr.map(x=>`<label class="bol"><span class="cname${x.court}"></span>${boSelect(x.id)}</label>`).join("");
+  const bos=arr.map(x=>`<div class="bol"><span class="cname${x.court}"></span>${boSelect(x.id)}${moveTools(x)}</div>`).join("");
   return `<td class="stage" rowspan="2">${chips}${bos}${arr.some(x=>x.over)?'<small class="overtag">after court hours</small>':""}<span class="latebadge" data-slb="${s}" hidden>⏰ Running late</span></td>`
 };
 const row=s=>{
-  const list=bySlot[s],cls=s%2?"rowA":"rowB",at=c=>list.find(x=>x.court===c);
+  const list=bySlot[s]||[],cls=s>ms.autoLast?"rowX":s%2?"rowA":"rowB",at=c=>list.find(x=>x.court===c);
   let r1=`<tr class="${cls} first" data-slot="${s}"><td class="slotn" rowspan="2">${s}</td><td class="time" rowspan="2" data-time="${s}"></td>`,r2=`<tr class="${cls}" data-slot="${s}">`;
   for(let c=1;c<=C;c++){
     const m=at(c),sep=c>1?" c2s":"";
-    if(!m){r1+=`<td class="emptyc${sep}" colspan="3" rowspan="2">–</td>`;continue}
-    r1+=`<td class="tn${sep}"${c>1?' data-c2="1"':""} dir="auto" id="${m.id}-a" data-m="${m.id}"></td><td class="vs" rowspan="2">VS</td><td class="tn" dir="auto" id="${m.id}-b" data-m="${m.id}"></td>`;
+    if(!m){r1+=`<td class="emptyc dropcell${sep}" colspan="3" rowspan="2" data-drop-slot="${s}" data-drop-court="${c}"><span class="dropmsg">Drop here</span><span class="emptymsg">–</span></td>`;continue}
+    const mv=m.moved?" movedcell":"";
+    r1+=`<td class="tn${sep}${mv}"${c>1?' data-c2="1"':""} dir="auto" id="${m.id}-a" data-m="${m.id}" data-drag="${m.id}" draggable="true"></td><td class="vs" rowspan="2">VS</td><td class="tn${mv}" dir="auto" id="${m.id}-b" data-m="${m.id}" data-drag="${m.id}" draggable="true"></td>`;
     r2+=`<td class="sc${sep}" data-m="${m.id}">${scoreInput(m.id,"a")}</td><td class="sc" data-m="${m.id}">${scoreInput(m.id,"b")}</td>`;
   }
   return r1+stageCell(s,list)+`</tr>`+r2+`</tr>`
 };
-const ls=ms.lastSlot;
-let h=`<colgroup><col style="width:58px"><col style="width:70px">${Array.from({length:C},()=>`<col><col style="width:40px"><col>`).join("")}<col style="width:190px"></colgroup>`;
+let h=`<colgroup><col style="width:58px"><col style="width:70px">${Array.from({length:C},()=>`<col><col style="width:40px"><col>`).join("")}<col style="width:200px"></colgroup>`;
 h+=`<thead><tr><th>Slot</th><th>Time</th>${Array.from({length:C},(_,i)=>`<th colspan="3"${i?' class="c2"':""}><span class="cname${i+1}"></span></th>`).join("")}<th>Stage</th></tr></thead><tbody>`;
 h+=band("Group stage",range(gs))+gs.map(row).join("");
 h+=band("Knockout stage",range(ks));
 if(ms.tpl.sfPicker)h+=`<tr class="band pick"><td colspan="${span}">${sfPicker()}</td></tr>`;
 h+=ks.map(row).join("");
-h+=band("Spare slots","extra time");
-h+=[ls+1,ls+2].map((n,i)=>`<tr class="rowB ${i?"":"first"}"><td class="slotn">${n}</td><td class="time" data-time="${n}"></td><td colspan="${span-2}" class="note-cell">${i?"":"extra time for the final"}</td></tr>`).join("");
-return `<div class="table-wrap" style="overflow:auto"><table class="sched" id="sched" style="min-width:${Math.max(640,320+C*300)}px">${h}</tbody></table></div>`
+h+=band("Extra time",xs.length?range(xs)+" · reserved for delays and the final":"none reserved","xband",spareTools());
+h+=xs.map(row).join("");
+// fixed-width table (cells keep the width set by the columns): wraps team names instead of overflowing
+return `<div class="table-wrap" style="overflow:auto"><table class="sched" id="sched" style="min-width:${Math.max(640,330+C*300)}px">${h}</tbody></table></div>`
 }
 function buildCards(ms){
 const bySlot={};ms.forEach(m=>(bySlot[m.slot]=bySlot[m.slot]||[]).push(m));
-const {gs,ks,range}=slotsBySection(ms);
+const {gs,ks,xs,range}=slotsBySection(ms);
 const side=(m,k)=>`<div class="mteam"><span class="tn" id="${m.id}-${k}" dir="auto"></span><div class="stepper"><button class="stepbtn" onclick="bump('${m.id}','${k}',-1)" aria-label="One round less">−</button>${scoreInput(m.id,k)}<button class="stepbtn" onclick="bump('${m.id}','${k}',1)" aria-label="One round more">+</button></div></div>`;
-const tile=m=>`<div class="mtile" data-m="${m.id}"><div class="mtile-h"><span class="court cname${m.court}"></span><span class="chip ${chipFor(m)}">${esc(m.stage)}</span></div>${side(m,"a")}${side(m,"b")}<div class="mtile-f">${boSelect(m.id)}${m.over?'<small class="overtag">after court hours</small>':""}</div></div>`;
-const card=s=>`<div class="mslot" data-slot="${s}"><div class="mslot-h"><b>Slot ${s}</b><span class="slot-t" data-time="${s}"></span><span class="nowtag">Now</span><span class="nexttag">Next</span><span class="latebadge" data-slb="${s}" hidden>⏰ Late</span></div>${bySlot[s].map(tile).join("")}</div>`;
+const tile=m=>`<div class="mtile${m.moved?" movedtile":""}" data-m="${m.id}"><div class="mtile-h"><span class="court cname${m.court}"></span><span class="chip ${chipFor(m)}">${esc(m.stage)}</span></div>${side(m,"a")}${side(m,"b")}<div class="mtile-f">${boSelect(m.id)}${moveTools(m)}${m.over?'<small class="overtag">after court hours</small>':""}</div></div>`;
+const card=s=>{const list=bySlot[s]||[];return `<div class="mslot${s>ms.autoLast?" xslot":""}" data-slot="${s}"><div class="mslot-h"><b>Slot ${s}</b><span class="slot-t" data-time="${s}"></span><span class="nowtag">Now</span><span class="nexttag">Next</span><span class="latebadge" data-slb="${s}" hidden>⏰ Late</span></div>${list.length?list.map(tile).join(""):`<p class="note mfree">${s>ms.autoLast?"Extra time: free":"Free"}</p>`}</div>`};
 let h=`<div class="mband">Group stage <small>${range(gs)}</small></div>`+gs.map(card).join("");
 h+=`<div class="mband">Knockout stage <small>${range(ks)}</small></div>`;
 if(ms.tpl.sfPicker)h+=`<div class="picker">${sfPicker()}</div>`;
 h+=ks.map(card).join("");
+h+=`<div class="mband">Extra time <small>${xs.length?range(xs):"none reserved"}</small>${spareTools()}</div>`+xs.map(card).join("");
 return `<div class="mcards">${h}<p class="note" id="filterEmpty" hidden>No matches to show here.</p></div>`
+}
+
+/* ---------- Drag & drop (computer) and the Move dialog (phone or keyboard) ---------- */
+let dragId=null;
+function initDragDrop(){
+const box=$("schedBox");if(!box||box.dataset.dnd)return;box.dataset.dnd="1";
+const cellOf=e=>e.target&&e.target.closest?e.target.closest(".dropcell"):null;
+box.addEventListener("dragstart",e=>{
+  const el=e.target.closest&&e.target.closest("[data-drag]");if(!el)return;
+  if(!isAdmin()){e.preventDefault();return}
+  dragId=el.dataset.drag;e.dataTransfer.setData("text/plain",dragId);e.dataTransfer.effectAllowed="move";
+  document.body.classList.add("dragging");
+  box.querySelectorAll(`[data-m="${dragId}"]`).forEach(x=>x.classList.add("dragsrc"));
+});
+box.addEventListener("dragend",()=>{dragId=null;document.body.classList.remove("dragging");box.querySelectorAll(".dropover,.dragsrc").forEach(x=>x.classList.remove("dropover","dragsrc"))});
+box.addEventListener("dragover",e=>{const c=cellOf(e);if(!c||!dragId)return;e.preventDefault();e.dataTransfer.dropEffect="move";c.classList.add("dropover")});
+box.addEventListener("dragleave",e=>{const c=cellOf(e);if(c&&!c.contains(e.relatedTarget))c.classList.remove("dropover")});
+box.addEventListener("drop",e=>{
+  const c=cellOf(e);if(!c)return;e.preventDefault();
+  const id=(e.dataTransfer&&e.dataTransfer.getData("text/plain"))||dragId;
+  if(id)moveMatch(id,+c.dataset.dropSlot,+c.dataset.dropCourt)
+});
+}
+let moveId=null;
+function openMove(id){
+if(!isAdmin())return;
+const ms=allMatches(),m=ms.byId[id];if(!m)return;moveId=id;
+const C=courtsCfg().length,taken=new Set(ms.map(x=>x.slot+":"+x.court)),opts=[];
+for(let s=1;s<=ms.totalSlots;s++)for(let c=1;c<=C;c++){
+  if(taken.has(s+":"+c))continue;
+  const tag=s>ms.autoLast?" · extra time":m.autoSlot===s&&m.autoCourt===c?" · original place":"";
+  opts.push(`<option value="${s}:${c}">Slot ${s} · ${timeFor(s)} · ${esc(courtName(c))}${tag}</option>`);
+}
+const A=matchTeam(id,"a"),B=matchTeam(id,"b");
+$("moveWhat").textContent=`${m.ko?koTitle(id):m.stage}: ${A!=null?teamName(A):phText(m.sourceA)} vs ${B!=null?teamName(B):phText(m.sourceB)}. Now in slot ${m.slot} (${timeFor(m.slot)}) on ${courtName(m.court)}.`;
+$("moveTo").innerHTML=opts.join("")||'<option value="">No free court. Add an extra-time slot first.</option>';
+const firstX=opts.findIndex(o=>o.includes("extra time"));if(firstX>=0)$("moveTo").selectedIndex=firstX;
+$("moveDlg").showModal()
+}
+function confirmMove(){
+const v=$("moveTo").value;if(!v||!moveId)return;
+const [s,c]=v.split(":").map(Number);
+if(moveMatch(moveId,s,c))$("moveDlg").close()
 }
 
 /* ---------- Refreshing ---------- */

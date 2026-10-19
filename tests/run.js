@@ -109,7 +109,7 @@ section("Courts: number of courts and hours per court",()=>{
 
 section("Phone view: match cards and +/− buttons",()=>{
   const {E,doc,errors}=loadApp({phone:true});setTeams(E,8);
-  check(doc.querySelectorAll(".mslot").length===10,"one card per slot");
+  check(doc.querySelectorAll(".mslot").length===12,"one card per slot, plus 2 extra-time slots");
   check(!doc.getElementById("sched"),"no wide table on phones");
   E('bump("gA0","a",1)');
   check(JSON.stringify(E("state.scores.gA0"))==='{"a":1,"b":0}',"+ starts a live score at 1–0");
@@ -154,6 +154,37 @@ section("Printing court sheets",()=>{
   const {E,doc}=loadApp();setTeams(E,8);
   E('state.settings={start:"12:00",duration:20,courts:[{name:"A"},{name:"B"},{name:"C"}]};renderAll();printSheets()');
   check(doc.querySelectorAll(".psheet").length>=3,"sheets for all three courts");
+});
+
+section("Moving matches into extra time (admin)",()=>{
+  const {E,doc,errors}=loadApp();setTeams(E,8);
+  let ms=E("allMatches()");
+  check(ms.autoLast===10&&ms.totalSlots===12,"2 extra-time slots after slot 10");
+  check(doc.querySelectorAll('.dropcell[data-drop-slot="11"]').length===2,"extra-time slots have free courts to drop on");
+  E('state.scores.gA0={a:4,b:1}');
+  check(E('moveMatch("gA0",11,1)')===true,"move a group match to slot 11");
+  ms=E("allMatches()");
+  check(ms.byId.gA0.slot===11&&ms.byId.gA0.court===1&&ms.byId.gA0.moved,"match is now in slot 11, court 1");
+  check(E('score("gA0")')!==null,"the score stays with the match");
+  check(doc.querySelector('.dropcell[data-drop-slot="1"][data-drop-court="1"]')!==null,"its old place is free");
+  check(E('moveMatch("gA1",11,1)')===false,"can't drop onto a taken court");
+  check(E("allMatches()").warnings.some(w=>/Quarter-final/.test(w)),"warns: quarter-final now before Group A finishes");
+  E('resetMove("gA0")');
+  check(E("allMatches()").byId.gA0.slot===1&&!E("state.moves.gA0"),"undo puts it back");
+  E('moveMatch("gA0",11,1);moveMatch("gA2",11,2)');
+  check(E("allMatches()").warnings.some(w=>/two matches in slot 11/.test(w)),"warns when a team plays twice in one slot");
+  E('moveMatch("final",12,1)');
+  check(E("allMatches()").byId.final.slot===12,"final moved to the last extra-time slot");
+  E('addSpare(1)');check(E("allMatches()").totalSlots===13,"admin can add an extra-time slot");
+  E('addSpare(-1);addSpare(-1)');check(E("allMatches()").totalSlots===12,"can't remove a slot that still has a match");
+  E('openMove("gB0")');
+  check(doc.getElementById("moveDlg").open&&/extra time/.test(doc.getElementById("moveTo").textContent),"Move dialog lists free extra-time courts");
+  E('$("moveTo").value="13:1"');
+  E('addSpare(1);openMove("gB0");$("moveTo").value="13:1";confirmMove()');
+  check(E("allMatches()").byId.gB0.slot===13,"Move dialog moves the match");
+  E('role="editor";applyRole()');
+  check(E('moveMatch("gB1",13,2)')===false,"editors can't move matches");
+  check(errors.length===0,"no script errors: "+errors.join(" | "));
 });
 
 // Marketplace: uses a fake online layer instead of Firebase

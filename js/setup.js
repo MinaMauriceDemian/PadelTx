@@ -68,8 +68,8 @@ if(!isAdmin()||v===teamCount()||v<MIN_TEAMS||v>MAX_TEAMS){syncInputs();return}
 const msg=Object.keys(state.scores).length?"All scores and match lengths will be cleared.":"Match lengths go back to the defaults.";
 if(!confirm(`Change to ${v} teams? The groups and schedule are rebuilt. ${msg}`)){syncInputs();return}
 state.teams=Array.from({length:v},(_,i)=>state.teams[i]||defaultTeamName(i));
-state.scores={};state.bestOf={};state.sfPairing=0;
-save();rebuild();cloudWrite({teams:[...state.teams],scores:{},bestOf:{},sfPairing:0})
+state.scores={};state.bestOf={};state.moves={};state.sfPairing=0;
+save();rebuild();cloudWrite({teams:[...state.teams],scores:{},bestOf:{},moves:{},sfPairing:0})
 }
 function setStyle(v){
 const s=STYLES.find(x=>x[0]===v);
@@ -96,7 +96,9 @@ $("pills").innerHTML=[`${teamCount()} teams`,`${gl.length} group${gl.length>1?"s
 $("formatHelp").textContent=describeFormat();
 const kinds=[["group","Group matches"],["qf","Quarter-finals"],["sf","Semi-finals"],["final","Final"],["place","Placement matches"]].filter(([k])=>ms.some(x=>stageGroup(x.id)===k));
 $("stageBo").innerHTML=kinds.map(([k,l])=>`<label>${l}<select data-admin onchange="setStageBestOf('${k}',this.value);this.value=''"><option value="">Set all…</option>${boOptions()}</select></label>`).join("");
-const w=$("schedWarn");
-w.hidden=!ms.overCount;
-if(ms.overCount)w.textContent=`⚠ ${ms.overCount} match${ms.overCount>1?"es don't":" doesn't"} fit in the court hours, so ${ms.overCount>1?"they are":"it is"} scheduled after the courts close (marked “after court hours”). Add a court, add hours, or shorten the minutes per slot in Setup.`;
+const w=$("schedWarn"),items=[];
+if(ms.overCount)items.push(`${ms.overCount} match${ms.overCount>1?"es are":" is"} outside the court hours (marked “after court hours”). Add a court, add hours, or shorten the minutes per slot in Setup.`);
+items.push(...ms.warnings);
+w.hidden=!items.length;
+w.innerHTML=!items.length?"":items.length===1?"⚠ "+esc(items[0]):"⚠ Please check:<ul>"+items.map(t=>`<li>${esc(t)}</li>`).join("")+"</ul>";
 }

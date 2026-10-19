@@ -1,5 +1,6 @@
 // Starts the app. Loaded last of the classic scripts.
 init();
+initDragDrop();
 // Cloud mode starts on the login page (or the tournament list for returning viewers).
 // A shared link (#t=ID) skips the login page and opens the tournament directly once connected.
 if(window.CLOUD_ON)showView(hashId()?"landing":homeView());

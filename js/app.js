@@ -1,6 +1,6 @@
 // App shell: state, roles, login/landing pages, account, access management. Loaded first.
 const defaultTeams=["Viboras","Padeliators","Elsawaree5","O&H","H & H","شباب المستقبل","M&Ms","Eskendriaa"];
-let state={teams:[...defaultTeams],scores:{},bestOf:{},style:"groups_ko",visibility:"public",settings:{start:"12:00",duration:20,date:""}};
+let state={teams:[...defaultTeams],scores:{},bestOf:{},moves:{},style:"groups_ko",visibility:"public",settings:{start:"12:00",duration:20,date:""}};
 const key="padelTournamentV2";
 if(!window.CLOUD_ON){try{const s=JSON.parse(localStorage.getItem(key)); if(s) state={...state,...s,settings:{...state.settings,...(s?.settings||{})}}}catch(e){}}
 function save(){if(window.CLOUD_ON)return;try{localStorage.setItem(key,JSON.stringify(state))}catch(e){}}
@@ -11,7 +11,7 @@ function $(id){return document.getElementById(id)}
 const DEFAULT_SETTINGS={start:"12:00",duration:20,date:""};
 // No "courts" here on purpose: older tournaments keep their court1/court2 names (see courtsCfg in engine.js)
 window.__defaults=(n=8)=>({teams:Array.from({length:n},(_,i)=>defaultTeamName(i)),settings:{...DEFAULT_SETTINGS,date:todayStr(),courts:[{name:"Court 1"},{name:"Court 2"}]}});
-function resetState(){state={teams:[...defaultTeams],scores:{},bestOf:{},style:"groups_ko",visibility:"public",settings:{...DEFAULT_SETTINGS},sfPairing:0}}
+function resetState(){state={teams:[...defaultTeams],scores:{},bestOf:{},moves:{},style:"groups_ko",visibility:"public",settings:{...DEFAULT_SETTINGS},sfPairing:0}}
 let role=window.CLOUD_ON?"viewer":"admin", authUser=null, cloudStatus="", view="app", currentTid=null, booted=false, autoOpen=true, myReq=null, requests=[], mine=[];
 // guest = the person chose "Continue as viewer" on the login page (remembered for this browser tab)
 let guest=false;try{guest=sessionStorage.getItem("padelGuest")==="1"}catch(e){}
@@ -45,6 +45,7 @@ if(d){
   state.sfPairing=d.sfPairing!=null?+d.sfPairing:0;
   state.scores=d.scores||{};
   state.bestOf=d.bestOf||{};
+  state.moves=d.moves||{};
   state.style=d.style||"groups_ko";
   state.visibility=d.visibility==="private"?"private":"public";
   state._visMissing=!d.visibility;
@@ -79,6 +80,7 @@ document.querySelectorAll("input.score,.stepbtn").forEach(el=>el.disabled=!ed);
 ["start","duration","tdate","tname"].forEach(i=>{const el=$(i);if(el)el.disabled=!ad});
 document.querySelectorAll("[data-team],[data-admin]").forEach(el=>el.disabled=!ad);
 const sf=$("sfSel");if(sf)sf.disabled=!ad;
+document.body.classList.toggle("can-move",ad);
 const chip=$("roleChip"),btn=$("loginBtn"),bar=$("viewBanner"),foot=$("footNote");
 $("tnameLabel").hidden=!window.CLOUD_ON;$("visLabel").hidden=!window.CLOUD_ON;
 if(!window.CLOUD_ON){
