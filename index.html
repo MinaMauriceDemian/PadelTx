@@ -13,8 +13,9 @@
 <div id="viewBanner" class="viewbar" hidden></div>
 
 <div class="top-grid">
-<div class="card">
-<h2>Setup</h2>
+<details class="card setupbox" id="setupBox">
+<summary><span class="setup-title"><h2>⚙️ Setup</h2><span class="setup-sum" id="setupSum"></span></span><span class="setup-chev" aria-hidden="true"></span></summary>
+<div class="setup-body">
 <div class="fields">
 <label style="grid-column:1/-1" id="tnameLabel">Tournament name<input id="tname" maxlength="60"></label>
 <label>Start time<input id="start" type="time" value="12:00"></label>
@@ -40,6 +41,7 @@
 <details class="help"><summary>How the tournament works</summary>
 <p id="formatHelp"></p></details>
 </div>
+</details>
 
 <div class="card">
 <h2>Teams</h2>

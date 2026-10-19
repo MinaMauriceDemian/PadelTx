@@ -375,3 +375,16 @@ body.dragging .dropcell .emptymsg{display:none}
 .mfree{margin:0;padding:12px}
 .mband .spare-tools{margin-left:8px;gap:6px;vertical-align:middle}
 #schedWarn ul{margin:6px 0 0;padding-left:20px}
+
+/* ---------- Collapsible Setup panel ---------- */
+details.setupbox>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;margin:-4px 0}
+details.setupbox>summary::-webkit-details-marker{display:none}
+details.setupbox>summary:focus-visible{outline:3px solid #0d948860;outline-offset:4px;border-radius:8px}
+.setup-title{display:flex;flex-direction:column;gap:2px;min-width:0}
+.setup-title h2{margin:0}
+.setup-sum{font-size:13px;color:var(--muted);font-weight:500}
+.setup-chev{flex:none;width:34px;height:34px;border-radius:50%;background:var(--accent2);display:grid;place-items:center;transition:transform .2s}
+.setup-chev::before{content:"";width:9px;height:9px;border-right:2.5px solid #0b6b62;border-bottom:2.5px solid #0b6b62;transform:translateY(-2px) rotate(45deg)}
+details.setupbox[open] .setup-chev{transform:rotate(180deg)}
+details.setupbox[open]>summary{margin-bottom:14px}
+details.setupbox:not([open]) .setup-sum{display:block}
