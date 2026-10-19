@@ -9,6 +9,7 @@
 *{box-sizing:border-box}
 body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;font-size:15px;line-height:1.45;background:var(--bg);color:var(--ink)}
 .wrap{max-width:1280px;margin:auto}
+a{color:var(--accent-d)}
 header{background:linear-gradient(135deg,#0f2b46,#0d7c7a);color:#fff;padding:22px 16px}
 .hdr{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
 h1{margin:0;font-size:26px;letter-spacing:-.01em}
@@ -46,6 +47,45 @@ button{min-height:42px;border:0;border-radius:10px;padding:10px 16px;cursor:poin
 .chip{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
 .chipA{background:#d1f2ec;color:#0b6b62}.chipB{background:#dbe8fe;color:#1e4fa3}.chipK{background:#fdecc8;color:#8a5a00}.chipF{background:#fde68a;color:#6b4a00}
 
+/* account / roles */
+[hidden]{display:none!important}
+.hdr-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.auth{display:flex;align-items:center;gap:8px}
+.rolechip{background:#fff;color:var(--navy);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:800}
+.auth button,.hbtn{background:#ffffff26;color:#fff;border:1px solid #ffffff55;min-height:36px;padding:6px 14px}
+.auth button:hover,.hbtn:hover{background:#ffffff40}
+/* landing */
+.landing{min-height:100vh;background:var(--bg)}
+.land-hero{background:linear-gradient(135deg,#0f2b46,#0d7c7a);color:#fff;padding:48px 16px 80px;text-align:center}
+.land-hero h1{font-size:32px}
+.land-hero p{margin:8px 0 0;opacity:.88;font-size:16px}
+.land-grid{max-width:980px;margin:-48px auto 40px;padding:0 14px;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.land-card h2{margin-bottom:6px}
+.land-card .note{margin:0 0 12px}
+.idrow{display:flex;gap:10px}
+.idrow input{text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.tcard{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;background:#fafcfd}
+.tcard b{display:block;overflow-wrap:anywhere}
+.tcard .note{margin:2px 0 0}
+.stack{display:flex;flex-direction:column;gap:12px}
+.mrow2{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px}
+.mrow2 .grow{flex:1}
+.sharebox{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#f1f5f9;border-radius:12px;padding:12px 14px;margin-bottom:18px}
+.sharebox code{font-size:20px;font-weight:800;letter-spacing:.1em;color:var(--navy)}
+.access h3{margin:18px 0 10px;font-size:15px;color:var(--navy)}
+@media(max-width:800px){.land-grid{grid-template-columns:1fr}}
+.viewbar{margin:0 0 16px;padding:10px 14px;border-radius:12px;background:#fff8e6;border:1px solid #f3dca0;color:#6b4a00;font-weight:600;font-size:14px}
+input:disabled,select:disabled{background:#f3f6f9;color:#51657a;cursor:not-allowed;opacity:1}
+input.score:disabled{background:#fff;color:var(--ink);border-style:dashed}
+button:disabled{opacity:.45;cursor:not-allowed}
+dialog{border:0;border-radius:16px;padding:0;width:calc(100% - 32px);max-width:420px;box-shadow:0 20px 60px #0004}
+dialog::backdrop{background:#0a1a2c80}
+.dlg{padding:22px;display:flex;flex-direction:column;gap:12px}
+.dlg h2{margin:0}
+.dlg p{margin:0}
+.uidrow{display:flex;gap:8px;align-items:center}
+.uidrow code{flex:1;min-width:0;overflow-wrap:anywhere;background:#f1f5f9;border-radius:8px;padding:8px 10px;font-size:12px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#14263a;color:#fff;padding:10px 16px;border-radius:12px;font-weight:600;font-size:14px;box-shadow:0 8px 24px #0004;z-index:50;max-width:calc(100% - 32px)}
 /* tabs */
 .tabs{position:sticky;top:8px;z-index:10;display:flex;gap:6px;margin:18px 0;padding:6px;background:#e0e8ef;border-radius:14px;width:fit-content;max-width:100%;overflow:auto;box-shadow:0 2px 8px #14263a14}
 .tab{background:transparent;color:#3d5167;padding:9px 18px;border-radius:10px;white-space:nowrap}
@@ -189,22 +229,25 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </style>
 </head>
 <body>
-<header><div class="wrap hdr"><div><h1>🎾 Padel Tournament Manager</h1><p>Enter the scores — standings and the knockout bracket update automatically.</p></div><div class="pills"><span>8 teams</span><span>2 groups</span><span>2 courts</span></div></div></header>
+<div id="appView">
+<header><div class="wrap hdr"><div><h1>🎾 Padel Tournament Manager</h1><p id="hdrSub">Enter the scores — standings and the knockout bracket update automatically.</p></div><div class="hdr-right"><button id="backBtn" class="hbtn" onclick="goHome()" hidden>← Tournaments</button><button id="shareBtn" class="hbtn" onclick="shareT()" hidden>🔗 Share</button><div class="pills"><span>8 teams</span><span>2 groups</span><span>2 courts</span></div><div class="auth"><span id="roleChip" class="rolechip"></span><button id="loginBtn" onclick="openAuth()">Sign in</button></div></div></div></header>
 <main class="wrap">
+<div id="viewBanner" class="viewbar" hidden></div>
 
 <div class="top-grid">
 <div class="card">
 <h2>Setup</h2>
 <div class="fields">
+<label style="grid-column:1/-1" id="tnameLabel">Tournament name<input id="tname" maxlength="60"></label>
 <label>Start time<input id="start" type="time" value="12:00"></label>
 <label>Minutes per slot<input id="duration" type="number" min="5" value="20"></label>
 <label>Court 1 name<input id="court1" value="Court 1"></label>
 <label>Court 2 name<input id="court2" value="Court 2"></label>
 </div>
 <div class="actions">
-<button class="primary" onclick="generate()">Apply settings</button>
+<button class="primary" data-admin onclick="generate()">Apply settings</button>
 <button class="secondary" onclick="printSheets()">🖨 Print court sheets (A4)</button>
-<button class="danger" onclick="resetAll()">Reset scores</button>
+<button class="danger" data-admin onclick="resetAll()">Reset scores</button>
 </div>
 <details class="help"><summary>How the tournament works</summary>
 <p>Each group plays a 4-team round robin (6 matches, 2 courts at a time). Groups alternate slot by slot: A, B, A, B, A, B. Then come the quarter-finals (slot 7), semi-finals (slot 8) the final plus the 3rd-place match between the semi-final losers (slot 9), and the 7th-place match between the two 4th-placed teams (slot 10), with two spare slots for extra time. 5th and 6th go to the two quarter-final losers, ranked by group-stage points and, if equal, by rounds won.</p></details>
@@ -217,10 +260,11 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </div>
 
 <nav class="tabs" aria-label="Sections">
-<button class="tab active" onclick="showTab('schedule',this)">📅 Schedule &amp; scores</button>
-<button class="tab" onclick="showTab('standings',this)">📊 Standings</button>
-<button class="tab" onclick="showTab('bracket',this)">🏆 Knockout bracket</button>
-<button class="tab" onclick="showTab('ranking',this)">🥇 Final ranking</button>
+<button class="tab active" data-tab="schedule" onclick="showTab('schedule',this)">📅 Schedule &amp; scores</button>
+<button class="tab" data-tab="standings" onclick="showTab('standings',this)">📊 Standings</button>
+<button class="tab" data-tab="bracket" onclick="showTab('bracket',this)">🏆 Knockout bracket</button>
+<button class="tab" data-tab="ranking" onclick="showTab('ranking',this)">🥇 Final ranking</button>
+<button class="tab" data-tab="access" id="accessTab" onclick="showTab('access',this)" hidden>👥 Access</button>
 </nav>
 
 <section id="schedule" class="section active">
@@ -260,30 +304,284 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <p class="note" style="margin-top:12px">The ranking fills in as the matches are played.</p>
 </section>
 
-<footer>Scores are stored in this browser automatically. Team names and tournament settings are saved locally.</footer>
+<section id="access" class="section card access">
+<h2>Access</h2>
+<div class="sharebox"><span>Tournament ID</span><code id="accId"></code><button class="secondary" onclick="copyId()">Copy ID</button><button class="secondary" onclick="shareT()">Copy link</button></div>
+<p class="note">Anyone with the ID or link can follow the results. Signed-in people can ask for edit access and you approve them here.</p>
+<h3>Access requests</h3><div id="reqList"></div>
+<h3>People with access</h3><div id="memList"></div>
+</section>
+
+<footer id="footNote"></footer>
 </main>
+</div>
+
+<div id="landing" class="landing" hidden>
+<div class="land-hero"><h1>🎾 Padel Tournament Manager</h1><p>Run a tournament, or follow one live.</p></div>
+<div class="land-grid">
+<div class="card land-card">
+<h2>Find a tournament</h2>
+<p class="note">Enter the tournament ID you were given. You can follow the results without an account.</p>
+<div class="idrow"><input id="findId" placeholder="e.g. K7M2QXA" maxlength="12" autocapitalize="characters" autocomplete="off" onkeydown="if(event.key==='Enter')findTournament()"><button class="primary" onclick="findTournament()">Open</button></div>
+<p id="findMsg" class="note" style="margin-top:10px"></p>
+</div>
+<div class="card land-card">
+<div id="lOut" class="stack">
+<div><h2>Organisers &amp; staff</h2><p class="note" style="margin:0">Sign in to open your tournaments, create a new one, or enter scores.</p></div>
+<label>Email<input id="lEmail" type="email" autocomplete="email"></label>
+<label>Password<input id="lPw" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAuth('in','l')"></label>
+<div class="actions" style="margin:0"><button class="primary" onclick="doAuth('in','l')">Sign in</button><button class="secondary" onclick="doAuth('up','l')">Create account</button></div>
+<p class="note" style="margin:0"><a href="#" onclick="doAuth('reset','l');return false">Forgot password?</a></p>
+</div>
+<div id="lIn" class="stack" hidden>
+<div><h2>My tournaments</h2><p class="note" id="lWho" style="margin:0"></p></div>
+<div id="myList"></div>
+<div class="idrow"><input id="newName" placeholder="New tournament name" maxlength="60" style="text-transform:none;letter-spacing:0;font-weight:500" onkeydown="if(event.key==='Enter')createT()"><button class="secondary" onclick="createT()">Create</button></div>
+<div class="actions" style="margin:0"><button class="danger" style="margin-left:0" onclick="doSignOut()">Sign out</button></div>
+</div>
+<p id="lMsg" class="note" style="margin-top:12px" role="status"></p>
+</div>
+</div>
+</div>
+<div id="toast" class="toast" role="status" hidden></div>
+<dialog id="authDlg"><div class="dlg">
+<h2>Account</h2>
+<div id="authOut" style="display:flex;flex-direction:column;gap:12px">
+<label>Email<input id="authEmail" type="email" autocomplete="email"></label>
+<label>Password<input id="authPw" type="password" autocomplete="current-password"></label>
+<div class="actions" style="margin:0"><button class="primary" onclick="doAuth('in')">Sign in</button><button class="secondary" onclick="doAuth('up')">Create account</button></div>
+<p class="note"><a href="#" onclick="doAuth('reset');return false">Forgot password?</a> · New here? Create an account, then request edit access from the tournament page.</p>
+</div>
+<div id="authIn" style="display:flex;flex-direction:column;gap:12px" hidden>
+<p>Signed in as <b id="authWho"></b></p>
+<p>Your role in this tournament: <b id="authRole"></b></p>
+<div class="actions" style="margin:0"><button class="danger" style="margin-left:0" onclick="doSignOut()">Sign out</button></div>
+</div>
+<p id="authMsg" class="note" role="status"></p>
+<div class="actions" style="margin:0"><button class="secondary" onclick="$('authDlg').close()">Close</button></div>
+</div></dialog>
 <div id="printArea"></div>
 
+<script>
+// ================= FIREBASE SETTINGS =================
+// Paste your project's web-app config here (Firebase console > Project settings > Your apps).
+// While the values still start with "PASTE", the app runs in Local mode (data stays in this browser, everyone is admin).
+window.FIREBASE_CONFIG = {
+  apiKey: "PASTE_API_KEY",
+  authDomain: "PASTE_PROJECT_ID.firebaseapp.com",
+  projectId: "PASTE_PROJECT_ID",
+  appId: "PASTE_APP_ID"
+};
+window.CLOUD_ON = !!(window.FIREBASE_CONFIG.apiKey && !/^PASTE/.test(window.FIREBASE_CONFIG.apiKey));
+</script>
 <script>
 const defaultTeams=["Viboras","Padeliators","Elsawaree5","O&H","H & H","شباب المستقبل","M&Ms","Eskendriaa"];
 let state={teams:[...defaultTeams],scores:{},settings:{start:"12:00",duration:20,court1:"Court 1",court2:"Court 2"}};
 const key="padelTournamentV2";
-try{const s=JSON.parse(localStorage.getItem(key)); if(s) state={...state,...s,settings:{...state.settings,...(s?.settings||{})}}}catch(e){}
-function save(){try{localStorage.setItem(key,JSON.stringify(state))}catch(e){}}
+if(!window.CLOUD_ON){try{const s=JSON.parse(localStorage.getItem(key)); if(s) state={...state,...s,settings:{...state.settings,...(s?.settings||{})}}}catch(e){}}
+function save(){if(window.CLOUD_ON)return;try{localStorage.setItem(key,JSON.stringify(state))}catch(e){}}
 function $(id){return document.getElementById(id)}
+
+/* ---------- Roles, tournaments, account & online sync ---------- */
+// viewer = read-only · editor = can enter scores · admin = everything (roles are per tournament)
+const DEFAULT_SETTINGS={start:"12:00",duration:20,court1:"Court 1",court2:"Court 2"};
+window.__defaults=()=>({teams:[...defaultTeams],settings:{...DEFAULT_SETTINGS}});
+function resetState(){state={teams:[...defaultTeams],scores:{},settings:{...DEFAULT_SETTINGS},sfPairing:0}}
+let role=window.CLOUD_ON?"viewer":"admin", authUser=null, cloudStatus="", view="app", currentTid=null, booted=false, autoOpen=true, myReq=null, requests=[], mine=[];
+const canScore=()=>role==="editor"||role==="admin";
+const isAdmin=()=>role==="admin";
+const DEL="__DEL__";
+const pending={teams:null};
+function cloudWrite(u){if(window.CLOUD_ON&&window.__cloud)window.__cloud.write(u)}
+let toastTimer;
+function toast(msg){const t=$("toast");t.textContent=msg;t.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.hidden=true,5000)}
+window.__toast=toast;
+function showView(v){view=v;$("landing").hidden=v!=="landing";$("appView").hidden=v!=="app"}
+const hashId=()=>{const m=/[#&]t=([A-Za-z0-9]+)/.exec(location.hash);return m?m[1].toUpperCase():null};
+function syncInputs(){
+const idle=el=>el&&document.activeElement!==el;
+allMatches().forEach(m=>["a","b"].forEach(k=>{const el=$(m.id+k);if(idle(el)){const r=rawScore(m.id);el.value=r?r[k]:""}}));
+document.querySelectorAll("[data-team]").forEach(el=>{if(idle(el))el.value=state.teams[+el.dataset.team]||""});
+[["start",state.settings.start],["duration",state.settings.duration],["court1",state.settings.court1],["court2",state.settings.court2],["tname",state.name||""]].forEach(([id,v])=>{const el=$(id);if(idle(el))el.value=v})
+}
+window.__applyRemote=function(d){
+if(d){
+  state.name=d.name||"Tournament";state.members=d.members||{};state.ownerUid=d.ownerUid||null;
+  if(pending.teams==null&&Array.isArray(d.teams)&&d.teams.length===8)state.teams=d.teams.map(String);
+  if(d.settings)state.settings={...state.settings,...d.settings};
+  state.sfPairing=d.sfPairing!=null?+d.sfPairing:0;
+  state.scores=d.scores||{};
+}
+syncInputs();refresh();applyRole()
+};
+window.__getInitial=()=>({teams:state.teams,settings:state.settings,sfPairing:state.sfPairing||0,scores:state.scores});
+window.__cloudStatus=s=>{cloudStatus=s;applyRole()};
+window.__setRole=function(r,u){role=r;authUser=u;applyRole();if($("authDlg").open)updateAuthDlg()};
+window.__setRequests=l=>{requests=l;renderAccess()};
+window.__setMyRequest=st=>{myReq=st;applyRole()};
+window.__authState=function(u){
+authUser=u;
+if(view==="landing"){renderLanding();if(booted&&u&&autoOpen)autoOpenMine()}
+};
+window.__cloudReady=function(){
+booted=true;
+const id=hashId();
+if(id){enterTournament(id,"findMsg")}
+else if(authUser&&autoOpen)autoOpenMine()
+};
+function applyRole(){
+const ed=canScore(),ad=isAdmin();
+document.querySelectorAll("input.score").forEach(el=>el.disabled=!ed);
+["start","duration","court1","court2","tname"].forEach(i=>{const el=$(i);if(el)el.disabled=!ad});
+document.querySelectorAll("[data-team],[data-admin]").forEach(el=>el.disabled=!ad);
+const sf=$("sfSel");if(sf)sf.disabled=!ad;
+const chip=$("roleChip"),btn=$("loginBtn"),bar=$("viewBanner"),foot=$("footNote");
+$("tnameLabel").hidden=!window.CLOUD_ON;
+if(!window.CLOUD_ON){
+  chip.textContent="Local mode";btn.hidden=true;bar.hidden=true;$("accessTab").hidden=true;
+  foot.textContent="Local mode: data is stored only in this browser. Add your Firebase settings to share it online."
+}else{
+  chip.textContent=ad?"Admin":ed?"Editor":"Viewer";btn.textContent=authUser?"Account":"Sign in";
+  $("backBtn").hidden=false;$("shareBtn").hidden=!currentTid;
+  $("hdrSub").textContent=currentTid?(state.name||"Tournament")+" · ID "+currentTid:"";
+  $("accessTab").hidden=!ad;
+  if(!ad&&$("access").classList.contains("active"))document.querySelector('.tab[data-tab="schedule"]').click();
+  bar.hidden=ed;
+  if(!ed){
+    if(!authUser)bar.innerHTML='👁 View only — scores update live. Staff: <b><a href="#" onclick="openAuth();return false">sign in</a></b> to enter scores.';
+    else if(myReq==="pending")bar.textContent="👁 View only — your edit-access request is waiting for the admin.";
+    else bar.innerHTML='👁 View only. <b><a href="#" onclick="requestAccess();return false">Request edit access</a></b> from the tournament admin.';
+  }
+  foot.textContent=cloudStatus==="live"?"● Live — changes sync automatically for everyone.":"Connecting…"
+}
+}
+async function requestAccess(){
+const r=await window.__cloud.requestAccess();
+if(r&&r.ok)toast("Request sent. The admin will see it under Access.");else toast("Could not send the request.")
+}
+/* landing page */
+function renderLanding(){
+$("lOut").hidden=!!authUser;$("lIn").hidden=!authUser;
+if(authUser){$("lWho").textContent="Signed in as "+authUser.email;loadMine()}
+}
+async function loadMine(){
+const box=$("myList");
+if(!window.__cloud||!authUser){box.textContent="";return []}
+box.innerHTML='<p class="note">Loading…</p>';
+const r=await window.__cloud.listMine();
+if(!r.ok){box.innerHTML='<p class="note">Could not load your tournaments.</p>';return []}
+mine=r.list;
+box.innerHTML=mine.length?mine.map(t=>`<div class="tcard"><div><b dir="auto">${esc(t.name)}</b><span class="chip ${t.role==="admin"?"chipF":"chipK"}">${t.role==="admin"?"Admin":"Editor"}</span><p class="note">ID ${esc(t.id)}</p></div><button class="primary" onclick="enterTournament('${esc(t.id)}','lMsg')">Open</button></div>`).join(""):'<p class="note">You have no tournaments yet. Create one below, or open one with its ID.</p>';
+return mine
+}
+async function autoOpenMine(){
+const list=await loadMine();
+if(list.length===1&&view==="landing"&&autoOpen)enterTournament(list[0].id,"lMsg")
+}
+async function enterTournament(id,msgId){
+const m=msgId?$(msgId):null;if(m)m.textContent="Opening…";
+if(!window.__cloud){if(m)m.textContent="Still connecting… try again in a moment.";return false}
+resetState();currentTid=id;
+const r=await window.__cloud.open(id);
+if(!r.ok){
+  currentTid=null;
+  if(m)m.textContent=r.error==="not-found"?"No tournament found with this ID.":"Could not open it ("+r.error+").";
+  return false
+}
+if(m)m.textContent="";
+if(location.hash.replace(/^#/,"")!=="t="+id)location.hash="t="+id;
+showView("app");window.scrollTo(0,0);applyRole();
+document.querySelector('.tab[data-tab="schedule"]').click();
+return true
+}
+function goHome(){
+autoOpen=false;
+if(window.__cloud)window.__cloud.leave();
+currentTid=null;myReq=null;requests=[];
+history.replaceState(null,"",location.pathname+location.search);
+showView("landing");renderLanding();
+$("findMsg").textContent="";$("lMsg").textContent=""
+}
+async function findTournament(){
+const raw=$("findId").value.toUpperCase().replace(/[^A-Z0-9]/g,""),m=$("findMsg");
+if(!raw){m.textContent="Enter a tournament ID.";return}
+await enterTournament(raw,"findMsg")
+}
+async function createT(){
+const name=$("newName").value.trim()||"My tournament",m=$("lMsg");
+if(!window.__cloud){m.textContent="Still connecting… try again in a moment.";return}
+m.textContent="Creating…";
+const r=await window.__cloud.create(name);
+if(!r.ok){m.textContent="Could not create the tournament ("+r.error+").";return}
+$("newName").value="";
+await enterTournament(r.id,"lMsg")
+}
+function shareT(){
+if(!currentTid)return;
+const url=location.href.split("#")[0]+"#t="+currentTid;
+if(navigator.clipboard)navigator.clipboard.writeText(url).then(()=>toast("Link copied · Tournament ID: "+currentTid),()=>toast("Tournament ID: "+currentTid));else toast("Tournament ID: "+currentTid)
+}
+function copyId(){if(currentTid&&navigator.clipboard)navigator.clipboard.writeText(currentTid).then(()=>toast("ID copied: "+currentTid))}
+window.addEventListener("hashchange",()=>{
+if(!window.CLOUD_ON||!booted)return;
+const id=hashId();
+if(!id&&currentTid)goHome();
+else if(id&&id!==currentTid)enterTournament(id,"findMsg")
+});
+/* access management (admin) */
+function renderAccess(){
+if(!$("memList"))return;
+$("accId").textContent=currentTid||"";
+const members=state.members||{},byUid=Object.fromEntries(requests.map(r=>[r.uid,r]));
+const pend=requests.filter(r=>r.status==="pending"&&!members[r.uid]);
+$("reqList").innerHTML=pend.length?pend.map(r=>`<div class="mrow2"><span dir="auto">${esc(r.email||r.uid)}</span><span class="grow"></span><button class="secondary" onclick="setMember('${esc(r.uid)}','editor')">Make editor</button><button class="secondary" onclick="setMember('${esc(r.uid)}','admin')">Make admin</button><button class="danger" style="margin-left:0" onclick="dismissReq('${esc(r.uid)}')">Dismiss</button></div>`).join(""):'<p class="note">No pending requests.</p>';
+$("memList").innerHTML=Object.keys(members).map(uid=>{
+  const r=members[uid],isOwner=uid===state.ownerUid,me=authUser&&uid===authUser.uid;
+  const who=(byUid[uid]&&byUid[uid].email)||(me?authUser.email:isOwner?"Owner":uid.slice(0,6)+"…");
+  const other=r==="admin"?"editor":"admin";
+  return `<div class="mrow2"><span dir="auto">${esc(who)}${me?" (you)":""}</span><span class="chip ${r==="admin"?"chipF":"chipK"}">${isOwner?"Owner · ":""}${r==="admin"?"Admin":"Editor"}</span><span class="grow"></span>${isOwner?"":`<button class="secondary" onclick="setMember('${esc(uid)}','${other}')">Make ${other}</button><button class="danger" style="margin-left:0" onclick="removeMember('${esc(uid)}')">Remove</button>`}</div>`
+}).join("")||'<p class="note">No one yet.</p>'
+}
+async function setMember(uid,r){const x=await window.__cloud.setMember(uid,r);if(!x.ok)toast("Could not change access ("+x.error+").")}
+async function removeMember(uid){if(confirm("Remove this person's access?")){const x=await window.__cloud.setMember(uid,null);if(!x.ok)toast("Could not remove access ("+x.error+").")}}
+async function dismissReq(uid){await window.__cloud.dismissRequest(uid)}
+/* account dialog */
+function openAuth(){updateAuthDlg();$("authMsg").textContent="";$("authDlg").showModal()}
+function updateAuthDlg(){
+const u=authUser;$("authOut").hidden=!!u;$("authIn").hidden=!u;
+if(u){$("authWho").textContent=u.email;$("authRole").textContent=role==="admin"?"Admin":role==="editor"?"Editor":"Viewer"}
+}
+const AUTH_ERR={"auth/invalid-credential":"Wrong email or password.","auth/wrong-password":"Wrong email or password.","auth/user-not-found":"No account with this email. Use Create account.","auth/email-already-in-use":"This email already has an account. Use Sign in.","auth/weak-password":"Password must be at least 6 characters.","auth/invalid-email":"That email address is not valid.","auth/too-many-requests":"Too many attempts. Try again later.","auth/network-request-failed":"Network problem. Check your connection."};
+async function doAuth(kind,p="auth"){
+const email=$(p+"Email").value.trim(),pw=$(p+"Pw").value,msg=$(p+"Msg");
+if(!window.__auth){msg.textContent="Still connecting… try again in a moment.";return}
+if(!email){msg.textContent="Enter your email.";return}
+try{
+  if(kind==="reset"){await window.__auth.reset(email);msg.textContent="Password reset email sent (check your spam folder).";return}
+  if(!pw){msg.textContent="Enter your password.";return}
+  msg.textContent="Please wait…";
+  autoOpen=true;
+  if(kind==="in")await window.__auth.signIn(email,pw);else await window.__auth.signUp(email,pw);
+  msg.textContent="";$(p+"Pw").value=""
+}catch(e){msg.textContent=AUTH_ERR[e.code]||("Error: "+(e.message||e.code))}
+}
+async function doSignOut(){try{await window.__auth.signOut()}catch(e){}if($("authDlg").open){updateAuthDlg();$("authDlg").close()}}
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
 
 function init(){
 const teamRow=(t,i)=>`<div class="team-row"><span class="num">${i%4+1}</span><input data-team="${i}" value="${esc(t)}" aria-label="Team name"></div>`;
 $("teams").innerHTML=["A","B"].map((g,gi)=>`<div class="group-box gb${g}"><h3 class="group-title"><span class="chip chip${g}">Group ${g}</span></h3>${state.teams.slice(gi*4,gi*4+4).map((t,k)=>teamRow(t,gi*4+k)).join("")}</div>`).join("");
-document.querySelectorAll("[data-team]").forEach(x=>x.oninput=()=>{state.teams[+x.dataset.team]=x.value;save();refresh()});
+document.querySelectorAll("[data-team]").forEach(x=>x.oninput=()=>{if(!isAdmin())return;state.teams[+x.dataset.team]=x.value;save();refresh();clearTimeout(pending.teams);pending.teams=setTimeout(()=>{pending.teams=null;cloudWrite({teams:[...state.teams]})},600)});
 $("start").value=state.settings.start;$("duration").value=state.settings.duration;$("court1").value=state.settings.court1;$("court2").value=state.settings.court2;
 renderAll();
 }
 function generate(){
-state.settings={start:$("start").value||"12:00",duration:+$("duration").value||20,court1:$("court1").value||"Court 1",court2:$("court2").value||"Court 2"};save();renderAll()
+if(!isAdmin())return;
+state.settings={start:$("start").value||"12:00",duration:+$("duration").value||20,court1:$("court1").value||"Court 1",court2:$("court2").value||"Court 2"};
+if(window.CLOUD_ON)state.name=$("tname").value.trim()||state.name||"Tournament";
+save();renderAll();cloudWrite({settings:state.settings,name:state.name})
 }
-function resetAll(){if(confirm("Reset all match scores?")){state.scores={};save();renderAll()}}
+function resetAll(){if(!isAdmin())return;if(confirm("Reset all match scores?")){state.scores={};save();renderAll();cloudWrite({scores:{}})}}
 
 /* ---------- Tournament structure ---------- */
 function groups(){return [[0,1,2,3],[4,5,6,7]]}
@@ -299,9 +597,10 @@ const SF_PAIRINGS=[
   [["1A","QF2"],["1B","QF1"]]
 ];
 function setSF(v){
+if(!isAdmin()){refresh();return}
 if(Object.keys(state.scores).some(k=>["sf1","sf2","final","third"].includes(k))&&!confirm("Changing the semi-final pairings clears the semi-final, 3rd-place and final scores. Continue?")){refresh();return}
 delete state.scores.sf1;delete state.scores.sf2;delete state.scores.final;delete state.scores.third;
-state.sfPairing=+v;save();renderAll()
+state.sfPairing=+v;save();renderAll();cloudWrite({sfPairing:+v,"scores.sf1":DEL,"scores.sf2":DEL,"scores.final":DEL,"scores.third":DEL})
 }
 function groupOfTeam(i){return i<4?"A":"B"}
 function refLabel(ref){const t=resolve(ref);return t!=null?teamName(t):phText(ref)}
@@ -463,10 +762,12 @@ if(groupDone("A")&&groupDone("B")&&winner("qf1")!=null&&winner("qf2")!=null){
 return r
 }
 function onScore(id){
+if(!canScore())return;
 const a=$(id+"a").value,b=$(id+"b").value;
 if(a===""||b===""){delete state.scores[id]}else{state.scores[id]={a:+a,b:+b}}
 const bad=a!==""&&b!==""&&!validScore({a,b},id);["a","b"].forEach(x=>$(id+x).classList.toggle("bad",bad));
-save();refresh()
+save();refresh();
+cloudWrite(a===""||b===""?{["scores."+id]:DEL}:{["scores."+id]:{a:+a,b:+b}})
 }
 
 /* ---------- Standings & bracket ---------- */
@@ -483,9 +784,116 @@ $("bracketBody").innerHTML=cols.map(([title,ids])=>`<div class="round"><h3>${tit
 }).join("")}</div></div>`).join("")
 }
 function refresh(){renderSFPicker();refreshSchedule();renderStand("standA","A");renderStand("standB","B");renderBracket()}
-function renderAll(){buildSchedule();refresh()}
+function renderAll(){buildSchedule();refresh();applyRole()}
 function showTab(id,btn){document.querySelectorAll(".section").forEach(x=>x.classList.remove("active"));$(id).classList.add("active");document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));btn.classList.add("active")}
 init();
+if(window.CLOUD_ON)showView("landing");
+</script>
+
+<script type="module">
+// Online layer (Firebase). Only loads when FIREBASE_CONFIG has been filled in.
+if(window.CLOUD_ON){
+  const V="10.14.1", base="https://www.gstatic.com/firebasejs/"+V+"/";
+  try{
+    const [{initializeApp},A,F]=await Promise.all([import(base+"firebase-app.js"),import(base+"firebase-auth.js"),import(base+"firebase-firestore.js")]);
+    const app=initializeApp(window.FIREBASE_CONFIG), auth=A.getAuth(app), db=F.getFirestore(app);
+    const T=id=>F.doc(db,"tournaments",id);
+    let tid=null,unsubT=null,unsubAux=null,lastData=null,roleKey=null,auxKey=null,firstAuth=true;
+    const ALPHA="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const genId=()=>{const a=new Uint32Array(7);crypto.getRandomValues(a);return Array.from(a,n=>ALPHA[n%ALPHA.length]).join("")};
+    const err=e=>e.code||e.message||"error";
+
+    function roleNow(){const u=auth.currentUser;const r=u&&lastData&&lastData.members?lastData.members[u.uid]:null;return r==="admin"||r==="editor"?r:"viewer"}
+    function pushRole(){
+      const u=auth.currentUser,r=roleNow(),key=r+"|"+(u?u.uid:"");
+      if(key!==roleKey){roleKey=key;window.__setRole(r,u?{email:u.email,uid:u.uid}:null)}
+      const ak=tid+"|"+r+"|"+(u?u.uid:"");
+      if(ak!==auxKey){
+        auxKey=ak;if(unsubAux){unsubAux();unsubAux=null}
+        if(tid&&r==="admin")unsubAux=F.onSnapshot(F.collection(db,"tournaments",tid,"requests"),s=>window.__setRequests(s.docs.map(d=>({uid:d.id,...d.data()}))),()=>{});
+        else if(tid&&u)unsubAux=F.onSnapshot(F.doc(db,"tournaments",tid,"requests",u.uid),s=>window.__setMyRequest(s.exists()?s.data().status:null),()=>{});
+        else window.__setMyRequest(null);
+      }
+    }
+    function leave(){if(unsubT){unsubT();unsubT=null}if(unsubAux){unsubAux();unsubAux=null}tid=null;lastData=null;roleKey=null;auxKey=null}
+
+    window.__cloud={
+      async open(id){
+        try{
+          const snap=await F.getDoc(T(id));
+          if(!snap.exists())return {ok:false,error:"not-found"};
+          leave();tid=id;lastData=snap.data();
+          window.__applyRemote(lastData);pushRole();window.__cloudStatus("live");
+          unsubT=F.onSnapshot(T(id),s=>{
+            if(!s.exists()){window.__toast("This tournament no longer exists.");return}
+            lastData=s.data();window.__applyRemote(lastData);pushRole();window.__cloudStatus("live");
+          },e=>window.__toast("Lost connection to the tournament ("+err(e)+")"));
+          return {ok:true}
+        }catch(e){return {ok:false,error:err(e)}}
+      },
+      leave,
+      async create(name){
+        const u=auth.currentUser;if(!u)return {ok:false,error:"not signed in"};
+        try{
+          const d=window.__defaults();
+          for(let i=0;i<6;i++){
+            const id=genId();
+            if((await F.getDoc(T(id))).exists())continue;
+            await F.setDoc(T(id),{name,ownerUid:u.uid,members:{[u.uid]:"admin"},memberUids:[u.uid],teams:d.teams,settings:d.settings,sfPairing:0,scores:{},createdAt:Date.now(),updatedAt:Date.now()});
+            return {ok:true,id}
+          }
+          return {ok:false,error:"id-collision"}
+        }catch(e){return {ok:false,error:err(e)}}
+      },
+      async listMine(){
+        const u=auth.currentUser;if(!u)return {ok:true,list:[]};
+        try{
+          const s=await F.getDocs(F.query(F.collection(db,"tournaments"),F.where("memberUids","array-contains",u.uid)));
+          const list=s.docs.map(d=>({id:d.id,name:d.data().name||"Tournament",role:(d.data().members||{})[u.uid]||"editor",createdAt:d.data().createdAt||0})).sort((a,b)=>b.createdAt-a.createdAt);
+          return {ok:true,list}
+        }catch(e){return {ok:false,error:err(e)}}
+      },
+      async write(upd){
+        if(!tid)return;
+        const m={};for(const [k,v] of Object.entries(upd))m[k]=v==="__DEL__"?F.deleteField():v;
+        m.updatedAt=Date.now();
+        try{await F.updateDoc(T(tid),m)}
+        catch(e){window.__toast(e.code==="permission-denied"?"You don't have permission to change this.":"Save failed: "+err(e))}
+      },
+      async requestAccess(){
+        const u=auth.currentUser;if(!u||!tid)return {ok:false};
+        try{await F.setDoc(F.doc(db,"tournaments",tid,"requests",u.uid),{email:u.email,status:"pending",requestedAt:Date.now()});return {ok:true}}
+        catch(e){return {ok:false,error:err(e)}}
+      },
+      async setMember(uid,role){
+        if(!tid)return {ok:false,error:"no tournament"};
+        try{
+          const upd={updatedAt:Date.now()};
+          if(role){upd["members."+uid]=role;upd.memberUids=F.arrayUnion(uid)}
+          else{upd["members."+uid]=F.deleteField();upd.memberUids=F.arrayRemove(uid)}
+          await F.updateDoc(T(tid),upd);
+          try{await F.updateDoc(F.doc(db,"tournaments",tid,"requests",uid),{status:role?"approved":"removed"})}catch(e){}
+          return {ok:true}
+        }catch(e){return {ok:false,error:err(e)}}
+      },
+      async dismissRequest(uid){try{await F.deleteDoc(F.doc(db,"tournaments",tid,"requests",uid))}catch(e){window.__toast("Could not dismiss ("+err(e)+")")}}
+    };
+    window.__auth={
+      signIn:(e,p)=>A.signInWithEmailAndPassword(auth,e,p),
+      signUp:(e,p)=>A.createUserWithEmailAndPassword(auth,e,p),
+      reset:e=>A.sendPasswordResetEmail(auth,e),
+      signOut:()=>A.signOut(auth)
+    };
+    A.onAuthStateChanged(auth,u=>{
+      window.__authState(u?{email:u.email,uid:u.uid}:null);
+      if(tid)pushRole();
+      if(firstAuth){firstAuth=false;window.__cloudReady()}
+    });
+  }catch(e){
+    window.__toast("Could not connect to the online service. Check the Firebase settings.");
+    console.error(e);
+  }
+}
 </script>
 </body>
 </html>
