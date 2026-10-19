@@ -212,6 +212,11 @@ input.score.bad{border-color:#d64545;background:#fff1f1}
 .bosel{width:auto;min-height:30px;padding:3px 6px;font-size:13px;border-radius:8px}
 .newt{display:flex;flex-direction:column;gap:10px;border:1px dashed #b7c4d1;border-radius:12px;padding:14px}
 .newt h3{font-size:15px;color:var(--navy)}
+.pubhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.pubhead h2{margin:0}
+.publist{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:10px}
+.publist .tcard{margin:0}
+.privchip{background:#fde2e2;color:#9b1c1c}
 footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 #printArea{display:none}
 .psheet{width:100%;color:#14263a;font-family:Inter,system-ui,Arial,sans-serif}
@@ -258,6 +263,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <label>Court 2 name<input id="court2" value="Court 2"></label>
 <label>Number of teams<select id="nteams" data-admin onchange="changeTeamCount(this.value)"></select></label>
 <label>Tournament style<select id="style" data-admin onchange="setStyle(this.value)"></select></label>
+<label style="grid-column:1/-1" id="visLabel">Visibility<select id="vis" data-admin onchange="setVisibility(this.value)"><option value="public">Public: listed on the home page for everyone</option><option value="private">Private: hidden from the list, opens only with the ID or link</option></select></label>
 </div>
 <div class="actions">
 <button class="primary" data-admin onclick="generate()">Apply settings</button>
@@ -362,12 +368,17 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <div class="newt">
 <h3>New tournament</h3>
 <label>Name<input id="newName" placeholder="e.g. Autumn Cup" maxlength="60" onkeydown="if(event.key==='Enter')createT()"></label>
-<div class="fields"><label>Number of teams<select id="newTeams"></select></label><label>Tournament style<select id="newStyle"></select></label></div>
+<div class="fields"><label>Number of teams<select id="newTeams"></select></label><label>Tournament style<select id="newStyle"></select></label><label style="grid-column:1/-1">Visibility<select id="newVis"><option value="public">Public: listed on the home page</option><option value="private">Private: only with the ID or link</option></select></label></div>
 <button class="primary" onclick="createT()">Create tournament</button>
 </div>
 <div class="actions" style="margin:0"><button class="danger" style="margin-left:0" onclick="doSignOut()">Sign out</button></div>
 </div>
 <p id="lMsg" class="note" style="margin-top:12px" role="status"></p>
+</div>
+<div class="card land-card" style="grid-column:1/-1">
+<div class="pubhead"><h2>Public tournaments</h2><button class="secondary" onclick="loadPublic()">↻ Refresh</button></div>
+<p class="note">Tap a tournament to follow it live. No account needed.</p>
+<div id="pubList" class="publist"></div>
 </div>
 </div>
 </div>
@@ -408,7 +419,7 @@ window.CLOUD_ON = !!(window.FIREBASE_CONFIG.apiKey && !/^PASTE/.test(window.FIRE
 </script>
 <script>
 const defaultTeams=["Viboras","Padeliators","Elsawaree5","O&H","H & H","شباب المستقبل","M&Ms","Eskendriaa"];
-let state={teams:[...defaultTeams],scores:{},bestOf:{},style:"groups_ko",settings:{start:"12:00",duration:20,court1:"Court 1",court2:"Court 2"}};
+let state={teams:[...defaultTeams],scores:{},bestOf:{},style:"groups_ko",visibility:"public",settings:{start:"12:00",duration:20,court1:"Court 1",court2:"Court 2"}};
 const key="padelTournamentV2";
 if(!window.CLOUD_ON){try{const s=JSON.parse(localStorage.getItem(key)); if(s) state={...state,...s,settings:{...state.settings,...(s?.settings||{})}}}catch(e){}}
 function save(){if(window.CLOUD_ON)return;try{localStorage.setItem(key,JSON.stringify(state))}catch(e){}}
@@ -418,7 +429,7 @@ function $(id){return document.getElementById(id)}
 // viewer = read-only · editor = can enter scores · admin = everything (roles are per tournament)
 const DEFAULT_SETTINGS={start:"12:00",duration:20,court1:"Court 1",court2:"Court 2"};
 window.__defaults=(n=8)=>({teams:Array.from({length:n},(_,i)=>defaultTeamName(i)),settings:{...DEFAULT_SETTINGS}});
-function resetState(){state={teams:[...defaultTeams],scores:{},bestOf:{},style:"groups_ko",settings:{...DEFAULT_SETTINGS},sfPairing:0}}
+function resetState(){state={teams:[...defaultTeams],scores:{},bestOf:{},style:"groups_ko",visibility:"public",settings:{...DEFAULT_SETTINGS},sfPairing:0}}
 let role=window.CLOUD_ON?"viewer":"admin", authUser=null, cloudStatus="", view="app", currentTid=null, booted=false, autoOpen=true, myReq=null, requests=[], mine=[];
 // guest = the person chose "Continue as viewer" on the login page (remembered for this browser tab)
 let guest=false;try{guest=sessionStorage.getItem("padelGuest")==="1"}catch(e){}
@@ -441,7 +452,7 @@ function syncInputs(){
 const idle=el=>el&&document.activeElement!==el;
 allMatches().forEach(m=>["a","b"].forEach(k=>{const el=$(m.id+k);if(idle(el)){const r=rawScore(m.id);el.value=r?r[k]:""}}));
 document.querySelectorAll("[data-team]").forEach(el=>{if(idle(el))el.value=state.teams[+el.dataset.team]||""});
-[["start",state.settings.start],["duration",state.settings.duration],["court1",state.settings.court1],["court2",state.settings.court2],["tname",state.name||""],["nteams",String(teamCount())],["style",state.style||"groups_ko"]].forEach(([id,v])=>{const el=$(id);if(idle(el))el.value=v})
+[["start",state.settings.start],["duration",state.settings.duration],["court1",state.settings.court1],["court2",state.settings.court2],["tname",state.name||""],["nteams",String(teamCount())],["style",state.style||"groups_ko"],["vis",state.visibility||"public"]].forEach(([id,v])=>{const el=$(id);if(idle(el))el.value=v})
 }
 window.__applyRemote=function(d){
 if(d){
@@ -452,6 +463,8 @@ if(d){
   state.scores=d.scores||{};
   state.bestOf=d.bestOf||{};
   state.style=d.style||"groups_ko";
+  state.visibility=d.visibility==="private"?"private":"public";
+  state._visMissing=!d.visibility;
 }
 if(teamCount()!==lastBuiltN||!document.querySelector("[data-team]")||document.querySelectorAll("[data-team]").length!==teamCount())rebuild();
 else renderFormatInfo();
@@ -459,7 +472,7 @@ syncInputs();refresh();applyRole()
 };
 window.__getInitial=()=>({teams:state.teams,settings:state.settings,sfPairing:state.sfPairing||0,scores:state.scores});
 window.__cloudStatus=s=>{cloudStatus=s;applyRole()};
-window.__setRole=function(r,u){role=r;authUser=u;applyRole();if($("authDlg").open)updateAuthDlg()};
+window.__setRole=function(r,u){role=r;authUser=u;applyRole();if(r==="admin"&&state._visMissing){state._visMissing=false;cloudWrite({visibility:state.visibility})}if($("authDlg").open)updateAuthDlg()};
 window.__setRequests=l=>{requests=l;renderAccess()};
 window.__setMyRequest=st=>{myReq=st;applyRole()};
 window.__authState=function(u){
@@ -482,14 +495,14 @@ document.querySelectorAll("input.score").forEach(el=>el.disabled=!ed);
 document.querySelectorAll("[data-team],[data-admin]").forEach(el=>el.disabled=!ad);
 const sf=$("sfSel");if(sf)sf.disabled=!ad;
 const chip=$("roleChip"),btn=$("loginBtn"),bar=$("viewBanner"),foot=$("footNote");
-$("tnameLabel").hidden=!window.CLOUD_ON;
+$("tnameLabel").hidden=!window.CLOUD_ON;$("visLabel").hidden=!window.CLOUD_ON;
 if(!window.CLOUD_ON){
   chip.textContent="Local mode";btn.hidden=true;bar.hidden=true;$("accessTab").hidden=true;
   foot.textContent="Local mode: data is stored only in this browser. Add your Firebase settings to share it online."
 }else{
   chip.textContent=ad?"Admin":ed?"Editor":"Viewer";btn.textContent=authUser?"Account":"Sign in";
   $("backBtn").hidden=false;$("shareBtn").hidden=!currentTid;
-  $("hdrSub").textContent=currentTid?(state.name||"Tournament")+" · ID "+currentTid:"";
+  $("hdrSub").textContent=currentTid?(state.name||"Tournament")+" · ID "+currentTid+(state.visibility==="private"?" · 🔒 Private":""):"";
   $("accessTab").hidden=!ad;
   if(!ad&&$("access").classList.contains("active"))document.querySelector('.tab[data-tab="schedule"]').click();
   bar.hidden=ed;
@@ -508,6 +521,7 @@ if(r&&r.ok)toast("Request sent. The admin will see it under Access.");else toast
 /* landing page */
 function renderLanding(){
 $("lOut").hidden=!!authUser;$("lIn").hidden=!authUser;
+loadPublic();
 if(authUser){$("lWho").textContent="Signed in as "+authUser.email;loadMine()}
 }
 async function loadMine(){
@@ -517,8 +531,17 @@ box.innerHTML='<p class="note">Loading…</p>';
 const r=await window.__cloud.listMine();
 if(!r.ok){box.innerHTML='<p class="note">Could not load your tournaments.</p>';return []}
 mine=r.list;
-box.innerHTML=mine.length?mine.map(t=>`<div class="tcard"><div><b dir="auto">${esc(t.name)}</b><span class="chip ${t.role==="admin"?"chipF":"chipK"}">${t.role==="admin"?"Admin":"Editor"}</span><p class="note">${t.teams?t.teams+" teams · ":""}ID ${esc(t.id)}</p></div><button class="primary" onclick="enterTournament('${esc(t.id)}','lMsg')">Open</button></div>`).join(""):'<p class="note">You have no tournaments yet. Create one below, or open one with its ID.</p>';
+box.innerHTML=mine.length?mine.map(t=>`<div class="tcard"><div><b dir="auto">${esc(t.name)}</b><span class="chip ${t.role==="admin"?"chipF":"chipK"}">${t.role==="admin"?"Admin":"Editor"}</span>${t.visibility==="private"?' <span class="chip privchip">🔒 Private</span>':""}<p class="note">${t.teams?t.teams+" teams · ":""}ID ${esc(t.id)}</p></div><button class="primary" onclick="enterTournament('${esc(t.id)}','lMsg')">Open</button></div>`).join(""):'<p class="note">You have no tournaments yet. Create one below, or open one with its ID.</p>';
 return mine
+}
+let pubLoading=false;
+async function loadPublic(){
+const box=$("pubList");if(!box||pubLoading)return;
+if(!window.__cloud){box.innerHTML='<p class="note">Connecting…</p>';return}
+pubLoading=true;box.innerHTML='<p class="note">Loading…</p>';
+const r=await window.__cloud.listPublic();pubLoading=false;
+if(!r.ok){box.innerHTML='<p class="note">Could not load the list ('+esc(r.error)+').</p>';return}
+box.innerHTML=r.list.length?r.list.map(t=>`<div class="tcard"><div><b dir="auto">${esc(t.name)}</b><p class="note">${t.teams} teams · ${t.results} result${t.results===1?"":"s"} · ID ${esc(t.id)}</p></div><button class="primary" onclick="enterTournament('${esc(t.id)}','findMsg')">Open</button></div>`).join(""):'<p class="note">No public tournaments yet.</p>'
 }
 async function autoOpenMine(){
 const list=await loadMine();
@@ -554,10 +577,10 @@ if(!raw){m.textContent="Enter a tournament ID.";return}
 await enterTournament(raw,"findMsg")
 }
 async function createT(){
-const name=$("newName").value.trim()||"My tournament",m=$("lMsg"),teams=+$("newTeams").value||8,style=$("newStyle").value||"groups_ko";
+const name=$("newName").value.trim()||"My tournament",m=$("lMsg"),teams=+$("newTeams").value||8,style=$("newStyle").value||"groups_ko",visibility=$("newVis").value==="private"?"private":"public";
 if(!window.__cloud){m.textContent="Still connecting… try again in a moment.";return}
 m.textContent="Creating…";
-const r=await window.__cloud.create(name,{teams,style});
+const r=await window.__cloud.create(name,{teams,style,visibility});
 if(!r.ok){m.textContent="Could not create the tournament ("+r.error+").";return}
 $("newName").value="";
 await enterTournament(r.id,"lMsg")
@@ -761,6 +784,11 @@ function setStyle(v){
 const s=STYLES.find(x=>x[0]===v);
 if(!isAdmin()||!s||!s[2]){syncInputs();toast("That tournament style is coming soon.");return}
 state.style=v;save();cloudWrite({style:v})
+}
+function setVisibility(v){
+if(!isAdmin()||!["public","private"].includes(v)){syncInputs();return}
+state.visibility=v;state._visMissing=false;$("vis").value=v;applyRole();cloudWrite({visibility:v});
+toast(v==="private"?"Private: hidden from the public list. People with the ID or link can still follow it.":"Public: listed on the home page.")
 }
 function describeFormat(){
 const n=teamCount(),gm=groupMembers(),gl=Object.keys(gm),m=allMatches();
@@ -1013,7 +1041,7 @@ if(window.CLOUD_ON){
           for(let i=0;i<6;i++){
             const id=genId();
             if((await F.getDoc(T(id))).exists())continue;
-            await F.setDoc(T(id),{name,ownerUid:u.uid,members:{[u.uid]:"admin"},memberUids:[u.uid],teams:d.teams,style:opts.style||"groups_ko",bestOf:{},settings:d.settings,sfPairing:0,scores:{},createdAt:Date.now(),updatedAt:Date.now()});
+            await F.setDoc(T(id),{name,ownerUid:u.uid,members:{[u.uid]:"admin"},memberUids:[u.uid],teams:d.teams,style:opts.style||"groups_ko",visibility:opts.visibility==="private"?"private":"public",bestOf:{},settings:d.settings,sfPairing:0,scores:{},createdAt:Date.now(),updatedAt:Date.now()});
             return {ok:true,id}
           }
           return {ok:false,error:"id-collision"}
@@ -1023,7 +1051,14 @@ if(window.CLOUD_ON){
         const u=auth.currentUser;if(!u)return {ok:true,list:[]};
         try{
           const s=await F.getDocs(F.query(F.collection(db,"tournaments"),F.where("memberUids","array-contains",u.uid)));
-          const list=s.docs.map(d=>({id:d.id,name:d.data().name||"Tournament",role:(d.data().members||{})[u.uid]||"editor",teams:(d.data().teams||[]).length,createdAt:d.data().createdAt||0})).sort((a,b)=>b.createdAt-a.createdAt);
+          const list=s.docs.map(d=>({id:d.id,name:d.data().name||"Tournament",role:(d.data().members||{})[u.uid]||"editor",teams:(d.data().teams||[]).length,visibility:d.data().visibility||"public",createdAt:d.data().createdAt||0})).sort((a,b)=>b.createdAt-a.createdAt);
+          return {ok:true,list}
+        }catch(e){return {ok:false,error:err(e)}}
+      },
+      async listPublic(){
+        try{
+          const s=await F.getDocs(F.query(F.collection(db,"tournaments"),F.where("visibility","==","public"),F.limit(100)));
+          const list=s.docs.map(d=>{const x=d.data();return {id:d.id,name:x.name||"Tournament",teams:(x.teams||[]).length,results:Object.keys(x.scores||{}).length,createdAt:x.createdAt||0}}).sort((a,b)=>b.createdAt-a.createdAt);
           return {ok:true,list}
         }catch(e){return {ok:false,error:err(e)}}
       },
