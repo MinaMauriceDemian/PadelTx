@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Padel Tournament Manager</title>
+<title>ADV</title>
 <style>
 :root{--bg:#f1f5f9;--card:#fff;--ink:#14263a;--muted:#5f7288;--navy:#16385c;--purple:#16385c;--accent:#0d9488;--accent-d:#0b7a70;--accent2:#e3f6f3;--line:#dbe4ec;--good:#15803d;--radius:14px}
 *{box-sizing:border-box}
@@ -206,6 +206,12 @@ input.score.bad{border-color:#d64545;background:#fff1f1}
 .mrow.winner{background:#dcf5e5;color:#0b6b3a;font-weight:800}
 .mscore{min-width:28px;text-align:center;font-weight:800}
 .empty{color:#7a8aa0;font-style:italic}
+.kobracket{grid-template-columns:repeat(var(--cols,3),minmax(0,1fr))}
+.team-grid.one{grid-template-columns:1fr}
+.sched td.stage label.bol{flex-direction:row;align-items:center;justify-content:center;gap:6px;margin-top:6px;font-size:12px}
+.bosel{width:auto;min-height:30px;padding:3px 6px;font-size:13px;border-radius:8px}
+.newt{display:flex;flex-direction:column;gap:10px;border:1px dashed #b7c4d1;border-radius:12px;padding:14px}
+.newt h3{font-size:15px;color:var(--navy)}
 footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 #printArea{display:none}
 .psheet{width:100%;color:#14263a;font-family:Inter,system-ui,Arial,sans-serif}
@@ -237,7 +243,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </head>
 <body>
 <div id="appView">
-<header><div class="wrap hdr"><div><h1>🎾 Padel Tournament Manager</h1><p id="hdrSub">Enter the scores — standings and the knockout bracket update automatically.</p></div><div class="hdr-right"><button id="backBtn" class="hbtn" onclick="goHome()" hidden>← Tournaments</button><button id="shareBtn" class="hbtn" onclick="shareT()" hidden>🔗 Share</button><div class="pills"><span>8 teams</span><span>2 groups</span><span>2 courts</span></div><div class="auth"><span id="roleChip" class="rolechip"></span><button id="loginBtn" onclick="openAuth()">Sign in</button></div></div></div></header>
+<header><div class="wrap hdr"><div><h1>🎾 ADV</h1><p id="hdrSub">Enter the scores — standings and the knockout bracket update automatically.</p></div><div class="hdr-right"><button id="backBtn" class="hbtn" onclick="goHome()" hidden>← Tournaments</button><button id="shareBtn" class="hbtn" onclick="shareT()" hidden>🔗 Share</button><div class="pills" id="pills"></div><div class="auth"><span id="roleChip" class="rolechip"></span><button id="loginBtn" onclick="openAuth()">Sign in</button></div></div></div></header>
 <main class="wrap">
 <div id="viewBanner" class="viewbar" hidden></div>
 
@@ -250,14 +256,19 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <label>Minutes per slot<input id="duration" type="number" min="5" value="20"></label>
 <label>Court 1 name<input id="court1" value="Court 1"></label>
 <label>Court 2 name<input id="court2" value="Court 2"></label>
+<label>Number of teams<select id="nteams" data-admin onchange="changeTeamCount(this.value)"></select></label>
+<label>Tournament style<select id="style" data-admin onchange="setStyle(this.value)"></select></label>
 </div>
 <div class="actions">
 <button class="primary" data-admin onclick="generate()">Apply settings</button>
 <button class="secondary" onclick="printSheets()">🖨 Print court sheets (A4)</button>
 <button class="danger" data-admin onclick="resetAll()">Reset scores</button>
 </div>
+<details class="help"><summary>Match length (best of)</summary>
+<p>Set a whole stage at once here, or change a single match in the Stage column of the schedule.</p>
+<div class="fields" id="stageBo" style="margin-top:10px"></div></details>
 <details class="help"><summary>How the tournament works</summary>
-<p>Each group plays a 4-team round robin (6 matches, 2 courts at a time). Groups alternate slot by slot: A, B, A, B, A, B. Then come the quarter-finals (slot 7), semi-finals (slot 8) the final plus the 3rd-place match between the semi-final losers (slot 9), and the 7th-place match between the two 4th-placed teams (slot 10), with two spare slots for extra time. 5th and 6th go to the two quarter-final losers, ranked by group-stage points and, if equal, by rounds won.</p></details>
+<p id="formatHelp"></p></details>
 </div>
 
 <div class="card">
@@ -278,17 +289,14 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <p class="note intro">Type the rounds each team won. Winners are highlighted automatically, and the knockout rounds fill in once a group has played all 6 matches. A red box means the score is not valid for that match.</p>
 <div class="table-wrap" style="overflow:auto"><table class="sched" id="sched"></table></div>
 <details class="help"><summary>Scoring rules</summary>
-<p>Group matches, the 3rd-place match and the 7th-place match are best of 7 (first to 4 rounds). Quarter-finals and semi-finals are best of 9 (first to 5). The final is best of 11 (first to 6).</p></details>
+<p>Each match is "best of" a number of rounds: the first team to win more than half of them wins the match. Defaults: group and placement matches best of 7 (first to 4), quarter- and semi-finals best of 9 (first to 5), the final best of 11 (first to 6). The admin can change any match in the Stage column, or a whole stage under Setup → Match length.</p></details>
 </section>
 
 <section id="standings" class="section">
-<div class="legend"><span class="chip chipF">1st → semi-final</span><span class="chip chipK">2nd &amp; 3rd → quarter-final</span><span class="chip chipA">4th → 7th-place match</span></div>
-<div class="grid two" style="display:grid;gap:16px">
-<div class="card stand-card"><h3><span class="chip chipA">Group A</span></h3><div class="table-wrap" style="overflow:auto"><table class="standings"><thead><tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>L</th><th class="rw">Rounds won<small>RW</small></th><th>Rounds lost<small>RL</small></th><th>Diff</th><th>Pts</th></tr></thead><tbody id="standA"></tbody></table></div></div>
-<div class="card stand-card"><h3><span class="chip chipB">Group B</span></h3><div class="table-wrap" style="overflow:auto"><table class="standings"><thead><tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>L</th><th class="rw">Rounds won<small>RW</small></th><th>Rounds lost<small>RL</small></th><th>Diff</th><th>Pts</th></tr></thead><tbody id="standB"></tbody></table></div></div>
-</div>
+<div class="legend" id="legend"></div>
+<div class="grid two" id="standGroups" style="display:grid;gap:16px"></div>
 <details class="help"><summary>How the table is ranked</summary>
-<p>Group matches are best of 7 rounds. A team that wins 4 rounds wins the match and gets 3 points (loser gets 0). Ranking: points, then round difference, then total rounds won (RW). Valid scores: one team has 4–7 rounds and both teams total at most 7 (e.g. 4–0, 4–3, 5–2, 7–0).</p></details>
+<p>Group matches are best of 7 rounds. Group matches are best of 7 rounds by default. The match winner gets 3 points (loser gets 0). Ranking: points, then round difference, then total rounds won (RW). A score is valid when the winner reaches more than half of the "best of" number and both teams together do not exceed it (best of 7: 4–0, 4–3, 5–2, 7–0).</p></details>
 </section>
 
 <section id="bracket" class="section card">
@@ -298,16 +306,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 
 <section id="ranking" class="section card">
 <h2>Final ranking</h2>
-<table class="standings rank-table"><thead><tr><th>Place</th><th>Team</th><th>Decided by</th></tr></thead><tbody>
-<tr class="medal gold"><td class="rank">🥇 1st</td><td id="res1" dir="auto">–</td><td class="by">Winner of the final</td></tr>
-<tr class="medal silver"><td class="rank">🥈 2nd</td><td id="res2" dir="auto">–</td><td class="by">Loser of the final</td></tr>
-<tr class="medal bronze"><td class="rank">🥉 3rd</td><td id="res3" dir="auto">–</td><td class="by">Winner of the 3rd-place match</td></tr>
-<tr><td class="rank">4th</td><td id="res4" dir="auto">–</td><td class="by">Loser of the 3rd-place match</td></tr>
-<tr><td class="rank">5th</td><td id="res5" dir="auto">–</td><td class="by">Quarter-final loser with more group-stage points (then more rounds won)</td></tr>
-<tr><td class="rank">6th</td><td id="res6" dir="auto">–</td><td class="by">Other quarter-final loser</td></tr>
-<tr><td class="rank">7th</td><td id="res7" dir="auto">–</td><td class="by">Winner of the 7th-place match</td></tr>
-<tr><td class="rank">8th</td><td id="res8" dir="auto">–</td><td class="by">Loser of the 7th-place match</td></tr>
-</tbody></table>
+<table class="standings rank-table"><thead><tr><th>Place</th><th>Team</th><th>Decided by</th></tr></thead><tbody id="rankBody"></tbody></table>
 <p class="note" style="margin-top:12px">The ranking fills in as the matches are played.</p>
 </section>
 
@@ -325,7 +324,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 
 <!-- LOGIN PAGE: Google, email (sign in / register), or continue as viewer -->
 <div id="loginView" class="landing" hidden>
-<div class="land-hero"><h1>🎾 Padel Tournament Manager</h1><p>Sign in to run tournaments, or follow one as a viewer.</p></div>
+<div class="land-hero"><h1>🎾 ADV</h1><p>Sign in to run tournaments, or follow one as a viewer.</p></div>
 <div class="login-wrap">
 <div class="card stack login-card">
 <h2>Welcome</h2>
@@ -344,7 +343,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </div>
 
 <div id="landing" class="landing" hidden>
-<div class="land-hero"><h1>🎾 Padel Tournament Manager</h1><p>Run a tournament, or follow one live.</p></div>
+<div class="land-hero"><h1>🎾 ADV</h1><p>Run a tournament, or follow one live.</p></div>
 <div class="land-grid">
 <div class="card land-card">
 <h2>Find a tournament</h2>
@@ -360,7 +359,12 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <div id="lIn" class="stack" hidden>
 <div><h2>My tournaments</h2><p class="note" id="lWho" style="margin:0"></p></div>
 <div id="myList"></div>
-<div class="idrow"><input id="newName" placeholder="New tournament name" maxlength="60" style="text-transform:none;letter-spacing:0;font-weight:500" onkeydown="if(event.key==='Enter')createT()"><button class="secondary" onclick="createT()">Create</button></div>
+<div class="newt">
+<h3>New tournament</h3>
+<label>Name<input id="newName" placeholder="e.g. ADV Autumn Cup" maxlength="60" onkeydown="if(event.key==='Enter')createT()"></label>
+<div class="fields"><label>Number of teams<select id="newTeams"></select></label><label>Tournament style<select id="newStyle"></select></label></div>
+<button class="primary" onclick="createT()">Create tournament</button>
+</div>
 <div class="actions" style="margin:0"><button class="danger" style="margin-left:0" onclick="doSignOut()">Sign out</button></div>
 </div>
 <p id="lMsg" class="note" style="margin-top:12px" role="status"></p>
@@ -404,7 +408,7 @@ window.CLOUD_ON = !!(window.FIREBASE_CONFIG.apiKey && !/^PASTE/.test(window.FIRE
 </script>
 <script>
 const defaultTeams=["Viboras","Padeliators","Elsawaree5","O&H","H & H","شباب المستقبل","M&Ms","Eskendriaa"];
-let state={teams:[...defaultTeams],scores:{},settings:{start:"12:00",duration:20,court1:"Court 1",court2:"Court 2"}};
+let state={teams:[...defaultTeams],scores:{},bestOf:{},style:"groups_ko",settings:{start:"12:00",duration:20,court1:"Court 1",court2:"Court 2"}};
 const key="padelTournamentV2";
 if(!window.CLOUD_ON){try{const s=JSON.parse(localStorage.getItem(key)); if(s) state={...state,...s,settings:{...state.settings,...(s?.settings||{})}}}catch(e){}}
 function save(){if(window.CLOUD_ON)return;try{localStorage.setItem(key,JSON.stringify(state))}catch(e){}}
@@ -413,8 +417,8 @@ function $(id){return document.getElementById(id)}
 /* ---------- Roles, tournaments, account & online sync ---------- */
 // viewer = read-only · editor = can enter scores · admin = everything (roles are per tournament)
 const DEFAULT_SETTINGS={start:"12:00",duration:20,court1:"Court 1",court2:"Court 2"};
-window.__defaults=()=>({teams:[...defaultTeams],settings:{...DEFAULT_SETTINGS}});
-function resetState(){state={teams:[...defaultTeams],scores:{},settings:{...DEFAULT_SETTINGS},sfPairing:0}}
+window.__defaults=(n=8)=>({teams:Array.from({length:n},(_,i)=>defaultTeamName(i)),settings:{...DEFAULT_SETTINGS}});
+function resetState(){state={teams:[...defaultTeams],scores:{},bestOf:{},style:"groups_ko",settings:{...DEFAULT_SETTINGS},sfPairing:0}}
 let role=window.CLOUD_ON?"viewer":"admin", authUser=null, cloudStatus="", view="app", currentTid=null, booted=false, autoOpen=true, myReq=null, requests=[], mine=[];
 // guest = the person chose "Continue as viewer" on the login page (remembered for this browser tab)
 let guest=false;try{guest=sessionStorage.getItem("padelGuest")==="1"}catch(e){}
@@ -437,16 +441,20 @@ function syncInputs(){
 const idle=el=>el&&document.activeElement!==el;
 allMatches().forEach(m=>["a","b"].forEach(k=>{const el=$(m.id+k);if(idle(el)){const r=rawScore(m.id);el.value=r?r[k]:""}}));
 document.querySelectorAll("[data-team]").forEach(el=>{if(idle(el))el.value=state.teams[+el.dataset.team]||""});
-[["start",state.settings.start],["duration",state.settings.duration],["court1",state.settings.court1],["court2",state.settings.court2],["tname",state.name||""]].forEach(([id,v])=>{const el=$(id);if(idle(el))el.value=v})
+[["start",state.settings.start],["duration",state.settings.duration],["court1",state.settings.court1],["court2",state.settings.court2],["tname",state.name||""],["nteams",String(teamCount())],["style",state.style||"groups_ko"]].forEach(([id,v])=>{const el=$(id);if(idle(el))el.value=v})
 }
 window.__applyRemote=function(d){
 if(d){
   state.name=d.name||"Tournament";state.members=d.members||{};state.ownerUid=d.ownerUid||null;
-  if(pending.teams==null&&Array.isArray(d.teams)&&d.teams.length===8)state.teams=d.teams.map(String);
+  if(pending.teams==null&&Array.isArray(d.teams)&&d.teams.length>=MIN_TEAMS&&d.teams.length<=MAX_TEAMS)state.teams=d.teams.map(String);
   if(d.settings)state.settings={...state.settings,...d.settings};
   state.sfPairing=d.sfPairing!=null?+d.sfPairing:0;
   state.scores=d.scores||{};
+  state.bestOf=d.bestOf||{};
+  state.style=d.style||"groups_ko";
 }
+if(teamCount()!==lastBuiltN||!document.querySelector("[data-team]")||document.querySelectorAll("[data-team]").length!==teamCount())rebuild();
+else renderFormatInfo();
 syncInputs();refresh();applyRole()
 };
 window.__getInitial=()=>({teams:state.teams,settings:state.settings,sfPairing:state.sfPairing||0,scores:state.scores});
@@ -509,7 +517,7 @@ box.innerHTML='<p class="note">Loading…</p>';
 const r=await window.__cloud.listMine();
 if(!r.ok){box.innerHTML='<p class="note">Could not load your tournaments.</p>';return []}
 mine=r.list;
-box.innerHTML=mine.length?mine.map(t=>`<div class="tcard"><div><b dir="auto">${esc(t.name)}</b><span class="chip ${t.role==="admin"?"chipF":"chipK"}">${t.role==="admin"?"Admin":"Editor"}</span><p class="note">ID ${esc(t.id)}</p></div><button class="primary" onclick="enterTournament('${esc(t.id)}','lMsg')">Open</button></div>`).join(""):'<p class="note">You have no tournaments yet. Create one below, or open one with its ID.</p>';
+box.innerHTML=mine.length?mine.map(t=>`<div class="tcard"><div><b dir="auto">${esc(t.name)}</b><span class="chip ${t.role==="admin"?"chipF":"chipK"}">${t.role==="admin"?"Admin":"Editor"}</span><p class="note">${t.teams?t.teams+" teams · ":""}ID ${esc(t.id)}</p></div><button class="primary" onclick="enterTournament('${esc(t.id)}','lMsg')">Open</button></div>`).join(""):'<p class="note">You have no tournaments yet. Create one below, or open one with its ID.</p>';
 return mine
 }
 async function autoOpenMine(){
@@ -546,10 +554,10 @@ if(!raw){m.textContent="Enter a tournament ID.";return}
 await enterTournament(raw,"findMsg")
 }
 async function createT(){
-const name=$("newName").value.trim()||"My tournament",m=$("lMsg");
+const name=$("newName").value.trim()||"My tournament",m=$("lMsg"),teams=+$("newTeams").value||8,style=$("newStyle").value||"groups_ko";
 if(!window.__cloud){m.textContent="Still connecting… try again in a moment.";return}
 m.textContent="Creating…";
-const r=await window.__cloud.create(name);
+const r=await window.__cloud.create(name,{teams,style});
 if(!r.ok){m.textContent="Could not create the tournament ("+r.error+").";return}
 $("newName").value="";
 await enterTournament(r.id,"lMsg")
@@ -618,13 +626,121 @@ try{
 async function doSignOut(){setGuest(false);try{await window.__auth.signOut()}catch(e){}if($("authDlg").open){updateAuthDlg();$("authDlg").close()}}
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
 
-function init(){
-const teamRow=(t,i)=>`<div class="team-row"><span class="num">${i%4+1}</span><input data-team="${i}" value="${esc(t)}" aria-label="Team name"></div>`;
-$("teams").innerHTML=["A","B"].map((g,gi)=>`<div class="group-box gb${g}"><h3 class="group-title"><span class="chip chip${g}">Group ${g}</span></h3>${state.teams.slice(gi*4,gi*4+4).map((t,k)=>teamRow(t,gi*4+k)).join("")}</div>`).join("");
-document.querySelectorAll("[data-team]").forEach(x=>x.oninput=()=>{if(!isAdmin())return;state.teams[+x.dataset.team]=x.value;save();refresh();clearTimeout(pending.teams);pending.teams=setTimeout(()=>{pending.teams=null;cloudWrite({teams:[...state.teams]})},600)});
-$("start").value=state.settings.start;$("duration").value=state.settings.duration;$("court1").value=state.settings.court1;$("court2").value=state.settings.court2;
-renderAll();
+/* ---------- Format: teams, groups, knockout ---------- */
+// Tournament styles. Only "groups_ko" is built; the others are placeholders for later.
+const STYLES=[["groups_ko","Groups + knockout",true],["americano","Americano",false],["mexicano","Mexicano",false],["single_elim","Single elimination",false],["league","League (round robin only)",false]];
+const MIN_TEAMS=4,MAX_TEAMS=16;
+const BO_CHOICES=[1,3,5,7,9,11,13,15];
+let lastBuiltN=0;
+function teamCount(){return state.teams.length}
+function defaultTeamName(i){return defaultTeams[i]||("Team "+(i+1))}
+function ord(n){const s=n%100>10&&n%100<14?"th":({1:"st",2:"nd",3:"rd"}[n%10]||"th");return n+s}
+// 4–5 teams: one group. 6+ teams: Group A gets the extra team when the count is odd.
+function groupMembers(){
+const n=teamCount();
+if(n<=5)return {A:[...Array(n).keys()]};
+const a=Math.ceil(n/2);
+return {A:[...Array(a).keys()],B:Array.from({length:n-a},(_,i)=>a+i)}
 }
+function groupLetters(){return Object.keys(groupMembers())}
+function groupOfTeam(i){const gm=groupMembers();return Object.keys(gm).find(g=>gm[g].includes(i))}
+// Round-robin rounds (local indices inside a group). 4-team groups keep the original fixed order.
+const ROUNDS4={A:[[[0,1],[2,3]],[[0,3],[1,2]],[[0,2],[3,1]]],B:[[[0,1],[3,2]],[[0,2],[1,3]],[[0,3],[2,1]]]};
+function rrRounds(size,g){
+if(size===4)return ROUNDS4[g];
+let t=[...Array(size).keys()];if(size%2)t.push(null);
+const n=t.length,out=[];
+for(let r=0;r<n-1;r++){
+  const p=[];
+  for(let i=0;i<n/2;i++){const a=t[i],b=t[n-1-i];if(a!=null&&b!=null)p.push(r%2?[b,a]:[a,b])}
+  out.push(p);t=[t[0],t[n-1],...t.slice(1,n-1)]
+}
+return out
+}
+// Semi-final pairing choices (8 teams only): 1st of each group + the two quarter-final winners
+const SF_PAIRINGS=[[["1A","W:qf1"],["1B","W:qf2"]],[["1A","1B"],["W:qf1","W:qf2"]],[["1A","W:qf2"],["1B","W:qf1"]]];
+// Knockout per team count. References: "2A" = 2nd of Group A, "W:qf1" = winner of qf1, "L:sf1" = loser of sf1.
+// places = how places 1, 2, 3… are decided; teams not covered are ranked by group position from restFrom.
+function koTemplate(){
+const n=teamCount();
+const base=[["w","final"],["l","final"],["w","third"],["l","third"]];
+const finals=[["final","W:sf1","W:sf2"],["third","L:sf1","L:sf2"]];
+if(n<=5)return {rounds:[[["final","1A","2A"],["third","3A","4A"]]],places:base,restFrom:5};
+if(n<=7)return {rounds:[[["sf1","1A","2B"],["sf2","1B","2A"]],finals,[["p5","3A","3B"]]],places:[...base,["w","p5"],["l","p5"]],restFrom:4};
+if(n===8){
+  const pr=SF_PAIRINGS[state.sfPairing||0]||SF_PAIRINGS[0];
+  return {sfPicker:true,rounds:[[["qf1","2A","3B"],["qf2","2B","3A"]],[["sf1",...pr[0]],["sf2",...pr[1]]],finals,[["p7","4A","4B"]]],places:[...base,["pool",["qf1","qf2"]],["w","p7"],["l","p7"]],restFrom:5}
+}
+return {rounds:[[["qf1","1A","4B"],["qf2","2B","3A"],["qf3","1B","4A"],["qf4","2A","3B"]],[["sf1","W:qf1","W:qf2"],["sf2","W:qf3","W:qf4"]],finals],places:[...base,["pool",["qf1","qf2","qf3","qf4"]]],restFrom:5}
+}
+function koKind(id){return /^g/.test(id)?"group":/^qf/.test(id)?"qf":/^sf/.test(id)?"sf":id==="final"?"final":id==="third"?"third":"place"}
+function stageGroup(id){const k=koKind(id);return k==="third"?"place":k}
+function placeNo(id){return +(/^p(\d+)$/.exec(id)||[])[1]}
+function koTitle(id){const k=koKind(id),n=(/\d+$/.exec(id)||[""])[0];return k==="qf"?"Quarter-final "+n:k==="sf"?"Semi-final "+n:k==="final"?"Final":k==="third"?"3rd place match":ord(placeNo(id))+" place match"}
+function koStage(id){const k=koKind(id);return k==="qf"?"Quarter-finals":k==="sf"?"Semi-finals":koTitle(id)}
+function koLower(id){const k=koKind(id);return k==="qf"?"quarter-final":k==="sf"?"semi-final":k==="final"?"final":k==="third"?"3rd-place match":ord(placeNo(id))+"-place match"}
+// All matches with slot + court. Group matches are packed 2 per slot (one per court) without a team playing twice in a slot.
+let _mc=null,_mk="";
+function allMatches(){
+const key=teamCount()+"|"+(state.sfPairing||0);
+if(_mc&&_mk===key)return _mc;
+const gm=groupMembers(),gl=Object.keys(gm),rr={},cnt={};
+gl.forEach(g=>{rr[g]=rrRounds(gm[g].length,g);cnt[g]=0});
+const queue=[],maxR=Math.max(...gl.map(g=>rr[g].length));
+for(let r=0;r<maxR;r++)gl.forEach(g=>(rr[g][r]||[]).forEach(p=>queue.push({id:`g${g}${cnt[g]++}`,stage:"Group stage "+g,group:g,a:gm[g][p[0]],b:gm[g][p[1]]})));
+const m=[];let slot=1;
+while(queue.length){
+  const used=new Set(),pick=[];
+  for(let i=0;i<queue.length&&pick.length<2;i++){const x=queue[i];if(used.has(x.a)||used.has(x.b))continue;used.add(x.a);used.add(x.b);pick.push(i)}
+  const items=pick.map(i=>queue[i]);
+  for(let j=pick.length-1;j>=0;j--)queue.splice(pick[j],1);
+  items.forEach((x,ci)=>m.push({...x,slot,court:ci+1}));
+  slot++
+}
+const groupSlots=slot-1,tpl=koTemplate();
+tpl.rounds.forEach(round=>{for(let i=0;i<round.length;i+=2){round.slice(i,i+2).forEach(([id,sa,sb],ci)=>m.push({id,slot,court:ci+1,stage:koStage(id),ko:true,sourceA:sa,sourceB:sb}));slot++}});
+m.groupSlots=groupSlots;m.lastSlot=slot-1;m.tpl=tpl;m.byId=Object.fromEntries(m.map(x=>[x.id,x]));
+_mc=m;_mk=key;return m
+}
+
+/* ---------- Match length (best of) ---------- */
+const DEF_BO={qf:9,sf:9,final:11};
+function defaultBestOf(id){return DEF_BO[koKind(id)]||7}
+function bestOf(id){const v=+((state.bestOf||{})[id]);return BO_CHOICES.includes(v)?v:defaultBestOf(id)}
+function winRounds(id){return Math.ceil(bestOf(id)/2)}
+const boOptions=()=>BO_CHOICES.map(n=>`<option value="${n}">Best of ${n}</option>`).join("");
+function setBestOf(id,v){
+if(!isAdmin()){refresh();return}
+v=+v;if(!BO_CHOICES.includes(v))return;
+state.bestOf={...(state.bestOf||{}),[id]:v};save();refresh();cloudWrite({["bestOf."+id]:v})
+}
+function setStageBestOf(kind,v){
+v=+v;if(!isAdmin()||!BO_CHOICES.includes(v))return;
+const u={};state.bestOf={...(state.bestOf||{})};
+allMatches().filter(m=>stageGroup(m.id)===kind).forEach(m=>{state.bestOf[m.id]=v;u["bestOf."+m.id]=v});
+save();refresh();cloudWrite(u);toast("All "+kind.replace("qf","quarter-final").replace("sf","semi-final").replace("place","placement")+" matches set to best of "+v+".")
+}
+
+/* ---------- Setup ---------- */
+function fillStatic(){
+const teamOpts=Array.from({length:MAX_TEAMS-MIN_TEAMS+1},(_,i)=>`<option value="${i+MIN_TEAMS}">${i+MIN_TEAMS} teams</option>`).join("");
+const styleOpts=STYLES.map(([v,l,on])=>`<option value="${v}"${on?"":" disabled"}>${l}${on?"":" (coming soon)"}</option>`).join("");
+["nteams","newTeams"].forEach(id=>{const el=$(id);if(el)el.innerHTML=teamOpts});
+["style","newStyle"].forEach(id=>{const el=$(id);if(el)el.innerHTML=styleOpts});
+if($("newTeams"))$("newTeams").value="8";
+}
+function renderTeams(){
+const gm=groupMembers(),gl=Object.keys(gm),box=$("teams");
+box.classList.toggle("one",gl.length===1);
+box.innerHTML=gl.map(g=>`<div class="group-box gb${g}"><h3 class="group-title"><span class="chip chip${g}">Group ${g}</span></h3>${gm[g].map((i,k)=>`<div class="team-row"><span class="num">${k+1}</span><input data-team="${i}" value="${esc(teamName(i))}" maxlength="40" aria-label="Team name"></div>`).join("")}</div>`).join("");
+document.querySelectorAll("[data-team]").forEach(x=>x.oninput=()=>{if(!isAdmin())return;state.teams[+x.dataset.team]=x.value;save();refresh();clearTimeout(pending.teams);pending.teams=setTimeout(()=>{pending.teams=null;cloudWrite({teams:[...state.teams]})},600)});
+}
+function init(){
+fillStatic();
+$("start").value=state.settings.start;$("duration").value=state.settings.duration;$("court1").value=state.settings.court1;$("court2").value=state.settings.court2;
+rebuild();
+}
+function rebuild(){renderTeams();renderAll()}
 function generate(){
 if(!isAdmin())return;
 state.settings={start:$("start").value||"12:00",duration:+$("duration").value||20,court1:$("court1").value||"Court 1",court2:$("court2").value||"Court 2"};
@@ -632,27 +748,41 @@ if(window.CLOUD_ON)state.name=$("tname").value.trim()||state.name||"Tournament";
 save();renderAll();cloudWrite({settings:state.settings,name:state.name})
 }
 function resetAll(){if(!isAdmin())return;if(confirm("Reset all match scores?")){state.scores={};save();renderAll();cloudWrite({scores:{}})}}
+function changeTeamCount(v){
+v=+v;
+if(!isAdmin()||v===teamCount()||v<MIN_TEAMS||v>MAX_TEAMS){syncInputs();return}
+const msg=Object.keys(state.scores).length?"All scores and match lengths will be cleared.":"Match lengths go back to the defaults.";
+if(!confirm(`Change to ${v} teams? The groups and schedule are rebuilt. ${msg}`)){syncInputs();return}
+state.teams=Array.from({length:v},(_,i)=>state.teams[i]||defaultTeamName(i));
+state.scores={};state.bestOf={};state.sfPairing=0;
+save();rebuild();cloudWrite({teams:[...state.teams],scores:{},bestOf:{},sfPairing:0})
+}
+function setStyle(v){
+const s=STYLES.find(x=>x[0]===v);
+if(!isAdmin()||!s||!s[2]){syncInputs();toast("That tournament style is coming soon.");return}
+state.style=v;save();cloudWrite({style:v})
+}
+function describeFormat(){
+const n=teamCount(),gm=groupMembers(),gl=Object.keys(gm),m=allMatches();
+const grp=gl.length===1?`All ${n} teams play each other once in one group (${n*(n-1)/2} matches).`:`The ${n} teams are split into Group A (${gm.A.length} teams) and Group B (${gm.B.length} teams); everyone plays each team in their group once.`;
+const ko=m.tpl.rounds.flat().map(([id])=>koTitle(id));
+return `${grp} Group matches use 2 courts at a time in slots 1–${m.groupSlots}. The knockout stage follows in slots ${m.groupSlots+1}–${m.lastSlot}: ${ko.join(", ")}. Two spare slots are left for extra time. The Final ranking tab shows how every place is decided.`
+}
+function renderFormatInfo(){
+const gl=groupLetters();
+$("pills").innerHTML=[`${teamCount()} teams`,`${gl.length} group${gl.length>1?"s":""}`,"2 courts"].map(t=>`<span>${t}</span>`).join("");
+$("formatHelp").textContent=describeFormat();
+const kinds=[["group","Group matches"],["qf","Quarter-finals"],["sf","Semi-finals"],["final","Final"],["place","Placement matches"]].filter(([k])=>allMatches().some(x=>stageGroup(x.id)===k));
+$("stageBo").innerHTML=kinds.map(([k,l])=>`<label>${l}<select data-admin onchange="setStageBestOf('${k}',this.value);this.value=''"><option value="">Set all…</option>${boOptions()}</select></label>`).join("");
+}
 
-/* ---------- Tournament structure ---------- */
-function groups(){return [[0,1,2,3],[4,5,6,7]]}
-// Round-robin pairings per group (index inside the group). Each round = 2 matches (Court 1, Court 2).
-const ROUNDS={
-  A:[[[0,1],[2,3]],[[0,3],[1,2]],[[0,2],[3,1]]],
-  B:[[[0,1],[3,2]],[[0,2],[1,3]],[[0,3],[2,1]]]
-};
-// The 4 semi-finalists: 1st of each group + winners of QF1 / QF2. Pick how they are paired.
-const SF_PAIRINGS=[
-  [["1A","QF1"],["1B","QF2"]],
-  [["1A","1B"],["QF1","QF2"]],
-  [["1A","QF2"],["1B","QF1"]]
-];
+/* ---------- Results logic ---------- */
 function setSF(v){
 if(!isAdmin()){refresh();return}
 if(Object.keys(state.scores).some(k=>["sf1","sf2","final","third"].includes(k))&&!confirm("Changing the semi-final pairings clears the semi-final, 3rd-place and final scores. Continue?")){refresh();return}
 delete state.scores.sf1;delete state.scores.sf2;delete state.scores.final;delete state.scores.third;
 state.sfPairing=+v;save();renderAll();cloudWrite({sfPairing:+v,"scores.sf1":DEL,"scores.sf2":DEL,"scores.final":DEL,"scores.third":DEL})
 }
-function groupOfTeam(i){return i<4?"A":"B"}
 function refLabel(ref){const t=resolve(ref);return t!=null?teamName(t):phText(ref)}
 function renderSFPicker(){
 const sel=$("sfSel");if(!sel)return;
@@ -665,77 +795,72 @@ sel.innerHTML=SF_PAIRINGS.map((pr,i)=>{
 }).join("");
 sel.value=String(state.sfPairing||0)
 }
-function allMatches(){
-let m=[], slot=1;
-for(let r=0;r<3;r++){
-  ["A","B"].forEach((g,gi)=>{
-    const t=groups()[gi];
-    ROUNDS[g][r].forEach((p,ci)=>m.push({id:`g${g}${r*2+ci}`,slot,court:ci+1,stage:"Group stage "+g,group:g,a:t[p[0]],b:t[p[1]]}));
-    slot++;
-  });
-}
-m.push({id:"qf1",slot:7,court:1,stage:"Quarterfinals",sourceA:"2A",sourceB:"3B"});
-m.push({id:"qf2",slot:7,court:2,stage:"Quarterfinals",sourceA:"2B",sourceB:"3A"});
-const pr=SF_PAIRINGS[state.sfPairing||0]||SF_PAIRINGS[0];
-m.push({id:"sf1",slot:8,court:1,stage:"Semi final",sourceA:pr[0][0],sourceB:pr[0][1]});
-m.push({id:"sf2",slot:8,court:2,stage:"Semi final",sourceA:pr[1][0],sourceB:pr[1][1]});
-m.push({id:"final",slot:9,court:1,stage:"Final",sourceA:"SF1",sourceB:"SF2"});
-m.push({id:"third",slot:9,court:2,stage:"3rd place match",sourceA:"SL1",sourceB:"SL2"});
-m.push({id:"p7",slot:10,court:1,stage:"7th place match",sourceA:"4A",sourceB:"4B"});
-return m
-}
-// Match length in rounds: group matches, 3rd-place and 7th-place matches = best of 7; quarter/semi-finals = best of 9; final = best of 11
-const BEST_OF={qf1:9,qf2:9,sf1:9,sf2:9,final:11};
-function bestOf(id){return BEST_OF[id]||7}
-function winRounds(id){return Math.ceil(bestOf(id)/2)}
 function validScore(s,id){if(!s)return false;const a=+s.a,b=+s.b;if(!Number.isInteger(a)||!Number.isInteger(b)||a<0||b<0)return false;return a!==b&&Math.max(a,b)>=winRounds(id)&&a+b<=bestOf(id)}
 function rawScore(id){return state.scores[id]||null}
 function score(id){const s=state.scores[id];return validScore(s,id)?{a:+s.a,b:+s.b}:null}
 function groupDone(g){return allMatches().filter(x=>x.group===g).every(x=>score(x.id))}
 function getStand(group){
-let ids=groups()[group==="A"?0:1], st=ids.map(i=>({i,p:0,w:0,l:0,pf:0,pa:0,pts:0}));
-for(let m of allMatches().filter(x=>x.group===group)){let s=score(m.id);if(!s)continue;let A=st.find(x=>x.i===m.a),B=st.find(x=>x.i===m.b);let aa=+s.a,bb=+s.b;A.p++;B.p++;A.pf+=aa;A.pa+=bb;B.pf+=bb;B.pa+=aa;if(aa>bb){A.w++;B.l++;A.pts+=3}else if(bb>aa){B.w++;A.l++;B.pts+=3}}
-st.forEach(x=>x.diff=x.pf-x.pa);st.sort((x,y)=>y.pts-x.pts||y.diff-x.diff||y.pf-x.pf||(state.teams[x.i]||"").localeCompare(state.teams[y.i]||""));
+const ids=groupMembers()[group]||[],st=ids.map(i=>({i,p:0,w:0,l:0,pf:0,pa:0,pts:0}));
+for(const m of allMatches().filter(x=>x.group===group)){const s=score(m.id);if(!s)continue;const A=st.find(x=>x.i===m.a),B=st.find(x=>x.i===m.b);A.p++;B.p++;A.pf+=s.a;A.pa+=s.b;B.pf+=s.b;B.pa+=s.a;if(s.a>s.b){A.w++;B.l++;A.pts+=3}else{B.w++;A.l++;B.pts+=3}}
+st.forEach(x=>x.diff=x.pf-x.pa);st.sort((x,y)=>y.pts-x.pts||y.diff-x.diff||y.pf-x.pf||teamName(x.i).localeCompare(teamName(y.i)));
 return st
 }
-// Only resolve a "2A"-style reference once that group has finished all its matches
-function rankRef(ref){const g=ref[1];if(!groupDone(g))return null;return getStand(g)[+ref[0]-1]?.i}
-function winner(id){let s=score(id);if(!s||s.a===""||s.b==="")return null;return +s.a>+s.b?matchTeam(id,"a"):+s.b>+s.a?matchTeam(id,"b"):null}
+function statsAll(){const o={};groupLetters().forEach(g=>getStand(g).forEach(x=>o[x.i]=x));return o}
+const cmpStats=st=>(x,y)=>st[y].pts-st[x].pts||st[y].pf-st[x].pf||st[y].diff-st[x].diff||teamName(x).localeCompare(teamName(y));
+// "2A" resolves only once Group A has finished all its matches
+function rankRef(ref){const mm=/^(\d+)([A-Z])$/.exec(ref);if(!mm||!groupMembers()[mm[2]]||!groupDone(mm[2]))return null;const x=getStand(mm[2])[+mm[1]-1];return x?x.i:null}
+function winner(id){const s=score(id);if(!s)return null;return s.a>s.b?matchTeam(id,"a"):matchTeam(id,"b")}
 function loser(id){const w=winner(id);if(w==null)return null;const A=matchTeam(id,"a"),B=matchTeam(id,"b");return w===A?B:A}
-function matchTeam(id,side){
-let m=allMatches().find(x=>x.id===id);if(m[side]!=null)return m[side];let ref=side==="a"?m.sourceA:m.sourceB;return resolve(ref)
-}
+function matchTeam(id,side){const m=allMatches().byId[id];if(!m)return null;if(m[side]!=null)return m[side];return resolve(side==="a"?m.sourceA:m.sourceB)}
 function resolve(ref){
 if(!ref)return null;
-if(/^[1-4][AB]$/.test(ref))return rankRef(ref);
-if(ref==="SL1")return loser("sf1"); if(ref==="SL2")return loser("sf2");
-if(ref==="QF1")return winner("qf1"); if(ref==="QF2")return winner("qf2"); if(ref==="SF1")return winner("sf1"); if(ref==="SF2")return winner("sf2");
-return null
+if(ref.startsWith("W:"))return winner(ref.slice(2));
+if(ref.startsWith("L:"))return loser(ref.slice(2));
+return rankRef(ref)
 }
-const ORD={1:"1st",2:"2nd",3:"3rd",4:"4th"};
 function phText(ref){
 if(!ref)return "TBD";
-if(/^[1-4][AB]$/.test(ref))return ORD[ref[0]]+" "+ref[1];
-if(ref.startsWith("SL"))return "Loser SF"+ref[2];
-return ref.startsWith("QF")?"Winner "+ref:"Winner "+ref.replace("SF","SF")
+const mm=/^(\d+)([A-Z])$/.exec(ref);if(mm)return ord(+mm[1])+" "+mm[2];
+const id=ref.slice(2),short=koKind(id)==="qf"||koKind(id)==="sf"?id.toUpperCase():koTitle(id);
+return (ref[0]==="W"?"Winner ":"Loser ")+short
 }
 function teamName(i){return state.teams[i]||("Team "+(i+1))}
-function teamLabel(i){return i==null?"TBD":esc(teamName(i))}
 function timeFor(slot){let [h,m]=state.settings.start.split(":").map(Number);let mins=h*60+m+(slot-1)*state.settings.duration;return String(Math.floor(mins/60)%24).padStart(2,"0")+":"+String(mins%60).padStart(2,"0")}
-
-/* ---------- Schedule (slot cards) ---------- */
-function boLabel(ms){
-const t=[...new Set(ms.map(x=>(x.id==="final"?"final ":x.id==="third"?"3rd place ":x.id==="p7"?"7th place ":"")+"best of "+bestOf(x.id)))];
-return t.join(", ")
+// Which knockout match each group position leads to, e.g. {1:"sf", 2:"qf", 4:"place"}
+function qualMap(){
+const res={};
+allMatches().filter(x=>x.ko).forEach(x=>[x.sourceA,x.sourceB].forEach(r=>{const mm=/^(\d+)[A-Z]$/.exec(r||"");if(mm&&!res[+mm[1]])res[+mm[1]]=x.id}));
+return res
 }
-function chipFor(m){return m.group?(m.group==="A"?"chipA":"chipB"):(m.id==="final"||m.id==="third"||m.id==="p7"?"chipF":"chipK")}
-function tileStage(m){return m.id==="final"?"Final":m.id==="third"?"3rd place match":m.id==="p7"?"7th place match":m.stage}
+// Final ranking: one entry per place, {t: team index or null, by: explanation}
+function placements(){
+const tpl=allMatches().tpl,out=[],done=groupLetters().every(groupDone);
+tpl.places.forEach(([type,arg])=>{
+  if(type==="w")out.push({t:winner(arg),by:"Winner of the "+koLower(arg)});
+  else if(type==="l")out.push({t:loser(arg),by:"Loser of the "+koLower(arg)});
+  else{
+    const ls=arg.map(loser),ok=done&&ls.every(x=>x!=null),sorted=ok?[...ls].sort(cmpStats(statsAll())):[];
+    arg.forEach((_,i)=>out.push({t:ok?sorted[i]:null,by:"Quarter-final losers, ranked by group-stage points, then rounds won"}))
+  }
+});
+const restN=teamCount()-out.length;
+if(restN>0){
+  let rest=[];
+  if(done){const st=statsAll();for(let pos=tpl.restFrom;;pos++){const tier=groupLetters().map(g=>getStand(g)[pos-1]).filter(Boolean).map(x=>x.i);if(!tier.length)break;rest.push(...tier.sort(cmpStats(st)))}}
+  for(let i=0;i<restN;i++)out.push({t:rest[i]??null,by:"Not in the knockout: ranked by group position, then points and rounds won"})
+}
+return out
+}
+
+/* ---------- Schedule ---------- */
+function chipFor(m){return m.group?(m.group==="A"?"chipA":"chipB"):(["qf","sf"].includes(koKind(m.id))?"chipK":"chipF")}
 function buildSchedule(){
-const ms=allMatches(), bySlot={};
+const ms=allMatches(),bySlot={};
 ms.forEach(m=>(bySlot[m.slot]=bySlot[m.slot]||[]).push(m));
-const inp=(id,side)=>{const r=rawScore(id);const v=r?r[side]:"";return `<input class="score" type="number" min="0" max="${bestOf(id)}" title="Best of ${bestOf(id)}: first to ${winRounds(id)} wins" id="${id}${side}" value="${v}" oninput="onScore('${id}')" aria-label="Score">`};
+const inp=(id,side)=>{const r=rawScore(id);const v=r?r[side]:"";return `<input class="score" type="number" min="0" max="${bestOf(id)}" id="${id}${side}" value="${v}" oninput="onScore('${id}')" aria-label="Score">`};
 const band=(t,sm,cls)=>`<tr class="band ${cls||""}"><td colspan="9">${t}${sm?`<small>${sm}</small>`:""}</td></tr>`;
-const stageCell=arr=>{const m=arr[0];const chips=arr[0].group?`<span class="chip ${chipFor(m)}">${esc(m.stage)}</span>`:arr.map(x=>`<span class="chip ${chipFor(x)}">${esc(tileStage(x))}</span>`).filter((v,i,a)=>a.indexOf(v)===i).join(" ");return `<td class="stage" rowspan="2">${chips}<small>${esc(boLabel(arr))}</small></td>`};
+const boSel=x=>`<label class="bol"><span class="cname${x.court}"></span><select class="bosel" data-admin data-bo="${x.id}" onchange="setBestOf('${x.id}',this.value)" aria-label="Match length">${boOptions()}</select></label>`;
+const stageCell=arr=>{const chips=[...new Set(arr.map(x=>`<span class="chip ${chipFor(x)}">${esc(x.stage)}</span>`))].join(" ");return `<td class="stage" rowspan="2">${chips}${arr.map(boSel).join("")}</td>`};
 const slot=s=>{
   const [m1,m2]=bySlot[s], cls=s%2?"rowA":"rowB";
   const c2=m2?`<td class="tn c2s" data-c2="1" dir="auto" id="${m2.id}-a"></td><td class="vs" rowspan="2">VS</td><td class="tn" dir="auto" id="${m2.id}-b"></td>`:`<td class="c2s" colspan="3" rowspan="2" style="color:#9aa8b8">–</td>`;
@@ -745,16 +870,17 @@ const slot=s=>{
    c2+stageCell([m1,m2].filter(Boolean))+`</tr>`+
    `<tr class="${cls}"><td class="sc">${inp(m1.id,"a")}</td><td class="sc">${inp(m1.id,"b")}</td>${c2s}</tr>`
 };
-const range=(x,y)=>Array.from({length:y-x+1},(_,i)=>x+i);
-let h=`<colgroup><col style="width:64px"><col style="width:80px"><col><col style="width:44px"><col><col><col style="width:44px"><col><col style="width:170px"></colgroup>`;
+const range=(x,y)=>Array.from({length:Math.max(0,y-x+1)},(_,i)=>x+i);
+const gs=ms.groupSlots,ls=ms.lastSlot;
+let h=`<colgroup><col style="width:64px"><col style="width:80px"><col><col style="width:44px"><col><col><col style="width:44px"><col><col style="width:190px"></colgroup>`;
 h+=`<thead><tr><th>Slot</th><th>Time</th><th colspan="3"><span class="cname1"></span></th><th colspan="3" class="c2"><span class="cname2"></span></th><th>Stage</th></tr></thead><tbody>`;
-h+=band("Group stage","slots 1–6 · groups alternate A, B");
-h+=range(1,6).map(slot).join("");
-h+=band("Knockout stage","slots 7–10");
-h+=`<tr class="band pick"><td colspan="9"><label for="sfSel">Semi-final pairing <select id="sfSel" onchange="setSF(this.value)"></select></label></td></tr>`;
-h+=range(7,10).map(slot).join("");
-h+=band("Spare slots","extra time for the final");
-h+=range(11,12).map(n=>`<tr class="rowB ${n===11?"first":""}"><td class="slotn">${n}</td><td class="time" data-time="${n}"></td><td colspan="7" class="note-cell">${n===11?"extra time for final":""}</td></tr>`).join("");
+h+=band("Group stage",`slots 1–${gs}`);
+h+=range(1,gs).map(slot).join("");
+h+=band("Knockout stage",`slots ${gs+1}–${ls}`);
+if(ms.tpl.sfPicker)h+=`<tr class="band pick"><td colspan="9"><label for="sfSel">Semi-final pairing <select id="sfSel" data-admin onchange="setSF(this.value)"></select></label></td></tr>`;
+h+=range(gs+1,ls).map(slot).join("");
+h+=band("Spare slots","extra time");
+h+=range(ls+1,ls+2).map(n=>`<tr class="rowB ${n===ls+1?"first":""}"><td class="slotn">${n}</td><td class="time" data-time="${n}"></td><td colspan="7" class="note-cell">${n===ls+1?"extra time for the final":""}</td></tr>`).join("");
 h+=`</tbody>`;
 $("sched").innerHTML=h
 }
@@ -763,19 +889,20 @@ const el=$(id);if(!el)return;
 el.textContent=idx!=null?teamName(idx):phText(ref);
 el.className="tn"+(idx==null?" ph":"")+(win?" won":"")+(lose?" lost":"")+(id.endsWith("-a")&&el.dataset.c2?" c2s":"")
 }
-function setRes(id,idx){const el=$(id);if(el)el.textContent=idx!=null?teamName(idx):"–"}
 function refreshSchedule(){
 document.querySelectorAll(".cname1").forEach(el=>el.textContent=state.settings.court1);document.querySelectorAll(".cname2").forEach(el=>el.textContent=state.settings.court2);
 document.querySelectorAll("[data-time]").forEach(el=>el.textContent=timeFor(+el.dataset.time));
 for(const m of allMatches()){
-  const A=matchTeam(m.id,"a"),B=matchTeam(m.id,"b"),w=winner(m.id);
+  const A=matchTeam(m.id,"a"),B=matchTeam(m.id,"b"),w=winner(m.id),bo=bestOf(m.id);
   fill(m.id+"-a",A,m.sourceA,w!=null&&w===A,w!=null&&w!==A);
   fill(m.id+"-b",B,m.sourceB,w!=null&&w===B,w!=null&&w!==B);
+  const sel=document.querySelector(`[data-bo="${m.id}"]`);if(sel&&document.activeElement!==sel)sel.value=String(bo);
+  const r=rawScore(m.id),bad=!!r&&!validScore(r,m.id);
+  ["a","b"].forEach(k=>{const el=$(m.id+k);if(el){el.max=bo;el.title=`Best of ${bo}: first to ${winRounds(m.id)} wins`;el.classList.toggle("bad",bad)}});
 }
-placements().forEach((t,i)=>setRes("res"+(i+1),t))
 }
 function printSheets(){
-const perHour=Math.max(1,Math.round(60/(state.settings.duration||20))), LAST=10;
+const ms=allMatches(),perHour=Math.max(1,Math.round(60/(state.settings.duration||20))),LAST=ms.lastSlot;
 const cname={1:state.settings.court1,2:state.settings.court2};
 const nm=(id,side,ref)=>{const t=matchTeam(id,side);return t!=null?`<td class="nm" dir="auto">${esc(teamName(t))}</td>`:`<td class="nm ph" dir="auto">${esc(phText(ref))}</td>`};
 let out="";
@@ -784,8 +911,8 @@ for(let from=1;from<=LAST;from+=perHour){
   for(const c of [1,2]){
     let rows="";
     for(let sl=from;sl<=to;sl++){
-      const m=allMatches().find(x=>x.slot===sl&&x.court===c); if(!m)continue;
-      const cls=(sl%2)?"":"alt", sc=score(m.id), r=rawScore(m.id);
+      const m=ms.find(x=>x.slot===sl&&x.court===c); if(!m)continue;
+      const cls=(sl%2)?"":"alt", r=rawScore(m.id);
       const va=r&&r.a!==""?r.a:"", vb=r&&r.b!==""?r.b:"";
       rows+=`<tr class="${cls}"><td class="sn">${sl}</td><td class="tm" rowspan="2">${timeFor(sl)}<small>${esc(m.stage)} · best of ${bestOf(m.id)}</small></td>${nm(m.id,"a",m.sourceA)}<td class="vs" rowspan="2">VS</td>${nm(m.id,"b",m.sourceB)}</tr>`+
             `<tr class="${cls}"><td class="sl">Score</td><td><span class="pbox">${esc(va)}</span></td><td><span class="pbox">${esc(vb)}</span></td></tr>`;
@@ -797,45 +924,40 @@ for(let from=1;from<=LAST;from+=perHour){
 $("printArea").innerHTML=out;
 window.print()
 }
-// 1st/2nd = final, 3rd/4th = 3rd-place match, 7th/8th = 7th-place match (4th of each group);
-// 5th/6th = the two quarter-final losers ranked by group-stage points, then rounds won
-function placements(){
-const r=Array(8).fill(null);
-r[0]=winner("final");r[1]=loser("final");r[2]=winner("third");r[3]=loser("third");
-r[6]=winner("p7");r[7]=loser("p7");
-if(groupDone("A")&&groupDone("B")&&winner("qf1")!=null&&winner("qf2")!=null){
-  const stats={};[...getStand("A"),...getStand("B")].forEach(x=>stats[x.i]=x);
-  const pool=[loser("qf1"),loser("qf2")];
-  pool.sort((x,y)=>stats[y].pts-stats[x].pts||stats[y].pf-stats[x].pf||stats[y].diff-stats[x].diff||teamName(x).localeCompare(teamName(y)));
-  r[4]=pool[0];r[5]=pool[1]
-}
-return r
-}
 function onScore(id){
 if(!canScore())return;
 const a=$(id+"a").value,b=$(id+"b").value;
 if(a===""||b===""){delete state.scores[id]}else{state.scores[id]={a:+a,b:+b}}
-const bad=a!==""&&b!==""&&!validScore({a,b},id);["a","b"].forEach(x=>$(id+x).classList.toggle("bad",bad));
 save();refresh();
 cloudWrite(a===""||b===""?{["scores."+id]:DEL}:{["scores."+id]:{a:+a,b:+b}})
 }
 
-/* ---------- Standings & bracket ---------- */
-function renderStand(id,group){
-let st=getStand(group);$(id).innerHTML=st.map((x,i)=>`<tr class="${i<3?"qualified":""}"><td class="rank">${i+1}</td><td>${teamLabel(x.i)}</td><td>${x.p}</td><td>${x.w}</td><td>${x.l}</td><td class="rw">${x.pf}</td><td>${x.pa}</td><td class="${x.diff>0?"pos":x.diff<0?"neg":""}">${x.diff>0?"+":""}${x.diff}</td><td class="pts"><b>${x.pts}</b></td></tr>`).join("")
+/* ---------- Standings, bracket, ranking ---------- */
+function renderStandings(){
+const q=qualMap(),contender=p=>q[p]&&["qf","sf","final"].includes(koKind(q[p]));
+const byTarget={};Object.keys(q).map(Number).sort((a,b)=>a-b).forEach(p=>{const l=koLower(q[p]);(byTarget[l]=byTarget[l]||{id:q[p],ps:[]}).ps.push(p)});
+$("legend").innerHTML=Object.entries(byTarget).map(([l,{id,ps}])=>{const k=koKind(id),cls=k==="sf"||k==="final"?"chipF":k==="qf"?"chipK":"chipA";return `<span class="chip ${cls}">${ps.length>2?ord(ps[0])+"–"+ord(ps[ps.length-1]):ps.map(ord).join(" & ")} → ${esc(l)}</span>`}).join("");
+const head=`<thead><tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>L</th><th class="rw">Rounds won<small>RW</small></th><th>Rounds lost<small>RL</small></th><th>Diff</th><th>Pts</th></tr></thead>`;
+$("standGroups").innerHTML=groupLetters().map(g=>`<div class="card stand-card"><h3><span class="chip chip${g}">Group ${g}</span></h3><div class="table-wrap" style="overflow:auto"><table class="standings">${head}<tbody>${getStand(g).map((x,i)=>`<tr class="${contender(i+1)?"qualified":""}"><td class="rank">${i+1}</td><td dir="auto">${esc(teamName(x.i))}</td><td>${x.p}</td><td>${x.w}</td><td>${x.l}</td><td class="rw">${x.pf}</td><td>${x.pa}</td><td class="${x.diff>0?"pos":x.diff<0?"neg":""}">${x.diff>0?"+":""}${x.diff}</td><td class="pts"><b>${x.pts}</b></td></tr>`).join("")}</tbody></table></div></div>`).join("")
 }
 function renderBracket(){
-const cols=[["Quarter-finals",["qf1","qf2"]],["Semi-finals",["sf1","sf2"]],["Final, 3rd & 7th place",["final","third","p7"]]];
-const titles={qf1:"Quarter-final 1",qf2:"Quarter-final 2",sf1:"Semi-final 1",sf2:"Semi-final 2",final:"Final",third:"3rd place match",p7:"7th place match"};
+const ko=allMatches().filter(x=>x.ko);
+const cols=[["Quarter-finals",ko.filter(x=>koKind(x.id)==="qf")],["Semi-finals",ko.filter(x=>koKind(x.id)==="sf")],["Final & placement matches",ko.filter(x=>!["qf","sf"].includes(koKind(x.id)))]].filter(c=>c[1].length);
 const lab=(i,ref)=>i==null?`<span class="empty">${esc(phText(ref))}</span>`:esc(teamName(i));
-$("bracketBody").innerHTML=cols.map(([title,ids])=>`<div class="round"><h3>${title}</h3><div class="round-body">${ids.map(id=>{
-  const m=allMatches().find(x=>x.id===id),A=matchTeam(id,"a"),B=matchTeam(id,"b"),w=winner(id),sc=score(id);
-  return `<div class="matchbox${id==="final"?" final":""}"><div class="mtitle">${titles[id]} · best of ${bestOf(id)}</div><div class="mrow${w!=null&&w===A?" winner":""}"><span dir="auto">${lab(A,m.sourceA)}</span><b class="mscore">${sc?sc.a:"–"}</b></div><div class="mrow${w!=null&&w===B?" winner":""}"><span dir="auto">${lab(B,m.sourceB)}</span><b class="mscore">${sc?sc.b:"–"}</b></div></div>`
+const box=$("bracketBody");box.style.setProperty("--cols",cols.length);
+box.innerHTML=cols.map(([title,ms])=>`<div class="round"><h3>${title}</h3><div class="round-body">${ms.map(m=>{
+  const A=matchTeam(m.id,"a"),B=matchTeam(m.id,"b"),w=winner(m.id),sc=score(m.id);
+  return `<div class="matchbox${m.id==="final"?" final":""}"><div class="mtitle">${koTitle(m.id)} · best of ${bestOf(m.id)}</div><div class="mrow${w!=null&&w===A?" winner":""}"><span dir="auto">${lab(A,m.sourceA)}</span><b class="mscore">${sc?sc.a:"–"}</b></div><div class="mrow${w!=null&&w===B?" winner":""}"><span dir="auto">${lab(B,m.sourceB)}</span><b class="mscore">${sc?sc.b:"–"}</b></div></div>`
 }).join("")}</div></div>`).join("")
 }
-function refresh(){renderSFPicker();refreshSchedule();renderStand("standA","A");renderStand("standB","B");renderBracket()}
-function renderAll(){buildSchedule();refresh();applyRole()}
+function renderRanking(){
+const med=["🥇 ","🥈 ","🥉 "],cls=["gold","silver","bronze"];
+$("rankBody").innerHTML=placements().map((p,i)=>`<tr class="${i<3?"medal "+cls[i]:""}"><td class="rank">${med[i]||""}${ord(i+1)}</td><td dir="auto">${p.t!=null?esc(teamName(p.t)):"–"}</td><td class="by">${esc(p.by)}</td></tr>`).join("")
+}
+function refresh(){renderSFPicker();refreshSchedule();renderStandings();renderBracket();renderRanking()}
+function renderAll(){buildSchedule();renderFormatInfo();refresh();applyRole();lastBuiltN=teamCount()}
 function showTab(id,btn){document.querySelectorAll(".section").forEach(x=>x.classList.remove("active"));$(id).classList.add("active");document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));btn.classList.add("active")}
+
 init();
 // Cloud mode starts on the login page (or the tournament list for returning viewers).
 // A shared link (#t=ID) skips the login page and opens the tournament directly once connected.
@@ -884,14 +1006,14 @@ if(window.CLOUD_ON){
         }catch(e){return {ok:false,error:err(e)}}
       },
       leave,
-      async create(name){
+      async create(name,opts={}){
         const u=auth.currentUser;if(!u)return {ok:false,error:"not signed in"};
         try{
-          const d=window.__defaults();
+          const d=window.__defaults(opts.teams||8);
           for(let i=0;i<6;i++){
             const id=genId();
             if((await F.getDoc(T(id))).exists())continue;
-            await F.setDoc(T(id),{name,ownerUid:u.uid,members:{[u.uid]:"admin"},memberUids:[u.uid],teams:d.teams,settings:d.settings,sfPairing:0,scores:{},createdAt:Date.now(),updatedAt:Date.now()});
+            await F.setDoc(T(id),{name,ownerUid:u.uid,members:{[u.uid]:"admin"},memberUids:[u.uid],teams:d.teams,style:opts.style||"groups_ko",bestOf:{},settings:d.settings,sfPairing:0,scores:{},createdAt:Date.now(),updatedAt:Date.now()});
             return {ok:true,id}
           }
           return {ok:false,error:"id-collision"}
@@ -901,7 +1023,7 @@ if(window.CLOUD_ON){
         const u=auth.currentUser;if(!u)return {ok:true,list:[]};
         try{
           const s=await F.getDocs(F.query(F.collection(db,"tournaments"),F.where("memberUids","array-contains",u.uid)));
-          const list=s.docs.map(d=>({id:d.id,name:d.data().name||"Tournament",role:(d.data().members||{})[u.uid]||"editor",createdAt:d.data().createdAt||0})).sort((a,b)=>b.createdAt-a.createdAt);
+          const list=s.docs.map(d=>({id:d.id,name:d.data().name||"Tournament",role:(d.data().members||{})[u.uid]||"editor",teams:(d.data().teams||[]).length,createdAt:d.data().createdAt||0})).sort((a,b)=>b.createdAt-a.createdAt);
           return {ok:true,list}
         }catch(e){return {ok:false,error:err(e)}}
       },

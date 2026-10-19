@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ADV</title>
+<title>Padel Tour</title>
 <style>
 :root{--bg:#f1f5f9;--card:#fff;--ink:#14263a;--muted:#5f7288;--navy:#16385c;--purple:#16385c;--accent:#0d9488;--accent-d:#0b7a70;--accent2:#e3f6f3;--line:#dbe4ec;--good:#15803d;--radius:14px}
 *{box-sizing:border-box}
@@ -243,7 +243,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </head>
 <body>
 <div id="appView">
-<header><div class="wrap hdr"><div><h1>🎾 ADV</h1><p id="hdrSub">Enter the scores — standings and the knockout bracket update automatically.</p></div><div class="hdr-right"><button id="backBtn" class="hbtn" onclick="goHome()" hidden>← Tournaments</button><button id="shareBtn" class="hbtn" onclick="shareT()" hidden>🔗 Share</button><div class="pills" id="pills"></div><div class="auth"><span id="roleChip" class="rolechip"></span><button id="loginBtn" onclick="openAuth()">Sign in</button></div></div></div></header>
+<header><div class="wrap hdr"><div><h1>🎾 Padel Tour</h1><p id="hdrSub">Enter the scores — standings and the knockout bracket update automatically.</p></div><div class="hdr-right"><button id="backBtn" class="hbtn" onclick="goHome()" hidden>← Tournaments</button><button id="shareBtn" class="hbtn" onclick="shareT()" hidden>🔗 Share</button><div class="pills" id="pills"></div><div class="auth"><span id="roleChip" class="rolechip"></span><button id="loginBtn" onclick="openAuth()">Sign in</button></div></div></div></header>
 <main class="wrap">
 <div id="viewBanner" class="viewbar" hidden></div>
 
@@ -324,7 +324,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 
 <!-- LOGIN PAGE: Google, email (sign in / register), or continue as viewer -->
 <div id="loginView" class="landing" hidden>
-<div class="land-hero"><h1>🎾 ADV</h1><p>Sign in to run tournaments, or follow one as a viewer.</p></div>
+<div class="land-hero"><h1>🎾 Padel Tour</h1><p>Sign in to run tournaments, or follow one as a viewer.</p></div>
 <div class="login-wrap">
 <div class="card stack login-card">
 <h2>Welcome</h2>
@@ -343,7 +343,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 </div>
 
 <div id="landing" class="landing" hidden>
-<div class="land-hero"><h1>🎾 ADV</h1><p>Run a tournament, or follow one live.</p></div>
+<div class="land-hero"><h1>🎾 Padel Tour</h1><p>Run a tournament, or follow one live.</p></div>
 <div class="land-grid">
 <div class="card land-card">
 <h2>Find a tournament</h2>
@@ -361,7 +361,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 <div id="myList"></div>
 <div class="newt">
 <h3>New tournament</h3>
-<label>Name<input id="newName" placeholder="e.g. ADV Autumn Cup" maxlength="60" onkeydown="if(event.key==='Enter')createT()"></label>
+<label>Name<input id="newName" placeholder="e.g. Autumn Cup" maxlength="60" onkeydown="if(event.key==='Enter')createT()"></label>
 <div class="fields"><label>Number of teams<select id="newTeams"></select></label><label>Tournament style<select id="newStyle"></select></label></div>
 <button class="primary" onclick="createT()">Create tournament</button>
 </div>
