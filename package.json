@@ -1,0 +1,11 @@
+{
+  "name": "padel-tour",
+  "private": true,
+  "description": "Padel Tour tournament manager (static site + Firebase)",
+  "scripts": {
+    "test": "node tests/run.js"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}

@@ -1,0 +1,44 @@
+rules_version = '2';
+// Padel Tour – Firestore security rules.
+// To apply: Firebase console → Firestore Database → Rules → paste this file → Publish.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function roleIn(data, roles) {
+      return signedIn() && data.members.get(request.auth.uid, '') in roles;
+    }
+    function tRole(tid, roles) {
+      return roleIn(get(/databases/$(database)/documents/tournaments/$(tid)).data, roles);
+    }
+
+    match /tournaments/{tid} {
+      // Anyone can follow results (viewers don't need an account)
+      allow read: if true;
+
+      // Any signed-in user can create a tournament and becomes its admin
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.members.keys().hasOnly([request.auth.uid])
+        && request.resource.data.members[request.auth.uid] == 'admin'
+        && request.resource.data.memberUids == [request.auth.uid];
+
+      // Admins can change everything (but the owner always stays admin).
+      // Editors can only change scores.
+      allow update: if (roleIn(resource.data, ['admin'])
+            && request.resource.data.ownerUid == resource.data.ownerUid
+            && request.resource.data.members.get(resource.data.ownerUid, '') == 'admin')
+        || (roleIn(resource.data, ['editor'])
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scores', 'updatedAt']));
+
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+
+      // Edit-access requests: you manage your own, admins manage all
+      match /requests/{uid} {
+        allow read, delete: if (signedIn() && request.auth.uid == uid) || tRole(tid, ['admin']);
+        allow create, update: if (signedIn() && request.auth.uid == uid
+                                  && request.resource.data.status == 'pending')
+                              || tRole(tid, ['admin']);
+      }
+    }
+  }
+}
