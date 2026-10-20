@@ -4,17 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Padel Tour</title>
+<meta name="theme-color" content="#0B3D91">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='11' fill='%23E4F53B'/%3E%3Cpath d='M4.5 6c3.2 2.7 3.2 9.3 0 12M19.5 6c-3.2 2.7-3.2 9.3 0 12' fill='none' stroke='%230B3D91' stroke-width='1.8'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,800&family=Barlow:wght@400;500;600;700&display=swap">
+<script src="js/theme.js"></script>
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 <div id="appView">
-<header><div class="wrap hdr"><div><h1>🎾 Padel Tour</h1><p id="hdrSub">Enter the scores — standings and the knockout bracket update automatically.</p></div><div class="hdr-right"><button id="backBtn" class="hbtn" onclick="goHome()" hidden>← Tournaments</button><button id="shareBtn" class="hbtn" onclick="shareT()" hidden>🔗 Share</button><div class="pills" id="pills"></div><div class="auth"><span id="roleChip" class="rolechip"></span><button id="loginBtn" onclick="openAuth()">Sign in</button></div></div></div></header>
+<header><div class="wrap hdr"><div><h1 class="brand"><svg class="ballmark" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E4F53B"></circle><path d="M5 6.5c3 2.5 3 8.5 0 11M19 6.5c-3 2.5-3 8.5 0 11" fill="none" stroke="#0B3D91" stroke-width="1.6"></path></svg><span>Padel Tour</span></h1><p id="hdrSub">Enter the scores — standings and the knockout bracket update automatically.</p></div><div class="hdr-right"><button id="backBtn" class="hbtn" onclick="goHome()" hidden>← Tournaments</button><button id="shareBtn" class="hbtn" onclick="shareT()" hidden>Share</button><button type="button" class="hbtn themebtn" onclick="toggleTheme()" aria-label="Switch day/night mode"><svg class="ico-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg><svg class="ico-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button><div class="pills" id="pills"></div><div class="auth"><span id="roleChip" class="rolechip"></span><button id="loginBtn" onclick="openAuth()">Sign in</button></div></div></div></header>
 <main class="wrap">
 <div id="viewBanner" class="viewbar" hidden></div>
 
 <div class="top-grid">
 <details class="card setupbox" id="setupBox">
-<summary><span class="setup-title"><h2>⚙️ Setup</h2><span class="setup-sum" id="setupSum"></span></span><span class="setup-chev" aria-hidden="true"></span></summary>
+<summary><span class="setup-title"><h2>Setup</h2><span class="setup-sum" id="setupSum"></span></span><span class="setup-chev" aria-hidden="true"></span></summary>
 <div class="setup-body">
 <div class="fields">
 <label style="grid-column:1/-1" id="tnameLabel">Tournament name<input id="tname" maxlength="60"></label>
@@ -32,7 +38,7 @@
 </div>
 <div class="actions">
 <button class="primary" data-admin onclick="generate()">Apply settings</button>
-<button class="secondary" onclick="printSheets()">🖨 Print court sheets (A4)</button>
+<button class="secondary" onclick="printSheets()">Print court sheets (A4)</button>
 <button class="danger" data-admin onclick="resetAll()">Reset scores</button>
 </div>
 <details class="help"><summary>Match length (best of)</summary>
@@ -50,11 +56,11 @@
 </div>
 
 <nav class="tabs" aria-label="Sections">
-<button class="tab active" data-tab="schedule" onclick="showTab('schedule',this)">📅 Schedule &amp; scores</button>
-<button class="tab" data-tab="standings" onclick="showTab('standings',this)">📊 Standings</button>
-<button class="tab" data-tab="bracket" onclick="showTab('bracket',this)">🏆 Knockout bracket</button>
-<button class="tab" data-tab="ranking" onclick="showTab('ranking',this)">🥇 Final ranking</button>
-<button class="tab" data-tab="access" id="accessTab" onclick="showTab('access',this)" hidden>👥 Access</button>
+<button class="tab active" data-tab="schedule" onclick="showTab('schedule',this)">Schedule &amp; scores</button>
+<button class="tab" data-tab="standings" onclick="showTab('standings',this)">Standings</button>
+<button class="tab" data-tab="bracket" onclick="showTab('bracket',this)">Bracket</button>
+<button class="tab" data-tab="ranking" onclick="showTab('ranking',this)">Ranking</button>
+<button class="tab" data-tab="access" id="accessTab" onclick="showTab('access',this)" hidden>Access</button>
 </nav>
 
 <section id="schedule" class="section active">
@@ -100,7 +106,7 @@
 
 <!-- LOGIN PAGE: Google, email (sign in / register), or continue as viewer -->
 <div id="loginView" class="landing" hidden>
-<div class="land-hero"><h1>🎾 Padel Tour</h1><p>Sign in to run tournaments, or follow one as a viewer.</p></div>
+<div class="land-hero"><div class="hero-tools"><button type="button" class="hbtn themebtn" onclick="toggleTheme()" aria-label="Switch day/night mode"><svg class="ico-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg><svg class="ico-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button></div><h1 class="brand"><svg class="ballmark" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E4F53B"></circle><path d="M5 6.5c3 2.5 3 8.5 0 11M19 6.5c-3 2.5-3 8.5 0 11" fill="none" stroke="#0B3D91" stroke-width="1.6"></path></svg><span>Padel Tour</span></h1><p>Sign in to run tournaments, or follow one as a viewer.</p></div>
 <div class="login-wrap">
 <div class="card stack login-card">
 <h2>Welcome</h2>
@@ -112,14 +118,14 @@
 <p class="note" style="margin:0"><a href="#" onclick="doAuth('reset','login');return false">Forgot password?</a> · New here? Enter your email and a password (6+ characters), then press Register.</p>
 <p id="loginMsg" class="note" role="status" style="margin:0"></p>
 <div class="or">or</div>
-<button class="secondary full" onclick="continueAsViewer()">👁 Continue as viewer</button>
+<button class="secondary full" onclick="continueAsViewer()">Continue as viewer</button>
 <p class="note" style="margin:0">No account needed — you only need the tournament ID or link.</p>
 </div>
 </div>
 </div>
 
 <div id="landing" class="landing" hidden>
-<div class="land-hero"><h1>🎾 Padel Tour</h1><p>Run a tournament, or follow one live.</p></div>
+<div class="land-hero"><div class="hero-tools"><button type="button" class="hbtn themebtn" onclick="toggleTheme()" aria-label="Switch day/night mode"><svg class="ico-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg><svg class="ico-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button></div><h1 class="brand"><svg class="ballmark" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E4F53B"></circle><path d="M5 6.5c3 2.5 3 8.5 0 11M19 6.5c-3 2.5-3 8.5 0 11" fill="none" stroke="#0B3D91" stroke-width="1.6"></path></svg><span>Padel Tour</span></h1><p>Run a tournament, or follow one live.</p></div>
 <div class="land-grid">
 <div class="stack">
 <div class="card land-card">
@@ -129,7 +135,7 @@
 <p id="findMsg" class="note" style="margin-top:10px"></p>
 </div>
 <div class="card land-card mkt-teaser">
-<h2>🛒 Marketplace</h2>
+<h2>Marketplace</h2>
 <p class="note">Find a partner, buy used gear, book a coach, or get a gift for a donation.</p>
 <div class="mkt-mini"><span>🤝 Partners</span><span>🎾 Used gear</span><span>🧑‍🏫 Coaches</span><span>🎁 Donation gifts</span></div>
 <button class="primary" onclick="openMarket()">Open marketplace</button>
@@ -154,14 +160,14 @@
 <p id="lMsg" class="note" style="margin-top:12px" role="status"></p>
 </div>
 <div class="card land-card" style="grid-column:1/-1">
-<div class="pubhead"><h2>Public tournaments</h2><button class="secondary" onclick="loadPublic()">↻ Refresh</button></div>
+<div class="pubhead"><h2>Public tournaments</h2><button class="secondary" onclick="loadPublic()">Refresh</button></div>
 <p class="note">Tap a tournament to follow it live. No account needed.</p>
 <div id="pubList" class="publist"></div>
 </div>
 </div>
 </div>
 <div id="marketView" class="landing" hidden>
-<div class="land-hero mkt-hero"><div class="mkt-top"><button class="hbtn" onclick="closeMarket()">← Tournaments</button></div><h1>🛒 Padel Tour Marketplace</h1><p id="mktIntro"></p></div>
+<div class="land-hero mkt-hero"><div class="mkt-top"><button class="hbtn" onclick="closeMarket()">← Tournaments</button><button type="button" class="hbtn themebtn" onclick="toggleTheme()" aria-label="Switch day/night mode"><svg class="ico-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg><svg class="ico-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button></div><h1>Marketplace</h1><p id="mktIntro"></p></div>
 <div class="mkt-wrap">
 <div class="card mkt-bar">
 <div class="seg mkt-cats" id="mktCats"></div>
