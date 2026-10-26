@@ -1,7 +1,7 @@
 // Tournament engine: format, groups, schedule, best-of, results and ranking logic (no page layout).
 /* ---------- Format: teams, groups, knockout ---------- */
 // Tournament styles. Only "groups_ko" is built; the others are placeholders for later.
-const STYLES=[["groups_ko","Groups + knockout",true],["americano","Americano",false],["mexicano","Mexicano",false],["single_elim","Single elimination",false],["league","League (round robin only)",false]];
+const STYLES=[["groups_ko","Groups + knockout",true],["americano","Americano",true],["mexicano","Mexicano",false],["single_elim","Single elimination",false],["league","League (round robin only)",false]];
 const MIN_TEAMS=4,MAX_TEAMS=16;
 const BO_CHOICES=[1,3,5,7,9,11,13,15];
 let lastBuiltN=0;

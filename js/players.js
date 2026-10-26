@@ -1,6 +1,7 @@
 // Players on teams: each team can have up to two players, either a linked profile or a guest name.
 // Stored on the tournament as teamPlayers {"<team index>": [{uid,name}|{name}]} plus playerUids (for profile look-ups).
-const MAX_PLAYERS=2;
+// Groups + knockout: two players per team. Americano: each entry is one player, so one linked profile.
+const maxPlayers=()=>typeof isAm==="function"&&isAm()?1:2;
 let profileCache=null,pickTeam=null;
 
 function playersOf(i){const v=(state.teamPlayers||{})[i];return Array.isArray(v)?v:[]}
@@ -19,7 +20,7 @@ function playerChip(p,i,k){
 function renderTeamPlayers(){
   document.querySelectorAll("[data-tp]").forEach(el=>{
     const i=+el.dataset.tp,ps=playersOf(i);
-    el.innerHTML=ps.map((p,k)=>playerChip(p,i,k)).join("")+(isAdmin()&&ps.length<MAX_PLAYERS?`<button type="button" class="addp" onclick="openPlayerPicker(${i})">+ Player</button>`:"");
+    el.innerHTML=ps.map((p,k)=>playerChip(p,i,k)).join("")+(isAdmin()&&ps.length<maxPlayers()?`<button type="button" class="addp" onclick="openPlayerPicker(${i})">${maxPlayers()===1?"+ Link profile":"+ Player"}</button>`:"");
     el.hidden=!ps.length&&!isAdmin();
   })
 }
@@ -33,8 +34,10 @@ function setTeamPlayers(i,list){
 function removePlayer(i,k){const l=[...playersOf(i)];l.splice(k,1);setTeamPlayers(i,l)}
 function addPlayerToTeam(i,p){
   const l=playersOf(i);
-  if(l.length>=MAX_PLAYERS){toast("A team has at most two players.");return false}
+  if(l.length>=maxPlayers()){toast(maxPlayers()===1?"This player is already linked to a profile.":"A team has at most two players.");return false}
   if(p.uid&&allPlayerUids().includes(p.uid)){toast(p.name+" is already in a team in this tournament.");return false}
+  // Americano: linking a profile to a still-unnamed player also takes over the profile's name
+  if(maxPlayers()===1&&/^Player \d+$/.test(teamName(i))){state.teams[i]=p.name;cloudWrite({teams:[...state.teams]});renderTeams()}
   setTeamPlayers(i,[...l,p]);return true
 }
 

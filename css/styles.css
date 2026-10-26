@@ -722,3 +722,15 @@ label.opt input:focus-visible+span{outline:3px solid var(--ball);outline-offset:
 .lg-range{flex:none;width:66px;font-family:"Barlow Condensed",sans-serif;font-weight:800;font-size:17px;color:var(--navy);font-variant-numeric:tabular-nums}
 .lg-text{display:flex;flex-direction:column;font-size:14px;color:var(--muted)}
 .lg-text b{color:var(--ink);font-size:15px}
+
+/* ---------- Americano ---------- */
+body:not(.is-am) [data-am]{display:none!important}
+body.is-am [data-gk]{display:none!important}
+.amsit{display:block;margin-top:6px;color:var(--muted);font-size:12px;font-weight:600;line-height:1.35}
+.amsit-card{margin:0;padding:8px 12px 12px;font-weight:600}
+.amhint{display:inline-flex;align-items:center;margin:0 0 12px 10px;font-size:13px;color:var(--muted)}
+.res.d{background:var(--warn-bg);color:var(--warn-ink)}
+.am-players .team-row .num{width:30px}
+.am-board td:nth-child(2){min-width:140px}
+.am-players{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:10px 14px}
+.am-players .tplayers{padding-left:36px}

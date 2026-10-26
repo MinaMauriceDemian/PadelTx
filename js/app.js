@@ -10,7 +10,7 @@ function $(id){return document.getElementById(id)}
 // viewer = read-only · editor = can enter scores · admin = everything (roles are per tournament)
 const DEFAULT_SETTINGS={start:"12:00",duration:20,date:""};
 // No "courts" here on purpose: older tournaments keep their court1/court2 names (see courtsCfg in engine.js)
-window.__defaults=(n=8)=>({teams:Array.from({length:n},(_,i)=>defaultTeamName(i)),settings:{...DEFAULT_SETTINGS,date:todayStr(),courts:[{name:"Court 1"},{name:"Court 2"}]}});
+window.__defaults=(n=8,style)=>({teams:Array.from({length:n},(_,i)=>style==="americano"?"Player "+(i+1):defaultTeamName(i)),settings:{...DEFAULT_SETTINGS,date:todayStr(),courts:[{name:"Court 1"},{name:"Court 2"}]}});
 function resetState(){state={teams:[...defaultTeams],teamPlayers:{},scores:{},bestOf:{},moves:{},style:"groups_ko",visibility:"public",settings:{...DEFAULT_SETTINGS},sfPairing:0}}
 let role=window.CLOUD_ON?"viewer":"admin", authUser=null, cloudStatus="", view="app", currentTid=null, booted=false, autoOpen=true, myReq=null, requests=[], mine=[];
 const canScore=()=>role==="editor"||role==="admin";
@@ -42,12 +42,12 @@ const idle=el=>el&&document.activeElement!==el;
 allMatches().forEach(m=>["a","b"].forEach(k=>{const el=$(m.id+k);if(idle(el)){const r=rawScore(m.id);el.value=r?r[k]:""}}));
 document.querySelectorAll("[data-team]").forEach(el=>{if(idle(el))el.value=state.teams[+el.dataset.team]||""});
 fillCourtRows();
-[["start",state.settings.start],["duration",state.settings.duration],["tdate",state.settings.date||""],["tvenue",state.settings.venue||""],["tname",state.name||""],["nteams",String(teamCount())],["style",state.style||"groups_ko"],["vis",state.visibility||"public"]].forEach(([id,v])=>{const el=$(id);if(idle(el))el.value=v})
+[["start",state.settings.start],["duration",state.settings.duration],["tdate",state.settings.date||""],["tvenue",state.settings.venue||""],["tname",state.name||""],["nteams",String(teamCount())],["style",state.style||"groups_ko"],["vis",state.visibility||"public"],["ampts",String(typeof amPoints==="function"?amPoints():24)],["amrounds",String(typeof amRounds==="function"?amRounds():7)]].forEach(([id,v])=>{const el=$(id);if(idle(el))el.value=v})
 }
 window.__applyRemote=function(d){
 if(d){
   state.name=d.name||"Tournament";state.members=d.members||{};state.ownerUid=d.ownerUid||null;
-  if(pending.teams==null&&Array.isArray(d.teams)&&d.teams.length>=MIN_TEAMS&&d.teams.length<=MAX_TEAMS)state.teams=d.teams.map(String);
+  if(pending.teams==null&&Array.isArray(d.teams)&&d.teams.length>=MIN_TEAMS&&d.teams.length<=24)state.teams=d.teams.map(String);
   if(d.settings)state.settings={...DEFAULT_SETTINGS,...d.settings};
   state.sfPairing=d.sfPairing!=null?+d.sfPairing:0;
   state.scores=d.scores||{};
@@ -58,7 +58,7 @@ if(d){
   state.teamPlayers=d.teamPlayers||{};
   state._visMissing=!d.visibility;
 }
-if(teamCount()!==lastBuiltN||!document.querySelector("[data-team]")||document.querySelectorAll("[data-team]").length!==teamCount())rebuild();
+if(teamCount()!==lastBuiltN||document.body.dataset.style!==(state.style||"groups_ko")||!document.querySelector("[data-team]")||document.querySelectorAll("[data-team]").length!==teamCount())rebuild();
 else renderFormatInfo();
 syncInputs();refresh();applyRole()
 };

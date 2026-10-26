@@ -86,6 +86,7 @@ function computePlayerStats(uid,list){
       const ti=t.teams.findIndex((_,i)=>playersOf(i).some(p=>p.uid===uid));if(ti<0)return;
       const partner=playersOf(ti).find(p=>p.uid!==uid)||null,date=state.settings.date||"";
       if(state.settings.venue){const v=state.settings.venue;clubs[v]=clubs[v]||{name:v,n:0,last:""};clubs[v].n++;if(date>clubs[v].last)clubs[v].last=date}
+      if(isAm()){amCollectStats(ti,t,{matches,partners,opponents,places,bump});return}
       allMatches().forEach(m=>{
         const A=matchTeam(m.id,"a"),B=matchTeam(m.id,"b");if(A!==ti&&B!==ti)return;
         const s=score(m.id);if(!s)return;
@@ -100,8 +101,8 @@ function computePlayerStats(uid,list){
     });
   });
   matches.sort((a,b)=>(b.date||"").localeCompare(a.date||"")||b.slot-a.slot);
-  const won=matches.filter(m=>m.won).length,top=o=>Object.values(o).sort((a,b)=>b.n-a.n||a.name.localeCompare(b.name)).slice(0,5);
-  return {matches,played:matches.length,won,lost:matches.length-won,rate:matches.length?Math.round(won/matches.length*100):null,
+  const won=matches.filter(m=>m.won).length,drawn=matches.filter(m=>m.draw).length,top=o=>Object.values(o).sort((a,b)=>b.n-a.n||a.name.localeCompare(b.name)).slice(0,5);
+  return {matches,played:matches.length,won,lost:matches.length-won-drawn,drawn,rate:matches.length?Math.round(won/matches.length*100):null,
     tournaments:new Set(list.filter(t=>(t.teams||[]).some((_,i)=>((t.teamPlayers||{})[i]||[]).some(p=>p.uid===uid))).map(t=>t.id)).size,
     titles:places.filter(p=>p.place===1).length,podiums:places.filter(p=>p.place<=3).length,places,
     partners:top(partners),opponents:top(opponents),clubs:Object.values(clubs).sort((a,b)=>b.n-a.n)}
@@ -133,7 +134,7 @@ function renderProfile(){
   const hist=(d.levelHistory||[]).filter(h=>h&&h.level!=null);
   const progression=section("Level progression",hist.length>1?levelChart(hist):`<p class="note">${hist.length?"The graph appears after the level has been updated at least twice.":"No level history yet."}</p>`,"Based on the levels entered over time. Padel Tour doesn't calculate a level itself.");
   const rows=prof.showAll?S.matches:S.matches.slice(0,8);
-  const matches=section("Matches",S.matches.length?`<ol class="pmatches">${rows.map(m=>`<li><span class="res ${m.won?"w":"l"}">${m.won?"W":"L"}</span><div class="pm-main"><b><a href="#t=${esc(m.tid)}">${esc(m.tname)}</a> · ${esc(m.stage)}</b><small>${m.date?esc(new Date(m.date+"T00:00").toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"}))+" · ":""}${esc(m.time)} · ${m.partner?"with "+personLink(m.partner)+" ":""}vs ${m.oppPlayers.length?m.oppPlayers.map(personLink).join(" &amp; "):esc(m.opp)}</small></div><span class="pm-score">${m.us}–${m.them}</span></li>`).join("")}</ol>${S.matches.length>8?`<button class="secondary" onclick="prof.showAll=!prof.showAll;renderProfile()">${prof.showAll?"Show fewer":"Show all "+S.matches.length+" matches"}</button>`:""}`
+  const matches=section("Matches",S.matches.length?`<ol class="pmatches">${rows.map(m=>`<li><span class="res ${m.won?"w":m.draw?"d":"l"}">${m.won?"W":m.draw?"D":"L"}</span><div class="pm-main"><b><a href="#t=${esc(m.tid)}">${esc(m.tname)}</a> · ${esc(m.stage)}</b><small>${m.date?esc(new Date(m.date+"T00:00").toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"}))+" · ":""}${esc(m.time)} · ${m.partner?"with "+personLink(m.partner)+" ":""}vs ${m.oppPlayers.length?m.oppPlayers.map(personLink).join(" &amp; "):esc(m.opp)}</small></div><span class="pm-score">${m.us}–${m.them}</span></li>`).join("")}</ol>${S.matches.length>8?`<button class="secondary" onclick="prof.showAll=!prof.showAll;renderProfile()">${prof.showAll?"Show fewer":"Show all "+S.matches.length+" matches"}</button>`:""}`
     :`<p class="note">No finished matches yet. Matches appear when a tournament admin adds this player to a team.</p>`,"Finished matches in Padel Tour tournaments.");
   const tile=(n,l)=>`<div class="ptile"><b>${n}</b><span>${l}</span></div>`;
   const stats=section("Statistics",`<div class="ptiles">${tile(S.played,"Played")}${tile(S.won,"Won")}${tile(S.lost,"Lost")}${tile(S.rate==null?"–":S.rate+"%","Win rate")}${tile(S.tournaments,"Tournaments")}${tile(S.titles,"Titles")}${tile(S.podiums,"Podiums")}</div>`);

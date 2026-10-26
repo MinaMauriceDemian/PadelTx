@@ -43,7 +43,7 @@ if(window.CLOUD_ON){
       async create(name,opts={}){
         const u=auth.currentUser;if(!u)return {ok:false,error:"not signed in"};
         try{
-          const d=window.__defaults(opts.teams||8);
+          const d=window.__defaults(opts.teams||8,opts.style);
           for(let i=0;i<6;i++){
             const id=genId();
             if((await F.getDoc(T(id))).exists())continue;

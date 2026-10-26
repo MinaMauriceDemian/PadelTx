@@ -1,6 +1,6 @@
 # Padel Tour
 
-Tournament manager for padel: groups + knockout, live scores, roles (admin / editor / viewer), WhatsApp sharing, and a community marketplace.
+Tournament manager for padel: groups + knockout or Americano, live scores, roles (admin / editor / viewer), WhatsApp sharing, and a community marketplace.
 Live site: https://padeltx.netlify.app
 
 ## Files
@@ -18,6 +18,7 @@ Live site: https://padeltx.netlify.app
 | `js/results.js` | Standings, knockout bracket, final ranking |
 | `js/share.js` | Share dialog and WhatsApp messages |
 | `js/market.js` | Marketplace: partner search, used gear, coaches & lessons, donation gifts |
+| `js/americano.js` | Americano style: rotating partners (no repeats), points-per-match scoring, leaderboard; takes over the shared screens only for Americano tournaments |
 | `js/players.js` | Players on teams: up to two per team, a linked profile or a guest name |
 | `js/profile.js` | Player profile (created automatically at sign-in): level (self-reported, 0–7 with a level guide), progression, matches, statistics, preferences, partners & opponents, clubs |
 | `js/main.js` | Starts the app |

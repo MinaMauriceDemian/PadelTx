@@ -28,7 +28,9 @@
 <label>Minutes per slot<input id="duration" type="number" min="5" value="20"></label>
 <label>Tournament date<input id="tdate" type="date"></label>
 <label>Venue / club<input id="tvenue" maxlength="60" placeholder="e.g. Padel Club Stuttgart"></label>
-<label>Number of teams<select id="nteams" data-admin onchange="changeTeamCount(this.value)"></select></label>
+<label><span id="nteamsLbl">Number of teams</span><select id="nteams" data-admin onchange="changeTeamCount(this.value)"></select></label>
+<label data-am>Points per match<select id="ampts" data-admin onchange="setAmPoints(this.value)"></select></label>
+<label data-am>Rounds<input id="amrounds" type="number" min="1" max="30" data-admin onchange="setAmRounds(this.value)"></label>
 <label>Tournament style<select id="style" data-admin onchange="setStyle(this.value)"></select></label>
 <div class="courtbox">
 <div class="courthead"><b>Courts</b><select id="ncourts" data-admin onchange="setCourtCount(this.value)" aria-label="Number of courts"></select></div>
@@ -42,7 +44,7 @@
 <button class="secondary" onclick="printSheets()">Print court sheets (A4)</button>
 <button class="danger" data-admin onclick="resetAll()">Reset scores</button>
 </div>
-<details class="help"><summary>Match length (best of)</summary>
+<details class="help" data-gk><summary>Match length (best of)</summary>
 <p>Set a whole stage at once here, or change a single match in the Stage column of the schedule.</p>
 <div class="fields" id="stageBo" style="margin-top:10px"></div></details>
 <details class="help"><summary>How the tournament works</summary>
@@ -51,26 +53,29 @@
 </details>
 
 <div class="card">
-<h2>Teams</h2>
+<h2 id="teamsTitle">Teams</h2>
 <div class="team-grid" id="teams"></div>
 </div>
 </div>
 
 <nav class="tabs" aria-label="Sections">
 <button class="tab active" data-tab="schedule" onclick="showTab('schedule',this)">Schedule &amp; scores</button>
-<button class="tab" data-tab="standings" onclick="showTab('standings',this)">Standings</button>
-<button class="tab" data-tab="bracket" onclick="showTab('bracket',this)">Bracket</button>
+<button class="tab" data-tab="standings" id="tabStand" onclick="showTab('standings',this)">Standings</button>
+<button class="tab" data-tab="bracket" data-gk onclick="showTab('bracket',this)">Bracket</button>
 <button class="tab" data-tab="ranking" onclick="showTab('ranking',this)">Ranking</button>
 <button class="tab" data-tab="access" id="accessTab" onclick="showTab('access',this)" hidden>Access</button>
 </nav>
 
 <section id="schedule" class="section active">
-<p class="note intro">Enter the rounds each team won (on a phone, use − and +). Winners are highlighted automatically, and the knockout rounds fill in once a group has finished. A dashed amber box is a match still being played; a red box means the score is not possible for that match length.</p>
+<p class="note intro" data-am>Type the points each pair won; the other side fills in automatically so the match adds up. On a phone, use − and +. Every round brings new partners, and the leaderboard updates the moment a score is entered.</p>
+<p class="note intro" data-gk>Enter the rounds each team won (on a phone, use − and +). Winners are highlighted automatically, and the knockout rounds fill in once a group has finished. A dashed amber box is a match still being played; a red box means the score is not possible for that match length.</p>
 <div id="liveBar" class="livebar" hidden></div>
 <div id="schedWarn" class="viewbar" hidden></div>
 <div id="schedTools"></div>
 <div id="schedBox"></div>
-<details class="help"><summary>Scoring rules</summary>
+<details class="help" data-am><summary>Americano rules</summary>
+<p>Every round you play with a new partner against two new opponents. A match is played to a fixed total of points (set in Setup, e.g. 24): when the points add up to that total, the match is over, so 14–10 or 12–12. Every player keeps the points their pair won. If the number of players doesn’t fit the courts, players take turns sitting out and get half the match points for that round, the same as an average result. The winner is the player with the most points; ties are broken by wins, then points difference.</p></details>
+<details class="help" data-gk><summary>Scoring rules</summary>
 <p>Each match is "best of" a number of rounds: the first team to win more than half of them wins the match. Defaults: group and placement matches best of 7 (first to 4), quarter- and semi-finals best of 9 (first to 5), the final best of 11 (first to 6). The admin can change any match in the Stage column, or a whole stage under Setup → Match length.</p></details>
 </section>
 
@@ -78,7 +83,7 @@
 <div class="sharebar"><button class="wa" onclick="waShare('results')">Share standings on WhatsApp</button></div>
 <div class="legend" id="legend"></div>
 <div class="grid two" id="standGroups" style="display:grid;gap:16px"></div>
-<details class="help"><summary>How the table is ranked</summary>
+<details class="help" data-gk><summary>How the table is ranked</summary>
 <p>Group matches are best of 7 rounds. Group matches are best of 7 rounds by default. The match winner gets 3 points (loser gets 0). Ranking: points, then round difference, then total rounds won (RW). A score is valid when the winner reaches more than half of the "best of" number and both teams together do not exceed it (best of 7: 4–0, 4–3, 5–2, 7–0).</p></details>
 </section>
 
@@ -153,7 +158,7 @@
 <div class="newt">
 <h3>New tournament</h3>
 <label>Name<input id="newName" placeholder="e.g. Autumn Cup" maxlength="60" onkeydown="if(event.key==='Enter')createT()"></label>
-<div class="fields"><label>Number of teams<select id="newTeams"></select></label><label>Tournament style<select id="newStyle"></select></label><label style="grid-column:1/-1">Visibility<select id="newVis"><option value="public">Public: listed on the home page</option><option value="private">Private: only with the ID or link</option></select></label></div>
+<div class="fields"><label><span id="newTeamsLbl">Number of teams</span><select id="newTeams"></select></label><label>Tournament style<select id="newStyle" onchange="onNewStyle()"></select></label><label style="grid-column:1/-1">Visibility<select id="newVis"><option value="public">Public: listed on the home page</option><option value="private">Private: only with the ID or link</option></select></label></div>
 <button class="primary" onclick="createT()">Create tournament</button>
 </div>
 <div class="actions" style="margin:0"><button class="secondary" onclick="openMyProfile()">My player profile</button><button class="danger" style="margin-left:0" onclick="doSignOut()">Sign out</button></div>
@@ -275,6 +280,7 @@
 <script src="js/market.js"></script>
 <script src="js/players.js"></script>
 <script src="js/profile.js"></script>
+<script src="js/americano.js"></script>
 <script src="js/main.js"></script>
 <script type="module" src="js/cloud.js"></script>
 </body>

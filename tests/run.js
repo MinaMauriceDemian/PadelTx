@@ -272,6 +272,12 @@ async function profileTests(){
     check(saved&&saved.level===3.5&&saved.levelHistory.length===4&&saved.levelHistory[3].level===3.5,"new level saved and added to the history (comma accepted)");
     check(saved.side==="left"&&saved.days.join()==="sat,sun"&&saved.whatsapp==="491701234567","preferences kept");
     check(!("reliability" in saved)&&!("playtomicUrl" in saved),"only the new fields are saved");
+    // an Americano tournament counts too
+    const A=JSON.parse(E(`(function(){const keep=state;state={...keep,style:"americano",teams:Array.from({length:8},(_,i)=>"P"+i),teamPlayers:{"0":[{uid:"u1",name:"Mina"}]},scores:{},settings:{...keep.settings,points:24,rounds:7}};
+      allMatches().forEach(m=>state.scores[m.id]=(m.pa.includes(0)?{a:15,b:9}:m.pb.includes(0)?{a:9,b:15}:{a:12,b:12}));const d={id:"AM1",name:"Friday Americano",style:"americano",teams:state.teams,teamPlayers:state.teamPlayers,scores:state.scores,settings:state.settings};state=keep;return JSON.stringify(d)})()`));
+    const SA=E(`computePlayerStats("u1",${JSON.stringify([A])})`);
+    check(SA.played===7&&SA.won===7&&SA.titles===1,"Americano matches, wins and title count on the profile");
+    check(SA.partners.length===5&&SA.matches[0].stage.includes("Americano"),"Americano partners listed");
     // a brand-new account gets a profile automatically
     saved=null;w.__cloud.getProfile=async()=>({ok:true,profile:null});
     E('authUser={uid:"new1",email:"lena@x.de",displayName:"Lena Weber",photoURL:""}');
@@ -283,6 +289,69 @@ async function profileTests(){
     check(errors.length===0,"no script errors: "+errors.join(" | "));
   }catch(e){failed++;console.log("  ✗ crashed: "+e.stack.split("\n").slice(0,3).join(" | "))}
 }
+
+section("Americano: fair rotation for 4–24 players",()=>{
+  const {E}=loadApp();
+  for(let n=4;n<=24;n++){
+    E(`state.style="americano";state.teams=Array.from({length:${n}},(_,i)=>"P"+i);state.settings={start:"10:00",duration:20,courts:[{name:"A"},{name:"B"},{name:"C"},{name:"D"}]};state.scores={};rebuild()`);
+    const r=E(`(function(){const ms=allMatches(),P={},g=Array(${n}).fill(0),s=Array(${n}).fill(0);ms.rounds.forEach(rd=>rd.sit.forEach(x=>s[x]++));
+      let ok=true;ms.rounds.forEach(rd=>{const seen=new Set([...rd.sit]);rd.ids.forEach(id=>{const m=ms.byId[id];[...m.pa,...m.pb].forEach(x=>{if(seen.has(x))ok=false;seen.add(x)})});if(seen.size!==${n})ok=false});
+      ms.forEach(m=>{[m.pa,m.pb].forEach(p=>{const k=Math.min(...p)+"-"+Math.max(...p);P[k]=(P[k]||0)+1});[...m.pa,...m.pb].forEach(x=>g[x]++)});
+      return {ok,maxP:Math.max(...Object.values(P)),rep:Object.values(P).filter(c=>c>1).length,gs:Math.max(...g)-Math.min(...g),ss:Math.max(...s)-Math.min(...s),courts:ms.rounds[0].ids.length}})()`);
+    check(r.ok,`${n} players: everyone exactly once per round (playing or sitting out)`);
+    // with sit-outs a repeat can be unavoidable late on; it must stay rare
+    check(n%4===0||n<=9?r.maxP===1:r.maxP<=2&&r.rep<=1,`${n} players: ${n%4===0||n<=9?"nobody repeats a partner":"at most one repeated partnership"} (max ${r.maxP}, repeats ${r.rep})`);
+    check(r.gs<=1&&r.ss<=1,`${n} players: games and sit-outs spread evenly`);
+    check(r.courts===Math.min(4,Math.floor(n/4)),`${n} players: uses the free courts`);
+  }
+  E(`state.teams=Array.from({length:8},(_,i)=>"P"+i);state.settings={start:"10:00",duration:20,courts:[{name:"A"},{name:"B"}]};rebuild()`);
+  const pairs=E(`(function(){const s=new Set();allMatches().forEach(m=>[m.pa,m.pb].forEach(p=>s.add(Math.min(...p)+"-"+Math.max(...p))));return s.size})()`);
+  check(pairs===28&&E("allMatches().rounds.length")===7,"8 players: 7 rounds, everyone partners everyone once");
+});
+
+section("Americano: scoring, leaderboard, rounds and points",()=>{
+  const {E,doc,errors}=loadApp();
+  E(`state.style="americano";state.teams=Array.from({length:9},(_,i)=>"P"+(i+1));state.settings={start:"10:00",duration:20,courts:[{name:"A"},{name:"B"}],points:24,rounds:3};state.scores={};rebuild()`);
+  check(doc.getElementById("tabStand").textContent==="Leaderboard"&&doc.getElementById("teamsTitle").textContent==="Players","screens switch to players and leaderboard");
+  check(doc.body.classList.contains("is-am"),"Americano settings shown, best-of and bracket hidden");
+  const id=E("allMatches()[0].id");
+  E(`$("${id}a").value="14";amInput("${id}","a")`);
+  check(E(`$("${id}b").value`)==="10"&&JSON.stringify(E(`state.scores["${id}"]`))==='{"a":14,"b":10}',"typing 14 fills in 10 (to 24)");
+  E(`$("${id}a").value="";$("${id}b").value="";onScore("${id}");amBump("${id}","a",1)`);
+  check(JSON.stringify(E(`state.scores["${id}"]`))==='{"a":13,"b":11}',"+ starts from 12–12 and moves one point across");
+  check(E(`scoreState({a:13,b:12},"${id}")`)==="bad"&&E(`scoreState({a:10,b:5},"${id}")`)==="progress","too many points flagged; fewer = still playing");
+  E(`allMatches().forEach((m,k)=>state.scores[m.id]={a:12+(k%5),b:12-(k%5)});refresh()`);
+  const t=E("amTable()"),sat=t.filter(r=>r.byes>0);
+  check(t.every(r=>r.played+r.byes===3),"each player plays or sits out every round");
+  check(sat.length===3&&sat.every(r=>r.bonus===12),"sitting out a round gives half the match points (12)");
+  check(E("amTable().reduce((s,r)=>s+r.pts,0)")===E("allMatches().length")*48,"all points accounted for");
+  check(E("placements().every(p=>p.t!==null)")&&doc.querySelectorAll("#rankBody tr").length===9,"final ranking once all rounds are played");
+  check(/Final ranking/.test(E("resultsText()"))&&/pts/.test(E("resultsText()")),"WhatsApp text shows the ranking with points");
+  const r1=JSON.stringify(E("allMatches().filter(m=>m.round<=3).map(m=>[m.id,m.pa,m.pb])"));
+  E('setAmRounds(5)');
+  check(E("allMatches().rounds.length")===5&&JSON.stringify(E("allMatches().filter(m=>m.round<=3).map(m=>[m.id,m.pa,m.pb])"))===r1,"adding rounds keeps the earlier rounds and their scores");
+  check(E("placements().every(p=>p.t===null)"),"ranking waits for the new rounds");
+  E('setAmPoints(32)');check(E("amPoints()")===32&&Object.keys(E("state.scores")).length===0,"changing points clears old scores");
+  E('printSheets()');check(/Americano/.test(doc.getElementById("printArea").textContent),"court sheets print the rounds");
+  check(errors.length===0,"no script errors: "+errors.join(" | "));
+});
+
+section("Americano: switching style, players and phone view",()=>{
+  const {E,doc,errors}=loadApp();setTeams(E,8);
+  E('state.scores.gA0={a:4,b:1};state.teamPlayers={"0":[{uid:"u1",name:"Mina"},{uid:"u2",name:"Omar"}]};setStyle("americano")');
+  check(E("isAm()")&&Object.keys(E("state.scores")).length===0,"switch to Americano (scores cleared)");
+  check(E("playersOf(0).length")===1,"one linked profile per player");
+  E('state.teams[1]="Player 2"');check(E('addPlayerToTeam(1,{uid:"u3",name:"Sara"})')&&E("state.teams[1]")==="Sara","linking a profile names an unnamed player");
+  E('changeTeamCount(20)');check(E("teamCount()")===20,"up to 24 players");
+  check(doc.querySelectorAll("#nteams option").length===21,"player count list goes to 24");
+  E('setStyle("groups_ko")');check(!E("isAm()")&&E("teamCount()")===16,"switching back keeps at most 16 teams");
+  check(E("allMatches().byId.final")!=null,"groups + knockout schedule is back");
+  check(errors.length===0,"no script errors: "+errors.join(" | "));
+  const P=loadApp({phone:true});
+  P.E(`state.style="americano";state.teams=Array.from({length:8},(_,i)=>"P"+(i+1));state.scores={};rebuild()`);
+  check(P.doc.querySelectorAll(".mslot").length===7&&P.doc.querySelectorAll(".mtile").length===14,"phone: one card per round, one tile per court");
+  check(P.errors.length===0,"phone: no script errors");
+});
 
 // Marketplace: uses a fake online layer instead of Firebase
 async function marketTests(){
