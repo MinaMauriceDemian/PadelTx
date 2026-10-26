@@ -27,7 +27,7 @@
       "parameters": {
         "strict_required_status_checks_policy": true,
         "required_status_checks": [
-          { "context": "test / Tests (Node 20)", "integration_id": 15368 },
+          { "context": "test / Tests (Node 24)", "integration_id": 15368 },
           { "context": "test / Tests (Node 22)", "integration_id": 15368 },
           { "context": "Deploy to staging", "integration_id": 15368 }
         ]

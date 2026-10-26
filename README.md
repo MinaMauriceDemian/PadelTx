@@ -46,7 +46,7 @@ Netlify publishes the repository as it is (no build step), through GitHub Action
 
 | Workflow | When | What it does |
 |---|---|---|
-| `.github/workflows/ci.yml` | Push to any branch except `Master` | Runs `npm test` on Node 20 and 22 |
+| `.github/workflows/ci.yml` | Push to any branch except `Master` | Runs `npm test` on Node 22 and 24 |
 | `.github/workflows/deploy.yml` | Pull request into `Master` | Tests, then a preview at `https://pr-<number>--padeltx.netlify.app` |
 | `.github/workflows/deploy.yml` | Push to `Master` | Tests → staging (`https://staging--padeltx.netlify.app`) + smoke test → production + smoke test |
 
