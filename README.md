@@ -42,4 +42,31 @@ check courts and hours, best-of settings, the phone view, the live marker and Wh
 
 ## Deploy
 
-Netlify publishes the repository as it is (no build step). Every commit to `main` updates the live site.
+Netlify publishes the repository as it is (no build step), through GitHub Actions:
+
+| Workflow | When | What it does |
+|---|---|---|
+| `.github/workflows/ci.yml` | Push to any branch except `Master` | Runs `npm test` on Node 22 and 24 |
+| `.github/workflows/deploy.yml` | Pull request into `Master` | Tests, then a preview at `https://pr-<number>--padeltx.netlify.app` |
+| `.github/workflows/deploy.yml` | Push to `Master` | Tests → staging (`https://staging--padeltx.netlify.app`) + smoke test → production + smoke test |
+
+If the tests or the staging smoke test fail, the live site isn't changed.
+
+One-time setup:
+1. Netlify → User settings → Applications → create a personal access token. Netlify → Site configuration → General → copy the Site ID.
+2. GitHub → Settings → Secrets and variables → Actions → add `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID`.
+3. Netlify → Site configuration → Build & deploy → Continuous deployment → **Stop builds**, so only the workflow publishes.
+4. GitHub → Settings → Rules → Rulesets → New ruleset → **Import a ruleset** → choose `.github/rulesets/protect-master.json`.
+   From then on, changes reach `Master` only through a pull request whose tests and staging deploy are green; direct pushes, force pushes and deleting the branch are blocked.
+5. Optional: GitHub → Settings → Environments → `production` → add yourself under Required reviewers to approve each release.
+
+### Making a change
+
+```
+git checkout -b my-change
+# edit, then
+git commit -am "Describe the change"
+git push -u origin my-change
+```
+
+Open the pull request from the link Git prints. Merge it once all checks are green.
