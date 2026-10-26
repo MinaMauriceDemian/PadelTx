@@ -1,0 +1,119 @@
+# Test -> staging deploy -> smoke test -> production deploy.
+#
+# Pull request into Master: tests, then a Netlify preview at https://pr-<number>--<site>.netlify.app
+# Push to Master:           tests, then staging (https://staging--<site>.netlify.app), smoke test,
+#                           then production (https://padeltx.netlify.app).
+#
+# Needs repository secrets NETLIFY_AUTH_TOKEN and NETLIFY_SITE_ID, and Netlify's own
+# Git auto-publishing turned off so the live site only changes through this workflow.
+name: Deploy
+
+on:
+  push:
+    branches: [Master]
+  pull_request:
+    branches: [Master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NETLIFY_CLI: netlify-cli@17
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  staging:
+    name: Deploy to staging
+    needs: test
+    # Pull requests from forks have no access to secrets, so they only get the tests
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: ${{ github.event_name == 'pull_request' && 'preview' || 'staging' }}
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Only publish the site itself, not tests, workflows or package files
+      - name: Prepare site folder
+        run: |
+          mkdir _site
+          rsync -a ./ _site/ \
+            --exclude .git --exclude .github --exclude _site --exclude node_modules \
+            --exclude tests --exclude package.json --exclude package-lock.json
+
+      - name: Deploy to Netlify (draft)
+        id: deploy
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          ALIAS: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || 'staging' }}
+        run: |
+          npx --yes "$NETLIFY_CLI" deploy --dir=_site --alias="$ALIAS" \
+            --message="${{ github.sha }}" --json > deploy.json
+          url=$(jq -r '.deploy_url' deploy.json)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Staging deployed: $url" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Smoke test staging
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          for path in "" "css/styles.css" "js/app.js" "js/main.js"; do
+            curl -fsS --retry 5 --retry-delay 3 --retry-all-errors -o /dev/null "$URL/$path"
+          done
+          curl -fsS "$URL/" | grep -q "<title>Padel Tour</title>"
+          echo "Smoke test passed for $URL"
+
+  production:
+    name: Deploy to production
+    needs: staging
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/Master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Add "Required reviewers" to this environment in GitHub to approve each release by hand
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Prepare site folder
+        run: |
+          mkdir _site
+          rsync -a ./ _site/ \
+            --exclude .git --exclude .github --exclude _site --exclude node_modules \
+            --exclude tests --exclude package.json --exclude package-lock.json
+
+      - name: Deploy to Netlify (production)
+        id: deploy
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          npx --yes "$NETLIFY_CLI" deploy --dir=_site --prod \
+            --message="${{ github.sha }}" --json > deploy.json
+          url=$(jq -r '.url' deploy.json)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Production deployed: $url" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Smoke test production
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        run: curl -fsS --retry 5 --retry-delay 3 --retry-all-errors "$URL/" | grep -q "<title>Padel Tour</title>"
