@@ -240,7 +240,7 @@ async function profileTests(){
     check(S.titles===1&&S.podiums===1&&S.tournaments===1,"title and podium counted");
     check(S.partners[0]&&S.partners[0].name==="Omar"&&S.partners[0].n===S.played,"partner counted on every match");
     check(S.clubs[0]&&S.clubs[0].name==="Padel Club Stuttgart","venue listed under clubs");
-    const profile={displayName:"Mina Morise",city:"Stuttgart",homeClub:"Padel Club Stuttgart",level:3.25,reliability:62,levelHistory:[{level:2.9,at:1750000000000},{level:3.1,at:1755000000000},{level:3.25,at:1760000000000}],playtomicUrl:"https://playtomic.io/profile/user/123",hand:"right",side:"left",matchType:"competitive",days:["sat","sun"],times:["morning"],whatsapp:"491701234567",about:"",visibility:"public",createdAt:1}
+    const profile={displayName:"Mina Morise",city:"Stuttgart",homeClub:"Padel Club Stuttgart",level:3.25,levelHistory:[{level:2.9,at:1750000000000},{level:3.1,at:1755000000000},{level:3.25,at:1760000000000}],hand:"right",side:"left",matchType:"competitive",days:["sat","sun"],times:["morning"],whatsapp:"491701234567",about:"",visibility:"public",createdAt:1}
     let saved=null;
     w.__cloud={getProfile:async uid=>uid==="u1"?{ok:true,profile:{uid:"u1",...profile}}:uid==="priv"?{ok:true,profile:null,private:true}:{ok:true,profile:null},
       tournamentsOfPlayer:async()=>({ok:true,list:[T]}),saveProfile:async d=>{saved=d;return {ok:true}},listPublicProfiles:async()=>({ok:true,list:[]}),leave(){}};
@@ -250,23 +250,36 @@ async function profileTests(){
     check(!doc.getElementById("profileView").hidden,"profile page opens");
     ["Level","Level progression","Matches","Statistics","Player preferences","Players I play most with","Clubs"].forEach(s=>check([...doc.querySelectorAll("#profileBody h2")].some(h=>h.textContent===s),"section: "+s));
     check(body.includes("3.25")&&body.includes("Intermediate")&&/Self-reported/.test(body),"level with band and self-reported label");
-    check(doc.querySelector("a.ptbtn")&&doc.querySelector("a.ptbtn").href.startsWith("https://playtomic.io/"),"View on Playtomic button");
+    check(!/playtomic/i.test(doc.body.innerHTML+[...doc.scripts].map(s=>s.textContent).join("")),"no mention of other apps anywhere");
+    E('toggleGuide(document.querySelector("#profileBody .infobtn"),"lvGuide")');
+    check(!doc.getElementById("lvGuide").hidden&&doc.querySelectorAll("#lvGuide li").length===7,"level guide opens with all 7 levels");
+    check(doc.querySelector("#lvGuide li.on")&&/Intermediate/.test(doc.querySelector("#lvGuide li.on").textContent),"guide highlights the player's level");
     check(doc.querySelectorAll(".pchart circle").length===3,"level progression chart");
     check(doc.querySelectorAll(".pmatches li").length>0&&body.includes("Autumn Cup"),"matches listed");
     check(body.includes("Omar")&&body.includes("Sara"),"partners and opponents listed");
     check(/Edit profile/.test(body),"own profile can be edited");
     await E('showProfile("priv")');check(/This profile is private/.test(doc.getElementById("profileBody").textContent),"private profile message");
-    await E('showProfile("nobody")');check(/No profile yet/.test(doc.getElementById("profileBody").textContent),"missing profile message");
+    await E('showProfile("nobody")');check(/Profile not found/.test(doc.getElementById("profileBody").textContent),"unknown player message");
     // editing
     await E('showProfile("u1")');await E('editProfile()');
     check(doc.getElementById("profileDlg").open&&doc.getElementById("pfLevel").value==="3.25","edit form filled in");
     E('$("pfLevel").value="9"');await E('saveProfileForm({preventDefault(){}})');
     check(/0 to 7/.test(doc.getElementById("pfMsg").textContent)&&!saved,"level outside 0–7 refused");
-    E('$("pfLevel").value="3,5";$("pfUrl").value="https://evil.example.com/x"');await E('saveProfileForm({preventDefault(){}})');
-    check(/playtomic/.test(doc.getElementById("pfMsg").textContent)&&!saved,"non-Playtomic link refused");
-    E('$("pfUrl").value="https://playtomic.io/profile/user/123"');await E('saveProfileForm({preventDefault(){}})');
+    E('$("pfLevel").value="3,5";updateLevelHint()');
+    check(/Upper intermediate/.test(doc.getElementById("pfLevelHint").textContent),"typing a level shows what it means");
+    E('toggleGuide($("pfGuideBtn"),"pfGuide")');check(/Upper intermediate/.test(doc.querySelector("#pfGuide li.on").textContent),"form guide highlights the typed level");
+    await E('saveProfileForm({preventDefault(){}})');
     check(saved&&saved.level===3.5&&saved.levelHistory.length===4&&saved.levelHistory[3].level===3.5,"new level saved and added to the history (comma accepted)");
     check(saved.side==="left"&&saved.days.join()==="sat,sun"&&saved.whatsapp==="491701234567","preferences kept");
+    check(!("reliability" in saved)&&!("playtomicUrl" in saved),"only the new fields are saved");
+    // a brand-new account gets a profile automatically
+    saved=null;w.__cloud.getProfile=async()=>({ok:true,profile:null});
+    E('authUser={uid:"new1",email:"lena@x.de",displayName:"Lena Weber",photoURL:""}');
+    await E('showProfile("new1")');
+    check(saved&&saved.displayName==="Lena Weber"&&saved.visibility==="public","profile created automatically for a new account");
+    check(/Lena Weber/.test(doc.getElementById("profileBody").textContent)&&/Edit profile/.test(doc.getElementById("profileBody").textContent)&&!/Create/.test(doc.getElementById("profileBody").textContent),"shown straight away, no Create step");
+    saved=null;await E('window.__authState({uid:"new2",email:"tom@x.de",displayName:"",photoURL:""})');await new Promise(r=>setTimeout(r,20));
+    check(saved&&saved.displayName==="tom","signing in creates the profile too");
     check(errors.length===0,"no script errors: "+errors.join(" | "));
   }catch(e){failed++;console.log("  ✗ crashed: "+e.stack.split("\n").slice(0,3).join(" | "))}
 }

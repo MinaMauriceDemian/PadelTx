@@ -639,8 +639,6 @@ a.brandlink.mini .ballmark{width:20px;height:20px}
 .phead-main .note{margin:0}
 .pchips{display:flex;flex-wrap:wrap;gap:6px}
 .pabout{margin:0;max-width:60ch}
-a.btn.ptbtn{background:var(--ink);color:var(--card)}
-html[data-theme="dark"] a.btn.ptbtn{background:#FFFFFF;color:#0E1A2B}
 .pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px;align-items:start}
 .psec{display:flex;flex-direction:column;gap:12px}
 .psec h2{margin:0}
@@ -708,3 +706,19 @@ label.opt span{display:inline-flex;align-items:center;min-height:36px;padding:4p
 label.opt input:checked+span{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 label.opt input:focus-visible+span{outline:3px solid var(--ball);outline-offset:2px}
 @media(max-width:760px){.phead-main h1{font-size:30px}.plevel-n{font-size:52px}.prel{margin-left:0}.tplayers{padding-left:0}}
+
+/* ---------- Level guide (info button) ---------- */
+.infobtn{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;min-height:36px;padding:4px 12px 4px 8px;border-radius:999px;background:var(--accent2);color:var(--accent2-ink);font-size:14px;font-weight:700}
+.infobtn:hover{background:var(--accent2-h)}
+.infobtn[aria-expanded="true"]{background:var(--accent);color:var(--on-accent)}
+.lvrow{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.lvrow label{font-size:13px;font-weight:600;color:var(--muted)}
+#pfLevelHint{min-height:1.2em;font-weight:600;color:var(--ink)}
+.guidebox{display:flex;flex-direction:column;gap:8px}
+.guidebox .note{margin:0}
+.lvlguide{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px}
+.lvlguide li{display:flex;gap:12px;align-items:flex-start;padding:8px 10px;border-radius:10px;background:var(--soft);border:1.5px solid transparent}
+.lvlguide li.on{background:var(--now-bg);border-color:var(--ball)}
+.lg-range{flex:none;width:66px;font-family:"Barlow Condensed",sans-serif;font-weight:800;font-size:17px;color:var(--navy);font-variant-numeric:tabular-nums}
+.lg-text{display:flex;flex-direction:column;font-size:14px;color:var(--muted)}
+.lg-text b{color:var(--ink);font-size:15px}

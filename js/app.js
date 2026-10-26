@@ -70,6 +70,7 @@ window.__setMyRequest=st=>{myReq=st;applyRole()};
 window.__authState=function(u){
 authUser=u;
 if(u&&view==="login"){$("loginMsg").textContent="";showView("landing");window.scrollTo(0,0)}
+if(u&&typeof ensureMyProfile==="function")ensureMyProfile();
 if(view==="landing")renderLanding();
 if(view==="market")renderMarket();
 if($("authDlg").open)updateAuthDlg();

@@ -36,14 +36,11 @@ service cloud.firestore {
 
     // Player profiles: the owner writes; everyone reads public ones, only the owner reads a private one.
     function validProfile(d) {
-      return d.keys().hasOnly(['displayName','photoURL','city','homeClub','level','reliability','levelHistory','playtomicUrl','hand','side','matchType','days','times','whatsapp','about','visibility','createdAt','updatedAt'])
+      return d.keys().hasOnly(['displayName','photoURL','city','homeClub','level','levelHistory','hand','side','matchType','days','times','whatsapp','about','visibility','createdAt','updatedAt'])
         && d.displayName is string && d.displayName.size() > 0 && d.displayName.size() <= 40
         && d.visibility in ['public','private']
         && (d.level == null || (d.level is number && d.level >= 0 && d.level <= 7))
-        && (d.reliability == null || (d.reliability is number && d.reliability >= 0 && d.reliability <= 100))
         && d.levelHistory is list && d.levelHistory.size() <= 100
-        && d.playtomicUrl is string && d.playtomicUrl.size() <= 200
-        && (d.playtomicUrl == '' || d.playtomicUrl.matches('https://([a-z0-9-]+[.])*playtomic[.](io|com)(/.*)?'))
         && d.whatsapp is string && (d.whatsapp == '' || d.whatsapp.matches('^[0-9]{7,15}$'))
         && d.about is string && d.about.size() <= 300;
     }

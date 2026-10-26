@@ -1,5 +1,6 @@
-// Player profile: the seven Playtomic-style sections, built from the player's own entries plus their Padel Tour results.
-// Level and reliability are typed in by the player (from Playtomic) and always labelled "self-reported".
+// Player profile: level, level progression, matches, statistics, preferences, partners & opponents, clubs.
+// Built from the player's own entries plus their Padel Tour results. The level is typed in by the player and labelled "self-reported".
+// Every signed-in person gets a profile automatically (ensureMyProfile).
 const DAYS=[["mon","Mon"],["tue","Tue"],["wed","Wed"],["thu","Thu"],["fri","Fri"],["sat","Sat"],["sun","Sun"]];
 const TIMES=[["morning","Morning"],["afternoon","Afternoon"],["evening","Evening"]];
 const HANDS={right:"Right-handed",left:"Left-handed"};
@@ -8,14 +9,47 @@ const MTYPES={competitive:"Competitive",friendly:"Friendly",both:"Competitive & 
 let prof={uid:null,data:null,stats:null,showAll:false};
 
 function fmtLevel(v){return (Math.round(+v*100)/100).toFixed(2)}
-// Playtomic's level bands (0–7 scale)
-function levelBand(v){v=+v;return v<1?"Initiation":v<1.5?"Beginner":v<2.5?"Initiation intermediate":v<3.5?"Intermediate":v<4.5?"Intermediate high":v<5.5?"Intermediate advanced":"Competition"}
-function isPlaytomicUrl(u){try{const x=new URL(u);return x.protocol==="https:"&&/(^|\.)playtomic\.(io|com)$/.test(x.hostname)}catch(e){return false}}
+// Level guide on the 0–7 scale: [from, to, name, description]
+const LEVELS=[
+  [0,0.99,"Starter","First steps on court, little or no racket-sport experience."],
+  [1,1.49,"Beginner","Learning the basic shots, the serve and the rules."],
+  [1.5,2.49,"Improver","Rallies are getting longer; starting to play the ball off the walls."],
+  [2.5,3.49,"Intermediate","Consistent shots, basic tactics, comfortable at the net."],
+  [3.5,4.49,"Upper intermediate","Confident with walls, lobs and volleys; plays with a plan."],
+  [4.5,5.49,"Advanced","Controls pace and placement; switches between attack and defence."],
+  [5.5,7,"Competition","Plays tournaments regularly, from top amateur up to pro."]
+];
+function levelInfo(v){v=+v;return LEVELS.find(l=>v<=l[1]+0.0001)||LEVELS[LEVELS.length-1]}
+function levelBand(v){return levelInfo(v)[2]}
+const INFO_ICON='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"></circle><path d="M12 11v6"></path><circle cx="12" cy="7.6" r=".6" fill="currentColor"></circle></svg>';
+// The level guide: every band, with the one matching `v` highlighted
+function levelGuideHtml(v){
+  const cur=v===null||v===""||isNaN(+v)?null:levelInfo(v);
+  return `<p class="note">Pick the level that best describes how you play today. Use decimals to fine-tune, e.g. 2.75.</p><ol class="lvlguide">${LEVELS.map(l=>`<li class="${cur===l?"on":""}"><span class="lg-range">${l[0].toFixed(1)}–${(l[1]===7?7:l[1]+0.01).toFixed(1)}</span><span class="lg-text"><b>${l[2]}</b>${l[3]}</span></li>`).join("")}</ol>`
+}
+function toggleGuide(btn,boxId){
+  const box=$(boxId),open=box.hidden;box.hidden=!open;btn.setAttribute("aria-expanded",String(open));
+  if(open)box.innerHTML=levelGuideHtml(boxId==="pfGuide"?$("pfLevel").value.trim().replace(",","."):(prof.data&&prof.data.level))
+}
 
 /* ---------- Opening ---------- */
 function openProfile(uid){if(!uid)return;if(location.hash!=="#p="+uid)location.hash="p="+uid;else showProfile(uid)}
+// A profile with just the account's name and photo, created the first time someone signs in
+function defaultProfile(){
+  return {displayName:(authUser.displayName||authUser.email.split("@")[0]).slice(0,40),photoURL:authUser.photoURL||"",city:"",homeClub:"",about:"",
+    level:null,levelHistory:[],hand:"",side:"",matchType:"",days:[],times:[],whatsapp:"",visibility:"public",createdAt:Date.now()}
+}
+async function ensureMyProfile(){
+  if(!authUser||!window.__cloud||!window.__cloud.getProfile)return null;
+  const r=await window.__cloud.getProfile(authUser.uid);
+  if(!r.ok)return null;
+  if(r.profile)return r.profile;
+  const d=defaultProfile(),s=await window.__cloud.saveProfile(d);
+  if(s.ok)profileCache=null;
+  return {uid:authUser.uid,...d}
+}
 function openMyProfile(){
-  if(!authUser){toLogin();toast("Sign in to create your player profile.");return}
+  if(!authUser){toLogin();toast("Sign in to see your player profile.");return}
   if($("authDlg").open)$("authDlg").close();
   openProfile(authUser.uid)
 }
@@ -29,10 +63,10 @@ async function showProfile(uid){
   if(prof.uid!==uid)return;
   const own=!!authUser&&authUser.uid===uid;
   if(!p.ok){$("profileBody").innerHTML=`<div class="card"><p class="note">Could not load this profile (${esc(p.error)}).</p></div>`;return}
+  if(!p.profile&&own)p.profile=await ensureMyProfile()||{uid,...defaultProfile()};
+  if(prof.uid!==uid)return;
   if(!p.profile){
-    $("profileBody").innerHTML=own
-      ?`<div class="card prof-empty"><h2>Create your player profile</h2><p class="note">Add your Playtomic level, your preferred side and when you like to play. Your Padel Tour matches and statistics then appear here automatically.</p><button class="primary" onclick="editProfile()">Create profile</button></div>`
-      :`<div class="card prof-empty"><h2>${p.private?"This profile is private":"No profile yet"}</h2><p class="note">${p.private?"This player has chosen not to show their profile.":"This player hasn't created a profile yet."}</p><button class="secondary" onclick="brandHome()">← Home</button></div>`;
+    $("profileBody").innerHTML=`<div class="card prof-empty"><h2>${p.private?"This profile is private":"Profile not found"}</h2><p class="note">${p.private?"This player has chosen not to show their profile.":"This player hasn't signed in to Padel Tour yet."}</p><button class="secondary" onclick="brandHome()">← Home</button></div>`;
     return
   }
   prof.data=p.profile;
@@ -87,15 +121,15 @@ function renderProfile(){
       ${chips.length?`<div class="pchips">${chips.map(c=>`<span class="chip chipA">${esc(c)}</span>`).join("")}</div>`:""}
       ${d.about?`<p class="pabout" dir="auto">${esc(d.about)}</p>`:""}
       <div class="actions" style="margin:0">
-        ${d.playtomicUrl&&isPlaytomicUrl(d.playtomicUrl)?`<a class="btn ptbtn" href="${esc(d.playtomicUrl)}" target="_blank" rel="noopener">View on Playtomic ↗</a>`:""}
         ${d.whatsapp?`<a class="btn wa" href="https://wa.me/${esc(d.whatsapp)}" target="_blank" rel="noopener">Message on WhatsApp</a>`:""}
         <button class="secondary" onclick="copyProfileLink()">Share profile</button>
         ${own?`<button class="primary" onclick="editProfile()">Edit profile</button>`:""}
       </div>
     </div>
   </section>`;
-  const level=section("Level",hasLevel?`<div class="plevel"><div class="plevel-n">${fmtLevel(d.level)}</div><div><b>${levelBand(d.level)}</b><p class="note">Playtomic scale 0–7</p></div>${d.reliability!=null&&d.reliability!==""?`<div class="prel"><span>Reliability</span><b>${Math.round(d.reliability)}%</b><span class="bar"><i style="width:${Math.max(0,Math.min(100,+d.reliability))}%"></i></span></div>`:""}</div><p class="selfrep">Self-reported${d.playtomicUrl?" from Playtomic":""} · not checked by Padel Tour</p>`
-    :`<p class="note">${own?"Add your Playtomic level in Edit profile.":"No level added yet."}</p>`);
+  const guideBtn=`<button type="button" class="infobtn" aria-expanded="false" aria-controls="lvGuide" onclick="toggleGuide(this,'lvGuide')" title="What do the levels mean?">${INFO_ICON}<span>Level guide</span></button>`;
+  const level=section("Level",(hasLevel?`<div class="plevel"><div class="plevel-n">${fmtLevel(d.level)}</div><div><b>${levelBand(d.level)}</b><p class="note">${esc(levelInfo(d.level)[3])}</p></div></div><p class="selfrep">Self-reported by the player</p>`
+    :`<p class="note">${own?"Add your level in Edit profile.":"No level added yet."}</p>`)+guideBtn+`<div id="lvGuide" class="guidebox" hidden></div>`);
   const hist=(d.levelHistory||[]).filter(h=>h&&h.level!=null);
   const progression=section("Level progression",hist.length>1?levelChart(hist):`<p class="note">${hist.length?"The graph appears after the level has been updated at least twice.":"No level history yet."}</p>`,"Based on the levels entered over time. Padel Tour doesn't calculate a level itself.");
   const rows=prof.showAll?S.matches:S.matches.slice(0,8);
@@ -140,8 +174,8 @@ async function editProfile(){
   if(!d&&window.__cloud){const r=await window.__cloud.getProfile(authUser.uid);d=r.ok?r.profile:null}
   d=d||{displayName:authUser.displayName||authUser.email.split("@")[0],visibility:"public"};
   $("pfName").value=d.displayName||"";$("pfCity").value=d.city||"";$("pfClub").value=d.homeClub||"";$("pfAbout").value=d.about||"";
-  $("pfLevel").value=d.level!=null?fmtLevel(d.level):"";$("pfRel").value=d.reliability!=null?d.reliability:"";
-  $("pfUrl").value=d.playtomicUrl||"";$("pfWa").value=d.whatsapp?"+"+d.whatsapp:"";
+  $("pfLevel").value=d.level!=null?fmtLevel(d.level):"";$("pfWa").value=d.whatsapp?"+"+d.whatsapp:"";
+  $("pfGuide").hidden=true;$("pfGuideBtn").setAttribute("aria-expanded","false");updateLevelHint();
   $("pfHand").innerHTML=optGroup("pfHand",Object.entries(HANDS).map(([k,v])=>[k,v.replace("-handed","")]),d.hand);
   $("pfSide").innerHTML=optGroup("pfSide",[["left","Left"],["right","Right"],["both","Both"]],d.side);
   $("pfType").innerHTML=optGroup("pfType",[["competitive","Competitive"],["friendly","Friendly"],["both","Both"]],d.matchType);
@@ -155,16 +189,19 @@ function readProfileForm(prev){
   const name=$("pfName").value.trim();if(!name)return {error:"Add your name."};
   const lvRaw=$("pfLevel").value.trim().replace(",","."),level=lvRaw===""?null:Math.round(parseFloat(lvRaw)*100)/100;
   if(level!==null&&!(level>=0&&level<=7))return {error:"Level must be a number from 0 to 7, like 3.25."};
-  const relRaw=$("pfRel").value.trim(),reliability=relRaw===""?null:Math.round(+relRaw);
-  if(reliability!==null&&!(reliability>=0&&reliability<=100))return {error:"Reliability must be between 0 and 100 %."};
-  const url=$("pfUrl").value.trim();if(url&&!isPlaytomicUrl(url))return {error:"The Playtomic link must start with https:// and be a playtomic.io or playtomic.com address."};
   let wa="";const w=$("pfWa").value.trim();if(w){const r=normalizePhone(w);if(r.error)return {error:r.error};wa=r.phone}
   const hist=[...((prev&&prev.levelHistory)||[])];
   if(level!==null&&(!hist.length||+hist[hist.length-1].level!==level))hist.push({level,at:Date.now()});
   return {data:{displayName:name.slice(0,40),photoURL:(prev&&prev.photoURL)||authUser.photoURL||"",city:$("pfCity").value.trim().slice(0,40),homeClub:$("pfClub").value.trim().slice(0,60),
-    about:$("pfAbout").value.trim().slice(0,300),level,reliability,levelHistory:hist.slice(-100),playtomicUrl:url,
+    about:$("pfAbout").value.trim().slice(0,300),level,levelHistory:hist.slice(-100),
     hand:val("pfHand"),side:val("pfSide"),matchType:val("pfType"),days:vals("pfDays"),times:vals("pfTimes"),
     whatsapp:wa,visibility:$("pfVis").value==="private"?"private":"public",createdAt:(prev&&prev.createdAt)||Date.now()}}
+}
+// Live hint under the level box: the band for the typed level, and the guide follows along when open
+function updateLevelHint(){
+  const raw=$("pfLevel").value.trim().replace(",","."),v=parseFloat(raw),ok=raw!==""&&v>=0&&v<=7;
+  $("pfLevelHint").textContent=raw===""?"":ok?levelBand(v)+": "+levelInfo(v)[3]:"Use a number from 0 to 7.";
+  if(!$("pfGuide").hidden)$("pfGuide").innerHTML=levelGuideHtml(ok?v:null)
 }
 async function saveProfileForm(e){
   e.preventDefault();

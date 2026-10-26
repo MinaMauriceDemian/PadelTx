@@ -200,10 +200,11 @@
 <label>Name<input id="pfName" maxlength="40" autocomplete="name"></label>
 <div class="fields"><label>City<input id="pfCity" maxlength="40"></label><label>Home club<input id="pfClub" maxlength="60"></label></div>
 <label>About you (optional)<textarea id="pfAbout" maxlength="300" rows="2" placeholder="e.g. Playing 3 years, looking for weekend matches"></textarea></label>
-<fieldset class="pfset"><legend>Playtomic</legend>
-<div class="fields"><label>Level (0–7)<input id="pfLevel" inputmode="decimal" placeholder="e.g. 3.25"></label><label>Reliability % (optional)<input id="pfRel" inputmode="numeric" placeholder="e.g. 62"></label></div>
-<label>Playtomic profile link (optional)<input id="pfUrl" type="url" placeholder="https://playtomic.io/…"></label>
-<p class="note">Copy your level and reliability from the Playtomic app. If the app gives you a link to your profile, paste it here. Both show as self-reported.</p>
+<fieldset class="pfset"><legend>Level</legend>
+<div class="lvrow"><label for="pfLevel">Your level (0–7)</label><button type="button" class="infobtn" id="pfGuideBtn" aria-expanded="false" aria-controls="pfGuide" onclick="toggleGuide(this,'pfGuide')" title="What do the levels mean?"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"></circle><path d="M12 11v6"></path><circle cx="12" cy="7.6" r=".6" fill="currentColor"></circle></svg><span>Level guide</span></button></div>
+<input id="pfLevel" inputmode="decimal" placeholder="e.g. 2.75" oninput="updateLevelHint()" aria-describedby="pfLevelHint">
+<p class="note" id="pfLevelHint" role="status"></p>
+<div id="pfGuide" class="guidebox" hidden></div>
 </fieldset>
 <fieldset class="pfset"><legend>Preferences</legend>
 <div class="optrow"><span>Dominant hand</span><div id="pfHand" class="opts"></div></div>

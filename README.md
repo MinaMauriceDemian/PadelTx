@@ -19,7 +19,7 @@ Live site: https://padeltx.netlify.app
 | `js/share.js` | Share dialog and WhatsApp messages |
 | `js/market.js` | Marketplace: partner search, used gear, coaches & lessons, donation gifts |
 | `js/players.js` | Players on teams: up to two per team, a linked profile or a guest name |
-| `js/profile.js` | Player profile: level (self-reported, Playtomic scale), progression, matches, statistics, preferences, partners & opponents, clubs |
+| `js/profile.js` | Player profile (created automatically at sign-in): level (self-reported, 0–7 with a level guide), progression, matches, statistics, preferences, partners & opponents, clubs |
 | `js/main.js` | Starts the app |
 | `js/cloud.js` | Firebase login and live database sync |
 | `firestore.rules` | Database security rules (paste into Firebase → Firestore → Rules) |
