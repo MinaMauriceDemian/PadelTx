@@ -1,6 +1,6 @@
 // App shell: state, roles, login/landing pages, account, access management. Loaded first.
 const defaultTeams=["Viboras","Padeliators","Elsawaree5","O&H","H & H","شباب المستقبل","M&Ms","Eskendriaa"];
-let state={teams:[...defaultTeams],scores:{},bestOf:{},moves:{},style:"groups_ko",visibility:"public",settings:{start:"12:00",duration:20,date:""}};
+let state={teams:[...defaultTeams],teamPlayers:{},scores:{},bestOf:{},moves:{},style:"groups_ko",visibility:"public",settings:{start:"12:00",duration:20,date:""}};
 const key="padelTournamentV2";
 if(!window.CLOUD_ON){try{const s=JSON.parse(localStorage.getItem(key)); if(s) state={...state,...s,settings:{...state.settings,...(s?.settings||{})}}}catch(e){}}
 function save(){if(window.CLOUD_ON)return;try{localStorage.setItem(key,JSON.stringify(state))}catch(e){}}
@@ -11,7 +11,7 @@ function $(id){return document.getElementById(id)}
 const DEFAULT_SETTINGS={start:"12:00",duration:20,date:""};
 // No "courts" here on purpose: older tournaments keep their court1/court2 names (see courtsCfg in engine.js)
 window.__defaults=(n=8)=>({teams:Array.from({length:n},(_,i)=>defaultTeamName(i)),settings:{...DEFAULT_SETTINGS,date:todayStr(),courts:[{name:"Court 1"},{name:"Court 2"}]}});
-function resetState(){state={teams:[...defaultTeams],scores:{},bestOf:{},moves:{},style:"groups_ko",visibility:"public",settings:{...DEFAULT_SETTINGS},sfPairing:0}}
+function resetState(){state={teams:[...defaultTeams],teamPlayers:{},scores:{},bestOf:{},moves:{},style:"groups_ko",visibility:"public",settings:{...DEFAULT_SETTINGS},sfPairing:0}}
 let role=window.CLOUD_ON?"viewer":"admin", authUser=null, cloudStatus="", view="app", currentTid=null, booted=false, autoOpen=true, myReq=null, requests=[], mine=[];
 const canScore=()=>role==="editor"||role==="admin";
 const isAdmin=()=>role==="admin";
@@ -21,7 +21,7 @@ function cloudWrite(u){if(window.CLOUD_ON&&window.__cloud)window.__cloud.write(u
 let toastTimer;
 function toast(msg){const t=$("toast");t.textContent=msg;t.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.hidden=true,5000)}
 window.__toast=toast;
-function showView(v){view=v;$("loginView").hidden=v!=="login";$("landing").hidden=v!=="landing";$("appView").hidden=v!=="app";$("marketView").hidden=v!=="market"}
+function showView(v){view=v;$("loginView").hidden=v!=="login";$("landing").hidden=v!=="landing";$("appView").hidden=v!=="app";$("marketView").hidden=v!=="market";$("profileView").hidden=v!=="profile"}
 // Where "home" is: signed-in people and viewers go to the tournament list, everyone else to the login page
 // The home page is the start for everyone; signing in is optional and chosen from there
 const homeView=()=>"landing";
@@ -35,13 +35,14 @@ if(view==="market"){closeMarket();window.scrollTo(0,0);return}
 if(location.hash)history.replaceState(null,"",location.pathname+location.search);
 showView("landing");renderLanding();window.scrollTo(0,0)
 }
+const profileHash=()=>{const m=/^#p=([A-Za-z0-9_-]{6,128})$/.exec(location.hash);return m?m[1]:null};
 const hashId=()=>{const m=/[#&]t=([A-Za-z0-9]+)/.exec(location.hash);return m?m[1].toUpperCase():null};
 function syncInputs(){
 const idle=el=>el&&document.activeElement!==el;
 allMatches().forEach(m=>["a","b"].forEach(k=>{const el=$(m.id+k);if(idle(el)){const r=rawScore(m.id);el.value=r?r[k]:""}}));
 document.querySelectorAll("[data-team]").forEach(el=>{if(idle(el))el.value=state.teams[+el.dataset.team]||""});
 fillCourtRows();
-[["start",state.settings.start],["duration",state.settings.duration],["tdate",state.settings.date||""],["tname",state.name||""],["nteams",String(teamCount())],["style",state.style||"groups_ko"],["vis",state.visibility||"public"]].forEach(([id,v])=>{const el=$(id);if(idle(el))el.value=v})
+[["start",state.settings.start],["duration",state.settings.duration],["tdate",state.settings.date||""],["tvenue",state.settings.venue||""],["tname",state.name||""],["nteams",String(teamCount())],["style",state.style||"groups_ko"],["vis",state.visibility||"public"]].forEach(([id,v])=>{const el=$(id);if(idle(el))el.value=v})
 }
 window.__applyRemote=function(d){
 if(d){
@@ -54,6 +55,7 @@ if(d){
   state.moves=d.moves||{};
   state.style=d.style||"groups_ko";
   state.visibility=d.visibility==="private"?"private":"public";
+  state.teamPlayers=d.teamPlayers||{};
   state._visMissing=!d.visibility;
 }
 if(teamCount()!==lastBuiltN||!document.querySelector("[data-team]")||document.querySelectorAll("[data-team]").length!==teamCount())rebuild();
@@ -75,15 +77,18 @@ if($("authDlg").open)updateAuthDlg();
 window.__cloudReady=function(){
 booted=true;
 const id=hashId();
+const pid=profileHash();
 if(location.hash==="#market")showMarket();
+else if(pid)showProfile(pid);
 else if(id){enterTournament(id,"findMsg")}
 };
 function applyRole(){
 const ed=canScore(),ad=isAdmin();
 document.querySelectorAll("input.score,.stepbtn").forEach(el=>el.disabled=!ed);
-["start","duration","tdate","tname"].forEach(i=>{const el=$(i);if(el)el.disabled=!ad});
+["start","duration","tdate","tvenue","tname"].forEach(i=>{const el=$(i);if(el)el.disabled=!ad});
 document.querySelectorAll("[data-team],[data-admin]").forEach(el=>el.disabled=!ad);
 const sf=$("sfSel");if(sf)sf.disabled=!ad;
+if(typeof renderTeamPlayers==="function")renderTeamPlayers();
 document.body.classList.toggle("can-move",ad);
 const chip=$("roleChip"),btn=$("loginBtn"),bar=$("viewBanner"),foot=$("footNote");
 $("tnameLabel").hidden=!window.CLOUD_ON;$("visLabel").hidden=!window.CLOUD_ON;
@@ -112,7 +117,7 @@ if(r&&r.ok)toast("Request sent. The admin will see it under Access.");else toast
 /* landing page */
 function renderLanding(){
 $("lOut").hidden=!!authUser;$("lIn").hidden=!authUser;
-if($("heroSignIn")){$("heroSignIn").hidden=!!authUser;$("heroSignOut").hidden=!authUser}
+if($("heroSignIn")){$("heroSignIn").hidden=!!authUser;$("heroSignOut").hidden=!authUser;$("heroProfile").hidden=!authUser}
 loadPublic();
 if(authUser){$("lWho").textContent="Signed in as "+authUser.email;loadMine()}
 }
@@ -183,6 +188,8 @@ function copyId(){if(currentTid&&navigator.clipboard)navigator.clipboard.writeTe
 window.addEventListener("hashchange",()=>{
 if(!window.CLOUD_ON||!booted)return;
 if(location.hash==="#market"){if(currentTid&&window.__cloud){window.__cloud.leave();currentTid=null}showMarket();return}
+const pid=profileHash();if(pid){if(pid!==prof.uid||view!=="profile")showProfile(pid);return}
+if(view==="profile"&&!hashId()){showView("landing");renderLanding();return}
 const id=hashId();
 if(!id&&currentTid)goHome();
 else if(id&&id!==currentTid)enterTournament(id,"findMsg")

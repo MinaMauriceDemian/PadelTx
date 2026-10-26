@@ -27,6 +27,7 @@
 <label>Start time<input id="start" type="time" value="12:00"></label>
 <label>Minutes per slot<input id="duration" type="number" min="5" value="20"></label>
 <label>Tournament date<input id="tdate" type="date"></label>
+<label>Venue / club<input id="tvenue" maxlength="60" placeholder="e.g. Padel Club Stuttgart"></label>
 <label>Number of teams<select id="nteams" data-admin onchange="changeTeamCount(this.value)"></select></label>
 <label>Tournament style<select id="style" data-admin onchange="setStyle(this.value)"></select></label>
 <div class="courtbox">
@@ -125,7 +126,7 @@
 </div>
 
 <div id="landing" class="landing" hidden>
-<div class="land-hero"><div class="hero-tools"><button type="button" class="hbtn" id="heroSignIn" onclick="toLogin()">Sign in</button><button type="button" class="hbtn" id="heroSignOut" onclick="doSignOut()" hidden>Sign out</button><button type="button" class="hbtn themebtn" onclick="toggleTheme()" aria-label="Switch day/night mode"><svg class="ico-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg><svg class="ico-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button></div><h1 class="brand"><a href="#" class="brandlink" onclick="brandHome();return false" title="Go to the home page"><svg class="ballmark" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E4F53B"></circle><path d="M5 6.5c3 2.5 3 8.5 0 11M19 6.5c-3 2.5-3 8.5 0 11" fill="none" stroke="#0B3D91" stroke-width="1.6"></path></svg><span>Padel Tour</span></a></h1><p>Follow padel tournaments live, or sign in to run your own.</p></div>
+<div class="land-hero"><div class="hero-tools"><button type="button" class="hbtn" id="heroSignIn" onclick="toLogin()">Sign in</button><button type="button" class="hbtn" id="heroProfile" onclick="openMyProfile()" hidden>My profile</button><button type="button" class="hbtn" id="heroSignOut" onclick="doSignOut()" hidden>Sign out</button><button type="button" class="hbtn themebtn" onclick="toggleTheme()" aria-label="Switch day/night mode"><svg class="ico-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg><svg class="ico-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button></div><h1 class="brand"><a href="#" class="brandlink" onclick="brandHome();return false" title="Go to the home page"><svg class="ballmark" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E4F53B"></circle><path d="M5 6.5c3 2.5 3 8.5 0 11M19 6.5c-3 2.5-3 8.5 0 11" fill="none" stroke="#0B3D91" stroke-width="1.6"></path></svg><span>Padel Tour</span></a></h1><p>Follow padel tournaments live, or sign in to run your own.</p></div>
 <div class="land-grid">
 <div class="stack">
 <div class="card land-card">
@@ -155,7 +156,7 @@
 <div class="fields"><label>Number of teams<select id="newTeams"></select></label><label>Tournament style<select id="newStyle"></select></label><label style="grid-column:1/-1">Visibility<select id="newVis"><option value="public">Public: listed on the home page</option><option value="private">Private: only with the ID or link</option></select></label></div>
 <button class="primary" onclick="createT()">Create tournament</button>
 </div>
-<div class="actions" style="margin:0"><button class="danger" style="margin-left:0" onclick="doSignOut()">Sign out</button></div>
+<div class="actions" style="margin:0"><button class="secondary" onclick="openMyProfile()">My player profile</button><button class="danger" style="margin-left:0" onclick="doSignOut()">Sign out</button></div>
 </div>
 <p id="lMsg" class="note" style="margin-top:12px" role="status"></p>
 </div>
@@ -190,6 +191,42 @@
 <p id="lMsgM" class="note" role="status"></p>
 <div class="actions" style="margin:0"><button type="submit" class="primary" id="lSave">Publish</button><button type="button" class="secondary" onclick="$('mktDlg').close()">Cancel</button></div>
 </form></dialog>
+<div id="profileView" class="landing" hidden>
+<div class="land-hero prof-hero"><div class="mkt-top"><a href="#" class="brandlink mini" onclick="brandHome();return false" title="Go to the home page"><svg class="ballmark" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E4F53B"></circle><path d="M5 6.5c3 2.5 3 8.5 0 11M19 6.5c-3 2.5-3 8.5 0 11" fill="none" stroke="#0B3D91" stroke-width="1.6"></path></svg><span>Padel Tour</span></a><div class="hero-tools static"><button type="button" class="hbtn themebtn" onclick="toggleTheme()" aria-label="Switch day/night mode"><svg class="ico-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg><svg class="ico-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button></div></div></div>
+<div class="prof-wrap" id="profileBody"></div>
+</div>
+<dialog id="profileDlg"><form class="dlg pform" onsubmit="saveProfileForm(event)">
+<h2>Edit profile</h2>
+<label>Name<input id="pfName" maxlength="40" autocomplete="name"></label>
+<div class="fields"><label>City<input id="pfCity" maxlength="40"></label><label>Home club<input id="pfClub" maxlength="60"></label></div>
+<label>About you (optional)<textarea id="pfAbout" maxlength="300" rows="2" placeholder="e.g. Playing 3 years, looking for weekend matches"></textarea></label>
+<fieldset class="pfset"><legend>Playtomic</legend>
+<div class="fields"><label>Level (0–7)<input id="pfLevel" inputmode="decimal" placeholder="e.g. 3.25"></label><label>Reliability % (optional)<input id="pfRel" inputmode="numeric" placeholder="e.g. 62"></label></div>
+<label>Playtomic profile link (optional)<input id="pfUrl" type="url" placeholder="https://playtomic.io/…"></label>
+<p class="note">Copy your level and reliability from the Playtomic app. If the app gives you a link to your profile, paste it here. Both show as self-reported.</p>
+</fieldset>
+<fieldset class="pfset"><legend>Preferences</legend>
+<div class="optrow"><span>Dominant hand</span><div id="pfHand" class="opts"></div></div>
+<div class="optrow"><span>Court position</span><div id="pfSide" class="opts"></div></div>
+<div class="optrow"><span>Match type</span><div id="pfType" class="opts"></div></div>
+<div class="optrow"><span>Days</span><div id="pfDays" class="opts"></div></div>
+<div class="optrow"><span>Times</span><div id="pfTimes" class="opts"></div></div>
+</fieldset>
+<label>WhatsApp (optional, shown on your profile)<input id="pfWa" type="tel" inputmode="tel" placeholder="+49 170 1234567"></label>
+<label>Who can see your profile<select id="pfVis"><option value="public">Public: anyone, and admins can add you to teams</option><option value="private">Private: only you</option></select></label>
+<p id="pfMsg" class="note" role="status"></p>
+<div class="actions" style="margin:0"><button type="submit" class="primary">Save profile</button><button type="button" class="secondary" onclick="$('profileDlg').close()">Cancel</button></div>
+</form></dialog>
+<dialog id="playerDlg"><div class="dlg">
+<h2>Add a player to <span id="ppTeam"></span></h2>
+<input id="ppQ" type="search" placeholder="Search players by name, city or club" oninput="renderPicker()" aria-label="Search players">
+<button type="button" class="secondary" id="ppMe" onclick="pickMe()">Add me</button>
+<div id="ppList" class="pplist"></div>
+<label>Or add a guest (no profile)<span class="idrow"><input id="ppGuest" maxlength="40" placeholder="Player name" onkeydown="if(event.key==='Enter')pickGuest()"><button type="button" class="secondary" onclick="pickGuest()">Add guest</button></span></label>
+<p class="note">Only public profiles can be found here. Players with a private profile can be added as guests.</p>
+<p id="ppMsg" class="note" role="status"></p>
+<div class="actions" style="margin:0"><button type="button" class="secondary" onclick="$('playerDlg').close()">Close</button></div>
+</div></dialog>
 <div id="toast" class="toast" role="status" hidden></div>
 <dialog id="authDlg"><div class="dlg">
 <h2>Account</h2>
@@ -204,7 +241,7 @@
 <div id="authIn" style="display:flex;flex-direction:column;gap:12px" hidden>
 <p>Signed in as <b id="authWho"></b></p>
 <p>Your role in this tournament: <b id="authRole"></b></p>
-<div class="actions" style="margin:0"><button class="danger" style="margin-left:0" onclick="doSignOut()">Sign out</button></div>
+<div class="actions" style="margin:0"><button class="secondary" onclick="openMyProfile()">My player profile</button><button class="danger" style="margin-left:0" onclick="doSignOut()">Sign out</button></div>
 </div>
 <p id="authMsg" class="note" role="status"></p>
 <div class="actions" style="margin:0"><button class="secondary" onclick="$('authDlg').close()">Close</button></div>
@@ -235,6 +272,8 @@
 <script src="js/results.js"></script>
 <script src="js/share.js"></script>
 <script src="js/market.js"></script>
+<script src="js/players.js"></script>
+<script src="js/profile.js"></script>
 <script src="js/main.js"></script>
 <script type="module" src="js/cloud.js"></script>
 </body>

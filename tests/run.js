@@ -204,9 +204,72 @@ section("Home page first; sign in is optional; the wordmark goes home",()=>{
   check(vis("landing")&&E("currentTid")===null,"wordmark in a tournament goes home");
   E('showView("market");brandHome()');check(vis("landing"),"wordmark in the marketplace goes home");
   E('window.__authState(null)');check(vis("landing")&&vis("heroSignIn"),"signing out keeps you on the home page as a viewer");
-  check(doc.querySelectorAll("a.brandlink").length===4,"every header's wordmark is a home link");
+  check(doc.querySelectorAll("a.brandlink").length===5,"every header's wordmark is a home link");
   check(errors.length===0,"no script errors: "+errors.join(" | "));
 });
+
+section("Players on teams",()=>{
+  const {E,errors}=loadApp();setTeams(E,8);
+  E('addPlayerToTeam(0,{uid:"u1",name:"Mina"});addPlayerToTeam(0,{name:"Omar"})');
+  check(E("playersOf(0).length")===2,"two players on a team");
+  check(E('addPlayerToTeam(0,{name:"Third"})')===false,"no third player");
+  check(E('addPlayerToTeam(1,{uid:"u1",name:"Mina"})')===false,"same profile can't be in two teams");
+  check(JSON.stringify(E("allPlayerUids()"))==='["u1"]',"profile ids are collected for look-ups");
+  check(document_text(E,"[data-tp=\"0\"]").includes("Mina")&&document_text(E,"[data-tp=\"0\"]").includes("guest"),"players show under the team");
+  E('removePlayer(0,1)');check(E("playersOf(0).length")===1,"remove a player");
+  E('addPlayerToTeam(7,{name:"Last"});changeTeamCount(6)');
+  check(!E("state.teamPlayers[7]")&&E("playersOf(0).length")===1,"fewer teams drops players of removed teams only");
+  E('role="viewer";applyRole()');check(!document_text(E,"[data-tp=\"0\"]").includes("+ Player"),"viewers can't add players");
+  check(errors.length===0,"no script errors: "+errors.join(" | "));
+});
+function document_text(E,sel){return E(`(document.querySelector('${sel}')||{}).textContent||""`)}
+
+async function profileTests(){
+  console.log("• Player profile");
+  try{
+    const {E,doc,errors,w}=loadApp();
+    // a finished 8-team tournament where u1 (with partner u2) plays for team 0
+    E(`state.teams=Array.from({length:8},(_,i)=>"T"+i);state.scores={};rebuild()`);
+    E(`(function(){const ms=allMatches();let k=0;ms.filter(m=>m.group).forEach(m=>{state.scores[m.id]=(m.a===0||m.b===0)?(m.a===0?{a:4,b:1}:{a:1,b:4}):{a:4,b:k++%4}});
+      for(let g=0;g<6;g++){ms.filter(m=>m.ko).forEach(m=>{if(score(m.id))return;const A=matchTeam(m.id,"a"),B=matchTeam(m.id,"b");if(A!=null&&B!=null)state.scores[m.id]=A===0?{a:winRounds(m.id),b:2}:B===0?{a:2,b:winRounds(m.id)}:{a:winRounds(m.id),b:0}})}})()`);
+    const T=JSON.parse(E(`JSON.stringify({id:"TOUR1",name:"Autumn Cup",teams:state.teams,scores:state.scores,settings:{...state.settings,date:"2026-10-25",venue:"Padel Club Stuttgart"},teamPlayers:{"0":[{uid:"u1",name:"Mina"},{uid:"u2",name:"Omar"}],"4":[{uid:"u3",name:"Sara"},{name:"Guest Ali"}]},playerUids:["u1","u2","u3"]})`));
+    const before=E("JSON.stringify(state.scores)");
+    const S=E(`computePlayerStats("u1",${JSON.stringify([T])})`);
+    check(E("JSON.stringify(state.scores)")===before,"looking at another tournament doesn't touch the open one");
+    check(S.played>0&&S.won===S.played&&S.rate===100,"matches and win rate counted ("+S.played+" played)");
+    check(S.titles===1&&S.podiums===1&&S.tournaments===1,"title and podium counted");
+    check(S.partners[0]&&S.partners[0].name==="Omar"&&S.partners[0].n===S.played,"partner counted on every match");
+    check(S.clubs[0]&&S.clubs[0].name==="Padel Club Stuttgart","venue listed under clubs");
+    const profile={displayName:"Mina Morise",city:"Stuttgart",homeClub:"Padel Club Stuttgart",level:3.25,reliability:62,levelHistory:[{level:2.9,at:1750000000000},{level:3.1,at:1755000000000},{level:3.25,at:1760000000000}],playtomicUrl:"https://playtomic.io/profile/user/123",hand:"right",side:"left",matchType:"competitive",days:["sat","sun"],times:["morning"],whatsapp:"491701234567",about:"",visibility:"public",createdAt:1}
+    let saved=null;
+    w.__cloud={getProfile:async uid=>uid==="u1"?{ok:true,profile:{uid:"u1",...profile}}:uid==="priv"?{ok:true,profile:null,private:true}:{ok:true,profile:null},
+      tournamentsOfPlayer:async()=>({ok:true,list:[T]}),saveProfile:async d=>{saved=d;return {ok:true}},listPublicProfiles:async()=>({ok:true,list:[]}),leave(){}};
+    E('window.CLOUD_ON=true;authUser={uid:"u1",email:"m@x.de",displayName:"Mina",photoURL:""}');
+    await E('showProfile("u1")');
+    const body=doc.getElementById("profileBody").textContent;
+    check(!doc.getElementById("profileView").hidden,"profile page opens");
+    ["Level","Level progression","Matches","Statistics","Player preferences","Players I play most with","Clubs"].forEach(s=>check([...doc.querySelectorAll("#profileBody h2")].some(h=>h.textContent===s),"section: "+s));
+    check(body.includes("3.25")&&body.includes("Intermediate")&&/Self-reported/.test(body),"level with band and self-reported label");
+    check(doc.querySelector("a.ptbtn")&&doc.querySelector("a.ptbtn").href.startsWith("https://playtomic.io/"),"View on Playtomic button");
+    check(doc.querySelectorAll(".pchart circle").length===3,"level progression chart");
+    check(doc.querySelectorAll(".pmatches li").length>0&&body.includes("Autumn Cup"),"matches listed");
+    check(body.includes("Omar")&&body.includes("Sara"),"partners and opponents listed");
+    check(/Edit profile/.test(body),"own profile can be edited");
+    await E('showProfile("priv")');check(/This profile is private/.test(doc.getElementById("profileBody").textContent),"private profile message");
+    await E('showProfile("nobody")');check(/No profile yet/.test(doc.getElementById("profileBody").textContent),"missing profile message");
+    // editing
+    await E('showProfile("u1")');await E('editProfile()');
+    check(doc.getElementById("profileDlg").open&&doc.getElementById("pfLevel").value==="3.25","edit form filled in");
+    E('$("pfLevel").value="9"');await E('saveProfileForm({preventDefault(){}})');
+    check(/0 to 7/.test(doc.getElementById("pfMsg").textContent)&&!saved,"level outside 0–7 refused");
+    E('$("pfLevel").value="3,5";$("pfUrl").value="https://evil.example.com/x"');await E('saveProfileForm({preventDefault(){}})');
+    check(/playtomic/.test(doc.getElementById("pfMsg").textContent)&&!saved,"non-Playtomic link refused");
+    E('$("pfUrl").value="https://playtomic.io/profile/user/123"');await E('saveProfileForm({preventDefault(){}})');
+    check(saved&&saved.level===3.5&&saved.levelHistory.length===4&&saved.levelHistory[3].level===3.5,"new level saved and added to the history (comma accepted)");
+    check(saved.side==="left"&&saved.days.join()==="sat,sun"&&saved.whatsapp==="491701234567","preferences kept");
+    check(errors.length===0,"no script errors: "+errors.join(" | "));
+  }catch(e){failed++;console.log("  ✗ crashed: "+e.stack.split("\n").slice(0,3).join(" | "))}
+}
 
 // Marketplace: uses a fake online layer instead of Firebase
 async function marketTests(){
@@ -244,7 +307,7 @@ async function marketTests(){
   }catch(e){failed++;console.log("  ✗ crashed: "+e.stack.split("\n").slice(0,3).join(" | "))}
 }
 
-marketTests().then(()=>{
+profileTests().then(marketTests).then(()=>{
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed?1:0);
 });

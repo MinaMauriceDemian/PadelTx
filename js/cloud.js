@@ -68,6 +68,29 @@ if(window.CLOUD_ON){
           return {ok:true,list}
         }catch(e){return {ok:false,error:err(e)}}
       },
+      // Player profiles (profiles/{uid}); private ones can only be read by their owner
+      async getProfile(uid){
+        try{const s=await F.getDoc(F.doc(db,"profiles",uid));return {ok:true,profile:s.exists()?{uid,...s.data()}:null}}
+        catch(e){return e.code==="permission-denied"?{ok:true,profile:null,private:true}:{ok:false,error:err(e)}}
+      },
+      async saveProfile(data){
+        const u=auth.currentUser;if(!u)return {ok:false,error:"not signed in"};
+        try{await F.setDoc(F.doc(db,"profiles",u.uid),{...data,updatedAt:Date.now()});return {ok:true}}
+        catch(e){return {ok:false,error:err(e)}}
+      },
+      async listPublicProfiles(){
+        try{
+          const s=await F.getDocs(F.query(F.collection(db,"profiles"),F.where("visibility","==","public"),F.limit(500)));
+          return {ok:true,list:s.docs.map(d=>({uid:d.id,...d.data()}))}
+        }catch(e){return {ok:false,error:err(e)}}
+      },
+      // Tournaments a player was added to (for the profile's matches and statistics)
+      async tournamentsOfPlayer(uid){
+        try{
+          const s=await F.getDocs(F.query(F.collection(db,"tournaments"),F.where("playerUids","array-contains",uid),F.limit(100)));
+          return {ok:true,list:s.docs.map(d=>({id:d.id,...d.data()}))}
+        }catch(e){return {ok:false,error:err(e)}}
+      },
       // Marketplace listings (newest first)
       async listListings(){
         try{
@@ -129,7 +152,7 @@ if(window.CLOUD_ON){
     // Shows an error if a Google redirect sign-in failed (success is picked up by onAuthStateChanged)
     A.getRedirectResult(auth).catch(e=>window.__toast("Google sign-in failed ("+err(e)+")"));
     A.onAuthStateChanged(auth,u=>{
-      window.__authState(u?{email:u.email,uid:u.uid}:null);
+      window.__authState(u?{email:u.email,uid:u.uid,displayName:u.displayName||"",photoURL:u.photoURL||""}:null);
       if(tid)pushRole();
       if(firstAuth){firstAuth=false;window.__cloudReady()}
     });

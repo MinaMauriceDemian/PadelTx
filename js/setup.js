@@ -13,7 +13,7 @@ if($("newTeams"))$("newTeams").value="8";
 function renderTeams(){
 const gm=groupMembers(),gl=Object.keys(gm),box=$("teams");
 box.classList.toggle("one",gl.length===1);
-box.innerHTML=gl.map(g=>`<div class="group-box gb${g}"><h3 class="group-title"><span class="chip chip${g}">Group ${g}</span></h3>${gm[g].map((i,k)=>`<div class="team-row"><span class="num">${k+1}</span><input data-team="${i}" value="${esc(teamName(i))}" maxlength="40" aria-label="Team name"></div>`).join("")}</div>`).join("");
+box.innerHTML=gl.map(g=>`<div class="group-box gb${g}"><h3 class="group-title"><span class="chip chip${g}">Group ${g}</span></h3>${gm[g].map((i,k)=>`<div class="team"><div class="team-row"><span class="num">${k+1}</span><input data-team="${i}" value="${esc(teamName(i))}" maxlength="40" aria-label="Team name"></div><div class="tplayers" data-tp="${i}"></div></div>`).join("")}</div>`).join("");
 document.querySelectorAll("[data-team]").forEach(x=>x.oninput=()=>{if(!isAdmin())return;state.teams[+x.dataset.team]=x.value;save();refresh();clearTimeout(pending.teams);pending.teams=setTimeout(()=>{pending.teams=null;cloudWrite({teams:[...state.teams]})},600)});
 }
 function init(){fillStatic();initSetupPanel();rebuild();syncInputs();applyRole()}
@@ -27,6 +27,7 @@ function setupSummary(){
 const s=state.settings,C=courtsCfg().length,d=s.date?new Date(s.date+"T00:00"):null;
 const parts=[];
 if(d&&!isNaN(d))parts.push(d.toLocaleDateString(undefined,{day:"numeric",month:"short"}));
+if(s.venue)parts.push(s.venue);
 parts.push(`starts ${s.start||"12:00"}`,`${slotDur()} min slots`,`${C} court${C>1?"s":""}`,`${teamCount()} teams`);
 return parts.join(" · ")
 }
@@ -67,7 +68,7 @@ $("crh"+i).textContent=f==null?"":h?`${from}–${fmtMin(f+Math.round(h*60))}`:`f
 /* ---------- Saving settings ---------- */
 function generate(){
 if(!isAdmin())return;
-state.settings={start:$("start").value||"12:00",duration:Math.max(5,+$("duration").value||20),date:$("tdate").value||"",courts:readCourtRows()};
+state.settings={...state.settings,start:$("start").value||"12:00",duration:Math.max(5,+$("duration").value||20),date:$("tdate").value||"",venue:$("tvenue").value.trim().slice(0,60),courts:readCourtRows()};
 if(window.CLOUD_ON)state.name=$("tname").value.trim()||state.name||"Tournament";
 courtsDirty=false;save();renderAll();fillCourtRows(true);applyRole();
 cloudWrite({settings:state.settings,name:state.name});
@@ -82,7 +83,8 @@ const msg=Object.keys(state.scores).length?"All scores and match lengths will be
 if(!confirm(`Change to ${v} teams? The groups and schedule are rebuilt. ${msg}`)){syncInputs();return}
 state.teams=Array.from({length:v},(_,i)=>state.teams[i]||defaultTeamName(i));
 state.scores={};state.bestOf={};state.moves={};state.sfPairing=0;
-save();rebuild();cloudWrite({teams:[...state.teams],scores:{},bestOf:{},moves:{},sfPairing:0})
+const tp={...(state.teamPlayers||{})};Object.keys(tp).forEach(k=>{if(+k>=v)delete tp[k]});state.teamPlayers=tp;
+save();rebuild();cloudWrite({teams:[...state.teams],scores:{},bestOf:{},moves:{},sfPairing:0,teamPlayers:tp,playerUids:allPlayerUids()})
 }
 function setStyle(v){
 const s=STYLES.find(x=>x[0]===v);
