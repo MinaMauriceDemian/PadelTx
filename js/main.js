@@ -3,7 +3,8 @@ init();
 initDragDrop();
 // Cloud mode starts on the login page (or the tournament list for returning viewers).
 // A shared link (#t=ID) skips the login page and opens the tournament directly once connected.
-if(window.CLOUD_ON)showView(hashId()?"landing":homeView());
+// Everyone starts on the home page (as a viewer); a shared link (#t=ID) then opens its tournament
+if(window.CLOUD_ON){showView("landing");renderLanding()}
 // Switch between the table (computer) and match cards (phone) when the screen size changes
 phoneMQ.addEventListener("change",()=>renderAll());
 // Keep the live "now" marker up to date

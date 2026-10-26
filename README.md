@@ -11,7 +11,7 @@ Live site: https://padeltx.netlify.app
 | `css/styles.css` | All styling: Sporty Bold theme (day + night colors are variables at the end of the file), phone layout |
 | `js/theme.js` | Day / night mode switch (remembers each person's choice) |
 | `js/config.js` | Firebase settings |
-| `js/app.js` | App shell: state, roles, login page, tournament list, account, access requests |
+| `js/app.js` | App shell: state, roles, home page (start page for everyone), optional login, account, access requests |
 | `js/engine.js` | Tournament rules: groups, round robin, courts & hours, schedule, knockout, best-of, standings, final ranking |
 | `js/setup.js` | Setup card: settings, courts editor, teams, team count, style, visibility |
 | `js/schedule.js` | Schedule & scores: table (computer), match cards (phone), +/− buttons, live "now" marker, printing |

@@ -13,9 +13,6 @@ const DEFAULT_SETTINGS={start:"12:00",duration:20,date:""};
 window.__defaults=(n=8)=>({teams:Array.from({length:n},(_,i)=>defaultTeamName(i)),settings:{...DEFAULT_SETTINGS,date:todayStr(),courts:[{name:"Court 1"},{name:"Court 2"}]}});
 function resetState(){state={teams:[...defaultTeams],scores:{},bestOf:{},moves:{},style:"groups_ko",visibility:"public",settings:{...DEFAULT_SETTINGS},sfPairing:0}}
 let role=window.CLOUD_ON?"viewer":"admin", authUser=null, cloudStatus="", view="app", currentTid=null, booted=false, autoOpen=true, myReq=null, requests=[], mine=[];
-// guest = the person chose "Continue as viewer" on the login page (remembered for this browser tab)
-let guest=false;try{guest=sessionStorage.getItem("padelGuest")==="1"}catch(e){}
-function setGuest(v){guest=v;try{v?sessionStorage.setItem("padelGuest","1"):sessionStorage.removeItem("padelGuest")}catch(e){}}
 const canScore=()=>role==="editor"||role==="admin";
 const isAdmin=()=>role==="admin";
 const DEL="__DEL__";
@@ -26,9 +23,18 @@ function toast(msg){const t=$("toast");t.textContent=msg;t.hidden=false;clearTim
 window.__toast=toast;
 function showView(v){view=v;$("loginView").hidden=v!=="login";$("landing").hidden=v!=="landing";$("appView").hidden=v!=="app";$("marketView").hidden=v!=="market"}
 // Where "home" is: signed-in people and viewers go to the tournament list, everyone else to the login page
-const homeView=()=>authUser||guest?"landing":"login";
-function continueAsViewer(){setGuest(true);$("loginMsg").textContent="";showView("landing");renderLanding();setTimeout(()=>$("findId").focus(),0)}
-function toLogin(){setGuest(false);$("lMsg").textContent="";showView("login")}
+// The home page is the start for everyone; signing in is optional and chosen from there
+const homeView=()=>"landing";
+function continueAsViewer(){$("loginMsg").textContent="";showView("landing");renderLanding();window.scrollTo(0,0)}
+function toLogin(){$("lMsg").textContent="";showView("login");window.scrollTo(0,0);setTimeout(()=>{const e=$("loginEmail");if(e)e.focus()},0)}
+// The PADEL TOUR wordmark: always back to the home page
+function brandHome(){
+if(!window.CLOUD_ON){window.scrollTo({top:0,behavior:"smooth"});return}
+if(view==="app"&&currentTid){goHome();window.scrollTo(0,0);return}
+if(view==="market"){closeMarket();window.scrollTo(0,0);return}
+if(location.hash)history.replaceState(null,"",location.pathname+location.search);
+showView("landing");renderLanding();window.scrollTo(0,0)
+}
 const hashId=()=>{const m=/[#&]t=([A-Za-z0-9]+)/.exec(location.hash);return m?m[1].toUpperCase():null};
 function syncInputs(){
 const idle=el=>el&&document.activeElement!==el;
@@ -61,9 +67,8 @@ window.__setRequests=l=>{requests=l;renderAccess()};
 window.__setMyRequest=st=>{myReq=st;applyRole()};
 window.__authState=function(u){
 authUser=u;
-if(u&&view==="login"){$("loginMsg").textContent="";showView("landing")}
-else if(!u&&view==="landing"&&!guest)showView("login");
-if(view==="landing"){renderLanding();if(booted&&u&&autoOpen)autoOpenMine()}
+if(u&&view==="login"){$("loginMsg").textContent="";showView("landing");window.scrollTo(0,0)}
+if(view==="landing")renderLanding();
 if(view==="market")renderMarket();
 if($("authDlg").open)updateAuthDlg();
 };
@@ -72,7 +77,6 @@ booted=true;
 const id=hashId();
 if(location.hash==="#market")showMarket();
 else if(id){enterTournament(id,"findMsg")}
-else if(authUser&&autoOpen)autoOpenMine()
 };
 function applyRole(){
 const ed=canScore(),ad=isAdmin();
@@ -108,6 +112,7 @@ if(r&&r.ok)toast("Request sent. The admin will see it under Access.");else toast
 /* landing page */
 function renderLanding(){
 $("lOut").hidden=!!authUser;$("lIn").hidden=!authUser;
+if($("heroSignIn")){$("heroSignIn").hidden=!!authUser;$("heroSignOut").hidden=!authUser}
 loadPublic();
 if(authUser){$("lWho").textContent="Signed in as "+authUser.email;loadMine()}
 }
@@ -129,10 +134,6 @@ pubLoading=true;box.innerHTML='<p class="note">Loading…</p>';
 const r=await window.__cloud.listPublic();pubLoading=false;
 if(!r.ok){box.innerHTML='<p class="note">Could not load the list ('+esc(r.error)+').</p>';return}
 box.innerHTML=r.list.length?r.list.map(t=>`<div class="tcard"><div><b dir="auto">${esc(t.name)}</b><p class="note">${t.teams} teams · ${t.results} result${t.results===1?"":"s"} · ID ${esc(t.id)}</p></div><button class="primary" onclick="enterTournament('${esc(t.id)}','findMsg')">Open</button></div>`).join(""):'<p class="note">No public tournaments yet.</p>'
-}
-async function autoOpenMine(){
-const list=await loadMine();
-if(list.length===1&&view==="landing"&&autoOpen)enterTournament(list[0].id,"lMsg")
 }
 async function enterTournament(id,msgId){
 const m=msgId?$(msgId):null;if(m)m.textContent="Opening…";
@@ -219,7 +220,7 @@ try{
   if(kind==="reset"){await window.__auth.reset(email);msg.textContent="Password reset email sent (check your spam folder).";return}
   if(!pw){msg.textContent="Enter your password.";return}
   msg.textContent="Please wait…";
-  autoOpen=true;
+  
   if(kind==="in")await window.__auth.signIn(email,pw);else await window.__auth.signUp(email,pw);
   msg.textContent="";$(p+"Pw").value=""
 }catch(e){msg.textContent=AUTH_ERR[e.code]||("Error: "+(e.message||e.code))}
@@ -229,12 +230,12 @@ async function doGoogle(p="auth"){
 const msg=$(p+"Msg");
 if(!window.__auth){msg.textContent="Still connecting… try again in a moment.";return}
 try{
-  msg.textContent="Opening Google…";autoOpen=true;
+  msg.textContent="Opening Google…";
   await window.__auth.google();
   msg.textContent=""
 }catch(e){
   msg.textContent=(e.code==="auth/popup-closed-by-user"||e.code==="auth/cancelled-popup-request")?"":(AUTH_ERR[e.code]||("Error: "+(e.message||e.code)))
 }
 }
-async function doSignOut(){setGuest(false);try{await window.__auth.signOut()}catch(e){}if($("authDlg").open){updateAuthDlg();$("authDlg").close()}}
+async function doSignOut(){try{await window.__auth.signOut()}catch(e){}if($("authDlg").open){updateAuthDlg();$("authDlg").close()}if(view==="landing")renderLanding();toast("Signed out. You can keep following tournaments as a viewer.")}
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}

@@ -187,6 +187,27 @@ section("Moving matches into extra time (admin)",()=>{
   check(errors.length===0,"no script errors: "+errors.join(" | "));
 });
 
+section("Home page first; sign in is optional; the wordmark goes home",()=>{
+  const {E,doc,errors}=loadApp();
+  const vis=id=>!doc.getElementById(id).hidden;
+  E(`window.CLOUD_ON=true;window.__cloud={listPublic:async()=>({ok:true,list:[]}),listMine:async()=>({ok:true,list:[{id:"AAA1111",name:"Mine",role:"admin",teams:8}]}),open:async()=>({ok:true}),leave(){}};window.__auth={signOut:async()=>{}};showView("landing");renderLanding()`);
+  check(vis("landing")&&!vis("loginView"),"starts on the home page, signed out");
+  check(vis("heroSignIn")&&!vis("heroSignOut"),"home shows a Sign in button");
+  E('toLogin()');check(vis("loginView"),"Sign in opens the login page");
+  E('brandHome()');check(vis("landing")&&!vis("loginView"),"wordmark on the login page goes home");
+  E('toLogin();continueAsViewer()');check(vis("landing"),"Back to home works");
+  E('toLogin();window.__authState({email:"a@b.c",uid:"u1"})');
+  check(vis("landing"),"after signing in you land on the home page");
+  check(!vis("heroSignIn")&&vis("heroSignOut")&&vis("lIn"),"home shows My tournaments and Sign out when signed in");
+  E('window.__cloudReady()');check(vis("landing")&&E("currentTid")===null,"no tournament opens by itself");
+  E('currentTid="AAA1111";showView("app");brandHome()');
+  check(vis("landing")&&E("currentTid")===null,"wordmark in a tournament goes home");
+  E('showView("market");brandHome()');check(vis("landing"),"wordmark in the marketplace goes home");
+  E('window.__authState(null)');check(vis("landing")&&vis("heroSignIn"),"signing out keeps you on the home page as a viewer");
+  check(doc.querySelectorAll("a.brandlink").length===4,"every header's wordmark is a home link");
+  check(errors.length===0,"no script errors: "+errors.join(" | "));
+});
+
 // Marketplace: uses a fake online layer instead of Firebase
 async function marketTests(){
   console.log("• Marketplace");
