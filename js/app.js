@@ -22,7 +22,7 @@ function cloudWrite(u){if(window.CLOUD_ON&&window.__cloud)window.__cloud.write(u
 let toastTimer;
 function toast(msg){const t=$("toast");t.textContent=msg;t.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.hidden=true,5000)}
 window.__toast=toast;
-function showView(v){view=v;$("loginView").hidden=v!=="login";$("landing").hidden=v!=="landing";$("appView").hidden=v!=="app";$("marketView").hidden=v!=="market";$("profileView").hidden=v!=="profile"}
+function showView(v){view=v;$("loginView").hidden=v!=="login";$("landing").hidden=v!=="landing";$("appView").hidden=v!=="app";$("marketView").hidden=v!=="market";$("profileView").hidden=v!=="profile";$("toursView").hidden=v!=="tours"}
 // Where "home" is: signed-in people and viewers go to the tournament list, everyone else to the login page
 // The home page is the start for everyone; signing in is optional and chosen from there
 const homeView=()=>"landing";
@@ -81,6 +81,7 @@ booted=true;
 const id=hashId();
 const pid=profileHash();
 if(location.hash==="#market")showMarket();
+else if(location.hash==="#tours")showTours();
 else if(pid)showProfile(pid);
 else if(id){enterTournament(id,"findMsg")}
 };
@@ -92,7 +93,7 @@ document.querySelectorAll("[data-team],[data-admin]").forEach(el=>el.disabled=!a
 const sf=$("sfSel");if(sf)sf.disabled=!ad;
 if(typeof renderTeamPlayers==="function")renderTeamPlayers();
 document.body.classList.toggle("can-move",ad);document.body.classList.toggle("is-admin",ad);document.body.classList.toggle("can-score",ed);
-const dt=$("delTBtn");if(dt)dt.hidden=!(window.CLOUD_ON&&authUser&&state.ownerUid&&state.ownerUid===authUser.uid);
+const dt=$("delTBtn");if(dt)dt.hidden=!(window.CLOUD_ON&&authUser&&((state.ownerUid&&state.ownerUid===authUser.uid)||isSiteAdmin()));
 const chip=$("roleChip"),btn=$("loginBtn"),bar=$("viewBanner"),foot=$("footNote");
 $("tnameLabel").hidden=!window.CLOUD_ON;$("visLabel").hidden=!window.CLOUD_ON;
 if(!window.CLOUD_ON){
@@ -159,20 +160,34 @@ mine.filter(t=>t.role==="admin"&&window.__cloud.pendingRequests).forEach(async t
 });
 return mine
 }
-let pubLoading=false,pubAll=false,pubCache=[];
+let pubLoading=false,pubCache=[];
+const pubBoxes=()=>[$("pubList"),$("allList")].filter(Boolean);
 async function loadPublic(){
-const box=$("pubList");if(!box||pubLoading)return;
-if(!window.__cloud){box.innerHTML='<p class="note">Connecting…</p>';return}
-pubLoading=true;box.innerHTML='<p class="note">Loading…</p>';
+if(!pubBoxes().length||pubLoading)return;
+const say=h=>pubBoxes().forEach(b=>b.innerHTML=h);
+if(!window.__cloud){say('<p class="note">Connecting…</p>');return}
+pubLoading=true;say('<p class="note">Loading…</p>');
 const r=await window.__cloud.listPublic();pubLoading=false;
-if(!r.ok){box.innerHTML='<p class="note">Could not load the list ('+esc(r.error)+').</p>';return}
+if(!r.ok){say('<p class="note">Could not load the list ('+esc(r.error)+').</p>');return}
 pubCache=sortTournaments(r.list);renderPublic()
 }
-function renderPublic(){
-const box=$("pubList"),active=pubCache.filter(t=>t.st.k!=="finished"),done=pubCache.filter(t=>t.st.k==="finished"),showDone=pubAll?done:done.slice(0,4);
-const card=t=>`<button type="button" class="tcard pubcard-item" onclick="enterTournament('${esc(t.id)}','findMsg')"><span class="tc-main"><span class="tc-top">${statusChip(t)}</span><b dir="auto">${esc(t.name)}</b><span class="note">${tMeta(t)}</span></span><span class="tc-go" aria-hidden="true">›</span></button>`;
-box.innerHTML=(pubCache.length?"":'<p class="note">No public tournaments yet.</p>')+active.map(card).join("")+(done.length?`<h3 class="pubsub">Finished</h3>`+showDone.map(card).join("")+(done.length>4?`<button type="button" class="secondary" onclick="pubAll=!pubAll;renderPublic()">${pubAll?"Show fewer":"Show all "+done.length+" finished"}</button>`:""):"")
+const pubCard=t=>{
+const c=`<button type="button" class="tcard pubcard-item" onclick="enterTournament('${esc(t.id)}','findMsg')"><span class="tc-main"><span class="tc-top">${statusChip(t)}</span><b dir="auto">${esc(t.name)}</b><span class="note">${tMeta(t)}</span></span><span class="tc-go" aria-hidden="true">›</span></button>`;
+// the site admin gets a Delete button under every tournament
+return isSiteAdmin()?`<div class="pubitem">${c}<button type="button" class="danger pubdel" onclick="pubDelete('${esc(t.id)}')">Delete (admin)</button></div>`:c
+};
+function pubDelete(id){const t=pubCache.find(x=>x.id===id);if(t)deleteT(id,t.name)}
+function pubListHtml(list){
+const active=list.filter(t=>t.st.k!=="finished"),done=list.filter(t=>t.st.k==="finished");
+return (list.length?"":'<p class="note">No public tournaments yet.</p>')+active.map(pubCard).join("")+(done.length?`<h3 class="pubsub">Finished</h3>`+done.map(pubCard).join(""):"")
 }
+// Home page: the 3 most recent (live and upcoming first, then the newest finished); the rest are on the "All tournaments" page (#tours)
+function renderPublic(){
+const home=$("pubList"),all=$("allList");
+if(home)home.innerHTML=pubListHtml(pubCache.slice(0,3))+(pubCache.length>3?`<button type="button" class="secondary puball" onclick="location.hash='tours'">View all ${pubCache.length} tournaments ›</button>`:"");
+if(all)all.innerHTML=pubListHtml(pubCache)
+}
+function showTours(){showView("tours");window.scrollTo(0,0);if(pubCache.length)renderPublic();loadPublic()}
 // Organiser tools
 async function duplicateT(id){
 const m=$("lMsg");m.textContent="Copying…";
@@ -187,9 +202,9 @@ async function deleteT(id,name){
 const t=(mine||[]).find(x=>x.id===id)||{name:name||state.name};
 if(!confirm(`Delete “${t.name}” for everyone? All its matches and scores are removed. This can't be undone.`))return false;
 const r=await window.__cloud.deleteTournament(id);
-if(!r.ok){toast(r.error==="permission-denied"?"Only the person who created a tournament can delete it.":"Could not delete it ("+r.error+").");return false}
+if(!r.ok){toast(r.error==="permission-denied"?"Only the person who created a tournament (or the site admin) can delete it.":"Could not delete it ("+r.error+").");return false}
 toast("Tournament deleted.");
-if(currentTid===id)goHome();else{loadMine();loadPublic()}
+if(currentTid===id)goHome();else{pubCache=pubCache.filter(x=>x.id!==id);renderPublic();loadMine();loadPublic()}
 return true
 }
 function deleteCurrent(){if(currentTid)deleteT(currentTid,state.name)}
@@ -247,6 +262,8 @@ function copyId(){if(currentTid&&navigator.clipboard)navigator.clipboard.writeTe
 window.addEventListener("hashchange",()=>{
 if(!window.CLOUD_ON||!booted)return;
 if(location.hash==="#market"){if(currentTid&&window.__cloud){window.__cloud.leave();currentTid=null}showMarket();return}
+if(location.hash==="#tours"){if(currentTid&&window.__cloud){window.__cloud.leave();currentTid=null}showTours();return}
+if(view==="tours"&&!hashId()){showView("landing");renderLanding();return}
 const pid=profileHash();if(pid){if(pid!==prof.uid||view!=="profile")showProfile(pid);return}
 if(view==="profile"&&!hashId()){showView("landing");renderLanding();return}
 const id=hashId();

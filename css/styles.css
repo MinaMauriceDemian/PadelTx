@@ -208,8 +208,14 @@ input.score.bad{border-color:#d64545;background:#fff1f1}
 .newt h3{font-size:15px;color:var(--navy)}
 .pubhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .pubhead h2{margin:0}
-.publist{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:10px}
+.publist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.publist>.note,.publist>.pubsub,.publist>.puball{grid-column:1/-1}
+.publist>.puball{justify-self:center}
+.pubtools{display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:560px){.publist{grid-template-columns:1fr}}
 .publist .tcard{margin:0}
+.pubitem{display:flex;flex-direction:column;gap:6px}
+.pubdel{align-self:flex-end;min-height:32px;padding:5px 12px;font-size:13px}
 .privchip{background:#fde2e2;color:#9b1c1c}
 footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 #printArea{display:none}
@@ -793,7 +799,6 @@ html[data-theme="dark"] .mcar-pos b{color:var(--ball)}
 /* =====================================================================
    Home page
    ===================================================================== */
-.pubcard .publist{display:flex;flex-direction:column;gap:8px}
 button.tcard{width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;min-height:auto;padding:12px}
 button.tcard:hover{border-color:var(--line-strong,var(--inborder))}
 .tcard{display:flex;align-items:center;gap:12px}

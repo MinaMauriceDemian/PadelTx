@@ -10,7 +10,7 @@ window.FIREBASE_CONFIG = {
   appId: "1:426314614472:web:d930b37269610dac20c7fd"
 };
 window.CLOUD_ON = !!(window.FIREBASE_CONFIG.apiKey && !/^PASTE/.test(window.FIREBASE_CONFIG.apiKey));
-// People who can remove any marketplace listing (must match isSiteAdmin in firestore.rules)
+// Site admins: can remove any marketplace listing and delete any tournament (must match isSiteAdmin in firestore.rules)
 window.MARKET_ADMINS = ["minamorise@gmail.com"];
 // Shown under "About & contact" and "Privacy". Leave empty to hide; WhatsApp as digits with country code, e.g. "4917012345678"
 window.SITE_CONTACT = { email: "", whatsapp: "" };

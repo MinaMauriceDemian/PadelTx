@@ -12,7 +12,7 @@ service cloud.firestore {
     }
 
     // Marketplace: anyone can read, signed-in users post and manage their own listings,
-    // the site admin (by verified email) can remove any listing.
+    // the site admin (by verified email) can remove any listing and delete any tournament.
     function isSiteAdmin() {
       return signedIn() && request.auth.token.email_verified == true
         && request.auth.token.email in ['minamorise@gmail.com'];
@@ -79,7 +79,8 @@ service cloud.firestore {
         || (roleIn(resource.data, ['editor'])
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scores', 'updatedAt']));
 
-      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+      // The creator, or the site admin, can delete it
+      allow delete: if signedIn() && (resource.data.ownerUid == request.auth.uid || isSiteAdmin());
 
       // Edit-access requests: you manage your own, admins manage all
       match /requests/{uid} {
