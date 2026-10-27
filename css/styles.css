@@ -516,8 +516,12 @@ html[data-theme="dark"] .latetxt{color:#FFB86B}
 .sched{background:var(--card);border-color:var(--line)}
 .sched th{background:var(--hdr);font-size:17px;letter-spacing:.04em;text-transform:uppercase}
 .sched td{border-bottom-color:var(--card)}
-.sched th.c2,.sched td.c2s{border-left-color:var(--card)}
-.sched tr.first td{border-top-color:var(--card)}
+/* clear lines between courts, and around the Time and Info columns */
+.sched th.c2,.sched thead th:last-child{border-left:3px solid var(--hdr-muted)}
+.sched thead th:nth-child(2){border-right:3px solid var(--hdr-muted)}
+.sched td.c2s,.sched td.stage{border-left:3px solid var(--inborder)}
+.sched td.time{border-right:3px solid var(--inborder)}
+.sched tr.first td{border-top:1px solid var(--line)}
 .sched tr.rowA td{background:var(--rowA)}
 .sched tr.rowB td{background:var(--rowB)}
 .sched tr.rowX td{background:var(--x-bg)}
