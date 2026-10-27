@@ -189,7 +189,7 @@ const row=e=>{
 };
 const order=["pending","waitlist","accepted","declined"],list=[...entries].sort((a,b)=>order.indexOf(a.status)-order.indexOf(b.status)||a.createdAt-b.createdAt);
 box.innerHTML=list.length?list.map(row).join(""):'<p class="note">No registrations yet.</p>';
-const p=entries.filter(e=>e.status==="pending").length;$("regTab").textContent=p?`Registrations (${p})`:"Registrations"
+const waiting=entries.filter(e=>e.status==="pending").length;$("regTab").textContent=waiting?`Registrations (${waiting})`:"Registrations"
 }
 function renderRegistration(){
 const tab=$("regTab");if(!tab)return;
