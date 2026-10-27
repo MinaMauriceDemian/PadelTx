@@ -222,6 +222,10 @@ input.score.bad{border-color:#d64545;background:#fff1f1}
 .regbar button{min-height:34px;padding:6px 12px}
 .regchip{background:#d1f2ec;color:#0b6b62}
 .regstate b{font-size:15px}
+.regpay{flex-basis:100%;margin-top:4px;padding:10px 12px;border-radius:10px;background:var(--soft);border:1px dashed var(--inborder);font-weight:500;line-height:1.6}
+.regpay code{font-size:15px;font-weight:700;letter-spacing:.03em;overflow-wrap:anywhere}
+.regpay button{min-height:28px;padding:3px 10px;font-size:12px;margin-left:4px}
+.regpayset{margin:6px 0 14px}
 .regrow .reg-main{display:flex;flex-direction:column;min-width:0}
 .regrow .reg-main small{color:var(--muted)}
 .regrow button{min-height:34px;padding:6px 12px}

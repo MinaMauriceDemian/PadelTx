@@ -108,6 +108,16 @@
 <h2>Registrations</h2>
 <div class="mrow2 regstate" id="regState"></div>
 <p class="note">When registration is open, signed-in people see a Register button on this tournament. Accepting puts them in the next free spot (a “Team N” / “Player N” without players). If you need more spots, raise the number in Setup first.</p>
+<details class="help regpayset"><summary>Entry fee &amp; payment details</summary>
+<p>Registrants see these in the form and until you mark them as paid. Anyone who opens the tournament can read them.</p>
+<div class="fields">
+<label>Amount<input id="payAmt" maxlength="30" placeholder="e.g. 20 € per team"></label>
+<label>IBAN<input id="payIban" maxlength="42" placeholder="DE89 3704 0044 0532 0130 00" autocapitalize="characters"></label>
+<label>Account holder<input id="payHolder" maxlength="60"></label>
+<label>Note (optional)<input id="payNote" maxlength="200" placeholder="e.g. Pay within 3 days, or your spot goes to the waiting list"></label>
+</div>
+<div class="actions" style="margin:10px 0 0"><button class="primary" onclick="saveRegPay()">Save payment details</button></div>
+</details>
 <div id="regList"></div>
 </section>
 
@@ -255,8 +265,10 @@
 <label data-rteam>Team name (optional)<input id="rTeam" maxlength="40" placeholder="e.g. Smash Brothers"></label>
 <label>Your name<input id="rMe" maxlength="40" autocomplete="name"></label>
 <label data-rteam>Partner's name<input id="rPartner" maxlength="40" placeholder="They can link their account later"></label>
-<label>WhatsApp number (optional)<input id="rPhone" type="tel" inputmode="tel" placeholder="+20 100 123 4567"></label>
-<p class="note">Include your country code. Only the organiser sees your number.</p>
+<label>WhatsApp number<input id="rPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+49 170 1234567" required></label>
+<label>Email (optional)<input id="rEmail" type="email" autocomplete="email" maxlength="100"></label>
+<p class="note">Include your country code. Only the organiser sees your number and email.</p>
+<div id="rPay" hidden></div>
 <p id="rMsg" class="note" role="status"></p>
 <div class="actions" style="margin:0"><button type="submit" class="primary" id="rSave">Send registration</button><button type="button" class="secondary" onclick="$('regDlg').close()">Cancel</button></div>
 </form></dialog>

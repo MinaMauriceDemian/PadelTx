@@ -58,6 +58,7 @@ if(d){
   state.visibility=d.visibility==="private"?"private":"public";
   state.teamPlayers=d.teamPlayers||{};
   state.regOpen=!!d.regOpen;
+  state.regPay=d.regPay||null;
   state._visMissing=!d.visibility;
 }
 if(teamCount()!==lastBuiltN||document.body.dataset.style!==(state.style||"groups_ko")||!document.querySelector("[data-team]")||document.querySelectorAll("[data-team]").length!==teamCount())rebuild();

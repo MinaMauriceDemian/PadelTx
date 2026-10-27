@@ -87,13 +87,14 @@ service cloud.firestore {
       // the secret code) can put their account on it once; tournament admins manage everything.
       match /entries/{uid} {
         function validEntry(d) {
-          return d.keys().hasOnly(['kind','name','me','partner','phone','status','code','createdAt','updatedAt'])
+          return d.keys().hasOnly(['kind','name','me','partner','phone','email','status','code','createdAt','updatedAt'])
             && d.kind in ['team','player']
             && d.name is string && d.name.size() > 0 && d.name.size() <= 40
             && d.me is map && d.me.uid == uid && d.me.name is string && d.me.name.size() > 0 && d.me.name.size() <= 40
             && (d.partner == null || (d.partner is map && !d.partner.keys().hasAny(['uid'])
                 && d.partner.name is string && d.partner.name.size() > 0 && d.partner.name.size() <= 40))
-            && d.phone is string && (d.phone == '' || d.phone.matches('^[0-9]{7,15}$'))
+            && d.phone is string && d.phone.matches('^[0-9]{7,15}$')
+            && (!d.keys().hasAny(['email']) || (d.email is string && d.email.size() <= 100))
             && d.code is string && d.code.size() >= 8 && d.code.size() <= 32
             && d.status in ['pending','waitlist'];
         }

@@ -13,6 +13,25 @@ const cleanPlayer=p=>{const o={name:p.name};if(p.uid)o.uid=p.uid;if(p.photoURL)o
 const entryPlayers=e=>[e.me,e.partner].filter(Boolean).map(cleanPlayer);
 const entryWho=e=>entryPlayers(e).map(p=>esc(p.name)+(p.uid?"":" <small>(guest)</small>")).join(" &amp; ");
 
+/* ---------- Entry fee: the organiser's IBAN and amount (state.regPay, on the tournament) ---------- */
+const fmtIban=s=>String(s||"").replace(/(.{4})/g,"$1 ").trim();
+const hasPay=()=>!!(state.regPay&&state.regPay.amount&&state.regPay.iban);
+function payHtml(ref){
+if(!hasPay())return "";
+const p=state.regPay;
+return `<div class="regpay">💳 To confirm your registration, pay <b>${esc(p.amount)}</b> to<br>IBAN <code>${esc(fmtIban(p.iban))}</code> <button type="button" class="secondary" onclick="copyIban()">Copy IBAN</button>${p.holder?`<br>Account holder: <b>${esc(p.holder)}</b>`:""}${ref?`<br>Reference: <b dir="auto">${esc(ref)}</b>`:""}${p.note?`<br><span dir="auto">${esc(p.note)}</span>`:""}</div>`
+}
+function copyIban(){if(hasPay()&&navigator.clipboard)navigator.clipboard.writeText(state.regPay.iban).then(()=>toast("IBAN copied."),()=>{})}
+function saveRegPay(){
+if(!isAdmin())return;
+const v=id=>$(id).value.trim();
+const iban=v("payIban").toUpperCase().replace(/[^A-Z0-9]/g,"");
+if(iban&&!/^[A-Z]{2}[0-9]{2}[A-Z0-9]{8,30}$/.test(iban)){toast("That IBAN doesn't look right. It starts with the country code, e.g. DE89 3704 …");return}
+const p={amount:v("payAmt").slice(0,30),iban,holder:v("payHolder").slice(0,60),note:v("payNote").slice(0,200)};
+state.regPay=p.amount||p.iban?p:null;cloudWrite({regPay:state.regPay||DEL});renderRegistration();
+toast(state.regPay?(hasPay()?"Payment details saved. Registrants see them.":"Add both the amount and the IBAN so registrants see them."):"Payment details removed.")
+}
+
 /* ---------- Invite links: #t=ID&join=<registrant uid>.<code> ---------- */
 // Kept for this browser tab until used, so a sign-in that reloads the page (Google on phones) doesn't lose it
 function captureJoin(){
@@ -47,7 +66,9 @@ const am=isAm();
 $("regTitle").textContent=am?"Register for "+(state.name||"the tournament"):"Register your team";
 $("regIntro").textContent=freeSlots().length?(am?"Send your registration; the organiser confirms your place.":"Register yourself and your partner. Your partner can be a guest name now and link their own account later with an invite link."):"The tournament is full. You'll be on the waiting list and get a place if one opens up.";
 document.querySelectorAll("[data-rteam]").forEach(el=>el.hidden=am);
-["rTeam","rPartner","rPhone"].forEach(id=>$(id).value="");$("rMsg").textContent="";$("rMe").value="";
+["rTeam","rPartner","rPhone"].forEach(id=>$(id).value="");$("rMsg").textContent="";$("rMe").value="";$("rEmail").value=authUser.email||"";
+// no payment request for the waiting list: there's no place to pay for yet
+$("rPay").innerHTML=payHtml("");$("rPay").hidden=!hasPay()||!freeSlots().length;
 myPlayer().then(p=>{if(!$("rMe").value)$("rMe").value=p.name});
 $("regDlg").showModal()
 }
@@ -55,20 +76,21 @@ async function submitReg(ev){
 ev.preventDefault();
 const am=isAm(),msg=$("rMsg"),me=await myPlayer();
 me.name=$("rMe").value.trim().slice(0,40);
-const partner=$("rPartner").value.trim().slice(0,40),phone=$("rPhone").value.replace(/[^0-9]/g,"");
+const partner=$("rPartner").value.trim().slice(0,40),phone=$("rPhone").value.replace(/[^0-9]/g,""),email=$("rEmail").value.trim().slice(0,100);
 if(!me.name){msg.textContent="Type your name.";return}
 if(!am&&!partner){msg.textContent="Type your partner's name (they can link their account later).";return}
-if(phone&&(phone.length<7||phone.length>15)){msg.textContent="Check the WhatsApp number (with country code), or leave it empty.";return}
+if(phone.length<7||phone.length>15){msg.textContent="Type your WhatsApp number with the country code, e.g. +49 170 1234567.";return}
+if(email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){msg.textContent="Check the email address, or leave it empty.";return}
 if(allPlayerUids().includes(authUser.uid)){msg.textContent="You are already in a team in this tournament.";return}
 const name=am?me.name:($("rTeam").value.trim()||`${me.name} & ${partner}`).slice(0,40);
 const code=Array.from(crypto.getRandomValues(new Uint32Array(3)),n=>n.toString(36)).join("").slice(0,16).padEnd(8,"0");
-const data={kind:am?"player":"team",name,me,partner:am?null:{name:partner},phone,status:freeSlots().length?"pending":"waitlist",code,createdAt:Date.now(),updatedAt:Date.now()};
+const data={kind:am?"player":"team",name,me,partner:am?null:{name:partner},phone,email,status:freeSlots().length?"pending":"waitlist",code,createdAt:Date.now(),updatedAt:Date.now()};
 $("rSave").disabled=true;msg.textContent="Sending…";
 const r=await window.__cloud.register(data);
 $("rSave").disabled=false;
 if(!r.ok){msg.textContent=r.error==="permission-denied"?"Registration is closed for this tournament.":"Could not register ("+r.error+").";return}
 $("regDlg").close();
-toast(data.status==="waitlist"?"You're on the waiting list.":am?"Registration sent. The organiser will confirm your place.":"Registration sent. Now invite your partner so they can link their account.")
+toast(data.status==="waitlist"?"You're on the waiting list.":hasPay()?"Registration sent. Pay the entry fee to confirm it (details above the schedule).":am?"Registration sent. The organiser will confirm your place.":"Registration sent. Now invite your partner so they can link their account.")
 }
 async function cancelReg(){
 if(!confirm("Cancel your registration?"))return;
@@ -89,10 +111,10 @@ if(!window.CLOUD_ON||!currentTid)return show("");
 if(joinReq&&joinReq.tid===currentTid&&!authUser)return show(`👋 You were invited to join a team. <button class="primary" onclick="openAuth()">Sign in to join</button>`);
 const e=myEntry,inv=e&&e.kind==="team"&&regGuest(e.partner)?`<button class="secondary" onclick="invitePartner()">Invite partner (WhatsApp)</button>`:"";
 if(e){
-  const nm=`“${esc(e.name)}”`;
-  if(e.status==="pending")return show(`⏳ Your registration ${nm} is waiting for the organiser. ${inv}<button class="secondary" onclick="cancelReg()">Cancel</button>`);
+  const nm=`“${esc(e.name)}”`,pay=e.paid?"":payHtml(e.name);
+  if(e.status==="pending")return show(`⏳ Your registration ${nm} is waiting for the organiser. ${inv}<button class="secondary" onclick="cancelReg()">Cancel</button>${pay}`);
   if(e.status==="waitlist")return show(`🕒 You're on the waiting list with ${nm}. ${inv}<button class="secondary" onclick="cancelReg()">Cancel</button>`);
-  if(e.status==="accepted")return show(inv?`✅ You're in: ${nm}. Your partner hasn't linked their account yet. ${inv}`:"");
+  if(e.status==="accepted")return show(inv||pay?`✅ You're in: ${nm}.${inv?` Your partner hasn't linked their account yet. ${inv}`:""}${pay}`:"");
   if(e.status==="declined")return show(`Your registration ${nm} was not accepted. <button class="secondary" onclick="cancelReg()">OK, remove it</button>`);
 }
 if(!state.regOpen||(authUser&&allPlayerUids().includes(authUser.uid)))return show("");
@@ -122,6 +144,10 @@ async function setEntryStatus(uid,status){
 if(!isAdmin())return;
 const r=await window.__cloud.updateEntry(uid,{status,updatedAt:Date.now()});if(!r.ok)toast("Could not update ("+r.error+").")
 }
+async function setEntryPaid(uid,paid){
+if(!isAdmin())return;
+const r=await window.__cloud.updateEntry(uid,{paid:!!paid,updatedAt:Date.now()});if(!r.ok)toast("Could not update ("+r.error+").")
+}
 async function removeEntry(uid){
 const e=entries.find(x=>x.uid===uid);if(!e||!isAdmin())return;
 if(e.status==="accepted"&&e.slot!=null){
@@ -147,7 +173,8 @@ entries.filter(e=>e.status==="accepted"&&e.slot!=null&&!e.linked&&e.partner&&e.p
 }
 function renderRegAdmin(){
 const box=$("regList");if(!box)return;
-const n=freeSlots().length,open=!!state.regOpen;
+const n=freeSlots().length,open=!!state.regOpen,p=state.regPay||{};
+[["payAmt",p.amount],["payIban",fmtIban(p.iban)],["payHolder",p.holder],["payNote",p.note]].forEach(([id,v])=>{const el=$(id);if(el&&document.activeElement!==el)el.value=v||""});
 $("regState").innerHTML=`<b>${open?"Registration is open":"Registration is closed"}</b><span class="note">${n} free spot${n===1?"":"s"}</span><span class="grow"></span><button class="${open?"secondary":"primary"}" onclick="setRegOpen(${!open})">${open?"Close registration":"Open registration"}</button>`;
 const row=e=>{
   const id=esc(e.uid),btn=(label,call,cls)=>`<button class="${cls||"secondary"}" onclick="${call}">${label}</button>`;
@@ -156,7 +183,9 @@ const row=e=>{
     e.status==="waitlist"?accept+decline:
     e.status==="accepted"?`<span class="note">Spot ${(+e.slot)+1}</span>`+btn("Remove",`removeEntry('${id}')`,"danger"):btn("Delete",`removeEntry('${id}')`,"danger");
   const wa=e.phone?` · <a href="https://wa.me/${esc(e.phone)}" target="_blank" rel="noopener">WhatsApp +${esc(e.phone)}</a>`:"";
-  return `<div class="mrow2 regrow"><div class="reg-main"><b dir="auto">${esc(e.name)}</b><small dir="auto">${entryWho(e)}${wa}</small></div><span class="grow"></span><span class="chip regst-${e.status}">${REG_LABEL[e.status]||esc(e.status)}</span>${acts}</div>`
+  const mail=e.email?` · <a href="mailto:${esc(e.email)}">${esc(e.email)}</a>`:"";
+  const paid=e.status==="declined"?"":`<span class="chip ${e.paid?"regst-accepted":"regst-pending"}">${e.paid?"Paid":"Not paid"}</span>`+btn(e.paid?"Mark unpaid":"Mark paid",`setEntryPaid('${id}',${!e.paid})`);
+  return `<div class="mrow2 regrow"><div class="reg-main"><b dir="auto">${esc(e.name)}</b><small dir="auto">${entryWho(e)}${wa}${mail}</small></div><span class="grow"></span>${paid}<span class="chip regst-${e.status}">${REG_LABEL[e.status]||esc(e.status)}</span>${acts}</div>`
 };
 const order=["pending","waitlist","accepted","declined"],list=[...entries].sort((a,b)=>order.indexOf(a.status)-order.indexOf(b.status)||a.createdAt-b.createdAt);
 box.innerHTML=list.length?list.map(row).join(""):'<p class="note">No registrations yet.</p>';
