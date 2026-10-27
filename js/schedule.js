@@ -80,7 +80,7 @@ function carUpdate(){
 const sl=carSlides(),i=carIndex(),pos=$("mcarPos");if(!pos)return;
 if(i<0){pos.textContent="";return}
 const el=sl[i],s=+el.dataset.slot;carSlot=s;
-pos.innerHTML=`<b>${timeFor(s)}–${fmtMin(slotStart(s)+slotDur())}</b><span>${esc(el.dataset.label)} · ${i+1} of ${sl.length}</span>`;
+pos.innerHTML=`<b>${esc(el.dataset.label)} · ${i+1} of ${sl.length}</b><span>${timeFor(s)}–${fmtMin(slotStart(s)+slotDur())}</span>`;
 document.querySelectorAll(".mcar-btn").forEach((b,k)=>b.disabled=k===0?i===0:i===sl.length-1)
 }
 function carScrolled(){clearTimeout(carTimer);carTimer=setTimeout(carUpdate,60)}
