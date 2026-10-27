@@ -25,6 +25,10 @@ if(window.CLOUD_ON){
     }
     function leave(){if(unsubT){unsubT();unsubT=null}if(unsubAux){unsubAux();unsubAux=null}tid=null;lastData=null;roleKey=null;auxKey=null}
 
+    // What the home page needs to show a tournament card
+    const summary=(id,x,u)=>({id,name:x.name||"Tournament",teams:(x.teams||[]).length,style:x.style||"groups_ko",visibility:x.visibility||"public",
+      date:(x.settings||{}).date||"",venue:(x.settings||{}).venue||"",start:(x.settings||{}).start||"",results:Object.keys(x.scores||{}).length,
+      createdAt:x.createdAt||0,updatedAt:x.updatedAt||0,role:u?((x.members||{})[u.uid]||"editor"):null,owner:!!u&&x.ownerUid===u.uid});
     window.__cloud={
       async open(id){
         try{
@@ -47,7 +51,10 @@ if(window.CLOUD_ON){
           for(let i=0;i<6;i++){
             const id=genId();
             if((await F.getDoc(T(id))).exists())continue;
-            await F.setDoc(T(id),{name,ownerUid:u.uid,members:{[u.uid]:"admin"},memberUids:[u.uid],teams:d.teams,style:opts.style||"groups_ko",visibility:opts.visibility==="private"?"private":"public",bestOf:{},settings:d.settings,sfPairing:0,scores:{},createdAt:Date.now(),updatedAt:Date.now()});
+            const doc={name,ownerUid:u.uid,members:{[u.uid]:"admin"},memberUids:[u.uid],teams:d.teams,style:opts.style||"groups_ko",visibility:opts.visibility==="private"?"private":"public",bestOf:{},settings:d.settings,sfPairing:0,scores:{},createdAt:Date.now(),updatedAt:Date.now()};
+            // Duplicate: same teams, players, courts and settings; no scores, no date, only you as admin
+            if(opts.copy){const c=opts.copy;Object.assign(doc,{teams:c.teams||doc.teams,style:c.style||doc.style,visibility:c.visibility||doc.visibility,bestOf:c.bestOf||{},settings:{...(c.settings||{}),date:""},teamPlayers:c.teamPlayers||{},playerUids:c.playerUids||[]})}
+            await F.setDoc(T(id),doc);
             return {ok:true,id}
           }
           return {ok:false,error:"id-collision"}
@@ -57,14 +64,14 @@ if(window.CLOUD_ON){
         const u=auth.currentUser;if(!u)return {ok:true,list:[]};
         try{
           const s=await F.getDocs(F.query(F.collection(db,"tournaments"),F.where("memberUids","array-contains",u.uid)));
-          const list=s.docs.map(d=>({id:d.id,name:d.data().name||"Tournament",role:(d.data().members||{})[u.uid]||"editor",teams:(d.data().teams||[]).length,visibility:d.data().visibility||"public",createdAt:d.data().createdAt||0})).sort((a,b)=>b.createdAt-a.createdAt);
+          const list=s.docs.map(d=>summary(d.id,d.data(),u)).sort((a,b)=>b.createdAt-a.createdAt);
           return {ok:true,list}
         }catch(e){return {ok:false,error:err(e)}}
       },
       async listPublic(){
         try{
           const s=await F.getDocs(F.query(F.collection(db,"tournaments"),F.where("visibility","==","public"),F.limit(100)));
-          const list=s.docs.map(d=>{const x=d.data();return {id:d.id,name:x.name||"Tournament",teams:(x.teams||[]).length,results:Object.keys(x.scores||{}).length,createdAt:x.createdAt||0}}).sort((a,b)=>b.createdAt-a.createdAt);
+          const list=s.docs.map(d=>summary(d.id,d.data(),null));
           return {ok:true,list}
         }catch(e){return {ok:false,error:err(e)}}
       },
@@ -107,9 +114,33 @@ if(window.CLOUD_ON){
         try{await F.updateDoc(F.doc(db,"listings",id),{...data,updatedAt:Date.now()});return {ok:true}}
         catch(e){return {ok:false,error:err(e)}}
       },
+      // Reports on listings: anyone signed in can report; only the site admin can read and clear them
+      async reportListing(listingId,reason){
+        const u=auth.currentUser;if(!u)return {ok:false,error:"not signed in"};
+        try{await F.addDoc(F.collection(db,"reports"),{listingId,reason,reporterUid:u.uid,createdAt:Date.now()});return {ok:true}}
+        catch(e){return {ok:false,error:err(e)}}
+      },
+      async listReports(){
+        try{const s=await F.getDocs(F.query(F.collection(db,"reports"),F.orderBy("createdAt","desc"),F.limit(100)));return {ok:true,list:s.docs.map(d=>({id:d.id,...d.data()}))}}
+        catch(e){return {ok:false,error:err(e)}}
+      },
+      async dismissReport(id){
+        try{await F.deleteDoc(F.doc(db,"reports",id));return {ok:true}}catch(e){return {ok:false,error:err(e)}}
+      },
       async deleteListing(id){
         try{await F.deleteDoc(F.doc(db,"listings",id));return {ok:true}}
         catch(e){return {ok:false,error:err(e)}}
+      },
+      async getTournament(id){
+        try{const s=await F.getDoc(T(id));return s.exists()?{ok:true,data:s.data()}:{ok:false,error:"not-found"}}catch(e){return {ok:false,error:err(e)}}
+      },
+      // Pending edit-access requests (admins only) – for the badge on the home page
+      async pendingRequests(id){
+        try{const s=await F.getDocs(F.query(F.collection(db,"tournaments",id,"requests"),F.where("status","==","pending"),F.limit(20)));return {ok:true,n:s.size}}catch(e){return {ok:false,n:0}}
+      },
+      // Only the owner may delete (see firestore.rules)
+      async deleteTournament(id){
+        try{await F.deleteDoc(T(id));return {ok:true}}catch(e){return {ok:false,error:err(e)}}
       },
       async write(upd){
         if(!tid)return;

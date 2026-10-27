@@ -132,7 +132,7 @@ section("Live “now” marker and late matches",()=>{
   check(L&&L.late.size===2,"both slot 1 matches are late");
   check(doc.querySelector('#schedBox tr.now[data-slot="2"]')!==null,"slot 2 highlighted");
   check(doc.getElementById("gA0-a").classList.contains("late"),"late match highlighted");
-  check(/Now: slot 2/.test(doc.getElementById("liveBar").textContent),"live bar says slot 2");
+  check(/Now playing/.test(doc.getElementById("liveBar").textContent)&&!/slot/i.test(doc.getElementById("liveBar").textContent),"live bar shows times, not slot numbers");
   E('setFilter("now")');
   const shown=[...doc.querySelectorAll("#schedBox tr[data-slot]")].filter(r=>!r.hidden).map(r=>+r.dataset.slot);
   check(new Set(shown).size===3&&shown.every(s=>s<=3),"Now & next shows the late, current and next slots");
@@ -353,6 +353,16 @@ section("Americano: switching style, players and phone view",()=>{
   check(P.errors.length===0,"phone: no script errors");
 });
 
+section("Teams panel opens and closes like Setup",()=>{
+  const {E,doc}=loadApp();setTeams(E,8);
+  const box=doc.getElementById("teamsBox");
+  check(box&&box.tagName==="DETAILS"&&!box.open,"Teams is a closed panel at first");
+  check(/8 teams · 2 groups · T0, T1, T2, T3…/.test(doc.getElementById("teamsSum").textContent),"summary shows count, groups and first names");
+  E('addPlayerToTeam(0,{name:"Omar"})');check(/1 with players/.test(doc.getElementById("teamsSum").textContent),"summary counts teams with players");
+  E('state.style="americano";state.teams=Array.from({length:10},(_,i)=>"P"+i);state.teamPlayers={};rebuild()');
+  check(/^10 players · P0/.test(doc.getElementById("teamsSum").textContent)&&doc.getElementById("teamsTitle").textContent==="Players","Americano: Players panel with player summary");
+});
+
 // Marketplace: uses a fake online layer instead of Firebase
 async function marketTests(){
   console.log("• Marketplace");
@@ -388,6 +398,46 @@ async function marketTests(){
     check(errors.length===0,"no script errors: "+errors.join(" | "));
   }catch(e){failed++;console.log("  ✗ crashed: "+e.stack.split("\n").slice(0,3).join(" | "))}
 }
+
+section("Review fixes: neutral names, viewer view, phone carousel, follow a team",()=>{
+  const {E,doc,errors}=loadApp({phone:true});
+  check(E("defaultTeams[0]")==="Team 1"&&E("defaultTeams[7]")==="Team 8","default team names are neutral");
+  E("rebuild();refresh()");
+  const car=doc.getElementById("mcar");
+  check(!!car,"phone shows one swipeable row of slots");
+  const slides=car?car.querySelectorAll(":scope > .mslot").length:0;
+  check(slides>=E("[...new Set(allMatches().map(m=>m.slot))].length")&&slides===doc.querySelectorAll("#schedBox .mslot").length,"one slide per time slot, all inside the row ("+slides+")");
+  check(doc.querySelectorAll("#schedBox .mcar").length===1,"slots are not stacked vertically");
+  E("carUpdate()");
+  check(/1 of \d+/.test(doc.getElementById("mcarPos").textContent),"position label shows i of n");
+  check(typeof E("carStep")==="function"&&typeof E("carGoSlot")==="function","carousel navigation exists");
+  E('setFollow(2)');
+  const fb=doc.getElementById("followBar");
+  check(!fb.hidden&&/Next match|Playing now/.test(fb.textContent),"following a team shows its next match");
+  check(doc.querySelectorAll(".followed").length>0,"followed team is highlighted");
+  E('setFollow("")');
+  check(doc.querySelectorAll(".followed").length===0,"unfollow clears the highlight");
+  check(errors.length===0,"no script errors: "+errors.join(" | "));
+});
+
+section("Home page: tournament status and order",()=>{
+  const {E}=loadApp();
+  const today=E('new Date().toISOString().slice(0,10)');
+  check(E(`tStatus({date:"2000-01-01",played:3,total:10}).k`)!=="live","old date is not live");
+  check(E(`tStatus({date:"2999-01-01",played:0,total:10}).k`)==="upcoming","future date is upcoming");
+  check(E(`tStatus({date:"2000-01-01",played:10,total:10}).k`)==="finished","all played is finished");
+  const order=E(`sortTournaments([{id:"F",date:"2000-01-01",played:10,total:10},{id:"U",date:"2999-01-01",played:0,total:10}]).map(t=>t.id).join("")`);
+  check(order==="UF","finished tournaments sort after upcoming ("+order+")");
+  check(today.length===10,"date helper");
+});
+
+section("Marketplace listings expire after 30 days",()=>{
+  const {E}=loadApp();
+  const old=Date.now()-31*864e5,fresh=Date.now()-2*864e5;
+  check(E(`isExpired({createdAt:${old}})`)===true,"31-day-old listing is expired");
+  check(E(`isExpired({createdAt:${fresh}})`)===false,"2-day-old listing is live");
+  check(E(`daysLeft({createdAt:${fresh}})`)===28,"days left counted");
+});
 
 profileTests().then(marketTests).then(()=>{
   console.log(`\n${passed} passed, ${failed} failed`);

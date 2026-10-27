@@ -1,5 +1,6 @@
 // App shell: state, roles, login/landing pages, account, access management. Loaded first.
-const defaultTeams=["Viboras","Padeliators","Elsawaree5","O&H","H & H","شباب المستقبل","M&Ms","Eskendriaa"];
+// New tournaments start with neutral names; the organiser types the real ones
+const defaultTeams=Array.from({length:8},(_,i)=>"Team "+(i+1));
 let state={teams:[...defaultTeams],teamPlayers:{},scores:{},bestOf:{},moves:{},style:"groups_ko",visibility:"public",settings:{start:"12:00",duration:20,date:""}};
 const key="padelTournamentV2";
 if(!window.CLOUD_ON){try{const s=JSON.parse(localStorage.getItem(key)); if(s) state={...state,...s,settings:{...state.settings,...(s?.settings||{})}}}catch(e){}}
@@ -65,7 +66,7 @@ syncInputs();refresh();applyRole()
 window.__getInitial=()=>({teams:state.teams,settings:state.settings,sfPairing:state.sfPairing||0,scores:state.scores});
 window.__cloudStatus=s=>{cloudStatus=s;applyRole()};
 window.__setRole=function(r,u){role=r;authUser=u;applyRole();if(r==="admin"&&state._visMissing){state._visMissing=false;cloudWrite({visibility:state.visibility})}if($("authDlg").open)updateAuthDlg()};
-window.__setRequests=l=>{requests=l;renderAccess()};
+window.__setRequests=l=>{requests=l;renderAccess();const n=l.filter(r=>r.status==="pending"&&!(state.members||{})[r.uid]).length;$("accessTab").textContent=n?`Access (${n})`:"Access"};
 window.__setMyRequest=st=>{myReq=st;applyRole()};
 window.__authState=function(u){
 authUser=u;
@@ -90,7 +91,8 @@ document.querySelectorAll("input.score,.stepbtn").forEach(el=>el.disabled=!ed);
 document.querySelectorAll("[data-team],[data-admin]").forEach(el=>el.disabled=!ad);
 const sf=$("sfSel");if(sf)sf.disabled=!ad;
 if(typeof renderTeamPlayers==="function")renderTeamPlayers();
-document.body.classList.toggle("can-move",ad);
+document.body.classList.toggle("can-move",ad);document.body.classList.toggle("is-admin",ad);document.body.classList.toggle("can-score",ed);
+const dt=$("delTBtn");if(dt)dt.hidden=!(window.CLOUD_ON&&authUser&&state.ownerUid&&state.ownerUid===authUser.uid);
 const chip=$("roleChip"),btn=$("loginBtn"),bar=$("viewBanner"),foot=$("footNote");
 $("tnameLabel").hidden=!window.CLOUD_ON;$("visLabel").hidden=!window.CLOUD_ON;
 if(!window.CLOUD_ON){
@@ -99,13 +101,15 @@ if(!window.CLOUD_ON){
 }else{
   chip.textContent=ad?"Admin":ed?"Editor":"Viewer";btn.textContent=authUser?"Account":"Sign in";
   $("backBtn").hidden=false;$("shareBtn").hidden=!currentTid;
-  $("hdrSub").textContent=currentTid?(state.name||"Tournament")+" · ID "+currentTid+(state.visibility==="private"?" · 🔒 Private":""):"";
+  // header line: what viewers care about (name, day, venue); the ID is for admins
+  const s=state.settings||{},d=s.date?new Date(s.date+"T00:00"):null;
+  $("hdrSub").textContent=currentTid?[state.name||"Tournament",d&&!isNaN(d)?d.toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"}):"",s.venue||"",ad?"ID "+currentTid:"",state.visibility==="private"?"🔒 Private":""].filter(Boolean).join(" · "):"";
   $("accessTab").hidden=!ad;
   if(!ad&&$("access").classList.contains("active"))document.querySelector('.tab[data-tab="schedule"]').click();
   bar.hidden=ed;
   if(!ed){
     if(!authUser)bar.innerHTML='👁 View only — scores update live. Staff: <b><a href="#" onclick="openAuth();return false">sign in</a></b> to enter scores.';
-    else if(myReq==="pending")bar.textContent="👁 View only — your edit-access request is waiting for the admin.";
+    else if(myReq==="pending")bar.innerHTML='👁 Your edit-access request is waiting for the admin. <b><a href="#" onclick="nudgeAdmin();return false">Message the admin on WhatsApp</a></b>';
     else bar.innerHTML='👁 View only. <b><a href="#" onclick="requestAccess();return false">Request edit access</a></b> from the tournament admin.';
   }
   foot.textContent=cloudStatus==="live"?"● Live — changes sync automatically for everyone.":"Connecting…"
@@ -113,7 +117,7 @@ if(!window.CLOUD_ON){
 }
 async function requestAccess(){
 const r=await window.__cloud.requestAccess();
-if(r&&r.ok)toast("Request sent. The admin will see it under Access.");else toast("Could not send the request.")
+if(r&&r.ok)toast("Request sent. Use “Message the admin on WhatsApp” to let them know.");else toast("Could not send the request.")
 }
 /* landing page */
 function renderLanding(){
@@ -122,24 +126,77 @@ if($("heroSignIn")){$("heroSignIn").hidden=!!authUser;$("heroSignOut").hidden=!a
 loadPublic();
 if(authUser){$("lWho").textContent="Signed in as "+authUser.email;loadMine()}
 }
+/* ---------- Tournament cards (home page) ---------- */
+// Status from the tournament's date, start time and results
+function tStatus(t){
+const today=todayStr();
+if(t.date){
+  if(t.date>today)return {k:"upcoming",l:"Upcoming",o:2};
+  if(t.date<today)return {k:"finished",l:"Finished",o:5};
+  const n=new Date(),nm=n.getHours()*60+n.getMinutes(),st=toMin(t.start);
+  return t.results>0||(st!=null&&nm>=st)?{k:"live",l:"Live now",o:0}:{k:"today",l:"Today",o:1};
+}
+return t.results>0?{k:"progress",l:"In progress",o:3}:{k:"new",l:"Not started",o:4};
+}
+function sortTournaments(list){return list.map(t=>({...t,st:tStatus(t)})).sort((a,b)=>a.st.o-b.st.o||(a.st.k==="finished"?(b.date||"").localeCompare(a.date||""):(a.date||"").localeCompare(b.date||""))||b.createdAt-a.createdAt)}
+function tMeta(t){
+const d=t.date?new Date(t.date+"T00:00"):null;
+return [d&&!isNaN(d)?d.toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"})+(t.start?" · "+t.start:""):"",t.venue,t.style==="americano"?`Americano · ${t.teams} players`:`${t.teams} teams`].filter(Boolean).map(esc).join(" · ")
+}
+const statusChip=t=>`<span class="stchip st-${t.st.k}">${t.st.k==="live"?'<i aria-hidden="true"></i>':""}${t.st.l}</span>`;
 async function loadMine(){
 const box=$("myList");
 if(!window.__cloud||!authUser){box.textContent="";return []}
 box.innerHTML='<p class="note">Loading…</p>';
 const r=await window.__cloud.listMine();
 if(!r.ok){box.innerHTML='<p class="note">Could not load your tournaments.</p>';return []}
-mine=r.list;
-box.innerHTML=mine.length?mine.map(t=>`<div class="tcard"><div><b dir="auto">${esc(t.name)}</b><span class="chip ${t.role==="admin"?"chipF":"chipK"}">${t.role==="admin"?"Admin":"Editor"}</span>${t.visibility==="private"?' <span class="chip privchip">🔒 Private</span>':""}<p class="note">${t.teams?t.teams+" teams · ":""}ID ${esc(t.id)}</p></div><button class="primary" onclick="enterTournament('${esc(t.id)}','lMsg')">Open</button></div>`).join(""):'<p class="note">You have no tournaments yet. Create one below, or open one with its ID.</p>';
+mine=sortTournaments(r.list);
+box.innerHTML=mine.length?mine.map(t=>`<div class="tcard mycard" id="my-${esc(t.id)}"><div class="tc-main"><div class="tc-top">${statusChip(t)}<span class="chip ${t.role==="admin"?"chipF":"chipK"}">${t.role==="admin"?"Admin":"Editor"}</span>${t.visibility==="private"?'<span class="chip privchip">🔒 Private</span>':""}<span class="reqbadge" hidden></span></div><b dir="auto">${esc(t.name)}</b><p class="note">${tMeta(t)}</p></div><div class="tc-actions"><button class="primary" onclick="enterTournament('${esc(t.id)}','lMsg')">Open</button>${t.role==="admin"?`<button class="secondary" onclick="duplicateT('${esc(t.id)}')">Duplicate</button>`:""}${t.owner?`<button class="danger" onclick="deleteT('${esc(t.id)}')">Delete</button>`:""}</div></div>`).join(""):'<p class="note">You have no tournaments yet. Create one below.</p>';
+// pending edit-access requests, for tournaments you run
+mine.filter(t=>t.role==="admin"&&window.__cloud.pendingRequests).forEach(async t=>{
+  const q=await window.__cloud.pendingRequests(t.id),b=document.querySelector(`#my-${t.id} .reqbadge`);
+  if(b&&q.ok&&q.n){b.hidden=false;b.textContent=`${q.n} access request${q.n>1?"s":""}`}
+});
 return mine
 }
-let pubLoading=false;
+let pubLoading=false,pubAll=false,pubCache=[];
 async function loadPublic(){
 const box=$("pubList");if(!box||pubLoading)return;
 if(!window.__cloud){box.innerHTML='<p class="note">Connecting…</p>';return}
 pubLoading=true;box.innerHTML='<p class="note">Loading…</p>';
 const r=await window.__cloud.listPublic();pubLoading=false;
 if(!r.ok){box.innerHTML='<p class="note">Could not load the list ('+esc(r.error)+').</p>';return}
-box.innerHTML=r.list.length?r.list.map(t=>`<div class="tcard"><div><b dir="auto">${esc(t.name)}</b><p class="note">${t.teams} teams · ${t.results} result${t.results===1?"":"s"} · ID ${esc(t.id)}</p></div><button class="primary" onclick="enterTournament('${esc(t.id)}','findMsg')">Open</button></div>`).join(""):'<p class="note">No public tournaments yet.</p>'
+pubCache=sortTournaments(r.list);renderPublic()
+}
+function renderPublic(){
+const box=$("pubList"),active=pubCache.filter(t=>t.st.k!=="finished"),done=pubCache.filter(t=>t.st.k==="finished"),showDone=pubAll?done:done.slice(0,4);
+const card=t=>`<button type="button" class="tcard pubcard-item" onclick="enterTournament('${esc(t.id)}','findMsg')"><span class="tc-main"><span class="tc-top">${statusChip(t)}</span><b dir="auto">${esc(t.name)}</b><span class="note">${tMeta(t)}</span></span><span class="tc-go" aria-hidden="true">›</span></button>`;
+box.innerHTML=(pubCache.length?"":'<p class="note">No public tournaments yet.</p>')+active.map(card).join("")+(done.length?`<h3 class="pubsub">Finished</h3>`+showDone.map(card).join("")+(done.length>4?`<button type="button" class="secondary" onclick="pubAll=!pubAll;renderPublic()">${pubAll?"Show fewer":"Show all "+done.length+" finished"}</button>`:""):"")
+}
+// Organiser tools
+async function duplicateT(id){
+const m=$("lMsg");m.textContent="Copying…";
+const r=await window.__cloud.getTournament(id);
+if(!r.ok){m.textContent="Could not copy it ("+r.error+").";return}
+const d=r.data,c=await window.__cloud.create((d.name||"Tournament")+" (copy)",{copy:{teams:d.teams,style:d.style,visibility:d.visibility,bestOf:d.bestOf,settings:d.settings,teamPlayers:d.teamPlayers,playerUids:d.playerUids}});
+if(!c.ok){m.textContent="Could not copy it ("+c.error+").";return}
+m.textContent="";toast("Copied with the same teams, courts and settings. Set the new date in Setup.");
+await enterTournament(c.id,"lMsg")
+}
+async function deleteT(id,name){
+const t=(mine||[]).find(x=>x.id===id)||{name:name||state.name};
+if(!confirm(`Delete “${t.name}” for everyone? All its matches and scores are removed. This can't be undone.`))return false;
+const r=await window.__cloud.deleteTournament(id);
+if(!r.ok){toast(r.error==="permission-denied"?"Only the person who created a tournament can delete it.":"Could not delete it ("+r.error+").");return false}
+toast("Tournament deleted.");
+if(currentTid===id)goHome();else{loadMine();loadPublic()}
+return true
+}
+function deleteCurrent(){if(currentTid)deleteT(currentTid,state.name)}
+// After asking for edit access: let the admin know on WhatsApp
+function nudgeAdmin(){
+const text=`Hi! I asked for edit access to “${state.name||"the tournament"}” on Padel Tour. Could you approve me under Access? ${tournamentUrl()}`;
+window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank","noopener")
 }
 async function enterTournament(id,msgId){
 const m=msgId?$(msgId):null;if(m)m.textContent="Opening…";
@@ -149,6 +206,7 @@ const r=await window.__cloud.open(id);
 if(!r.ok){
   currentTid=null;
   if(m)m.textContent=r.error==="not-found"?"No tournament found with this ID.":"Could not open it ("+r.error+").";
+  const fd=document.querySelector(".findid");if(fd&&msgId==="findMsg")fd.open=true;
   return false
 }
 if(m)m.textContent="";

@@ -23,4 +23,4 @@ $("rankBody").innerHTML=placements().map((p,i)=>`<tr class="${i<3?"medal "+cls[i
 }
 function refresh(){renderSFPicker();refreshSchedule();renderStandings();renderBracket();renderRanking()}
 function renderAll(){buildSchedule();renderFormatInfo();refresh();applyRole();lastBuiltN=teamCount()}
-function showTab(id,btn){document.querySelectorAll(".section").forEach(x=>x.classList.remove("active"));$(id).classList.add("active");document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));btn.classList.add("active")}
+function showTab(id,btn){document.querySelectorAll(".section").forEach(x=>x.classList.remove("active"));$(id).classList.add("active");document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));btn.classList.add("active");const nav=btn.parentElement;if(nav&&nav.scrollWidth>nav.clientWidth)nav.scrollTo({left:btn.offsetLeft-(nav.clientWidth-btn.offsetWidth)/2,behavior:"smooth"})}

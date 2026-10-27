@@ -12,3 +12,5 @@ window.FIREBASE_CONFIG = {
 window.CLOUD_ON = !!(window.FIREBASE_CONFIG.apiKey && !/^PASTE/.test(window.FIREBASE_CONFIG.apiKey));
 // People who can remove any marketplace listing (must match isSiteAdmin in firestore.rules)
 window.MARKET_ADMINS = ["minamorise@gmail.com"];
+// Shown under "About & contact" and "Privacy". Leave empty to hide; WhatsApp as digits with country code, e.g. "4917012345678"
+window.SITE_CONTACT = { email: "", whatsapp: "" };

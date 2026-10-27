@@ -34,6 +34,16 @@ service cloud.firestore {
       allow delete: if signedIn() && (resource.data.ownerUid == request.auth.uid || isSiteAdmin());
     }
 
+    // Reports on marketplace listings: anyone signed in can report; only the site admin reads and clears them
+    match /reports/{rid} {
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['listingId','reason','reporterUid','createdAt'])
+        && request.resource.data.reporterUid == request.auth.uid
+        && request.resource.data.listingId is string && request.resource.data.listingId.size() <= 64
+        && request.resource.data.reason is string && request.resource.data.reason.size() <= 300;
+      allow read, delete: if isSiteAdmin();
+    }
+
     // Player profiles: the owner writes; everyone reads public ones, only the owner reads a private one.
     function validProfile(d) {
       return d.keys().hasOnly(['displayName','photoURL','city','homeClub','level','levelHistory','hand','side','matchType','days','times','whatsapp','about','visibility','createdAt','updatedAt'])

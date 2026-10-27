@@ -164,7 +164,7 @@ function amDescribe(){
 }
 
 /* ---------- Schedule screens ---------- */
-const amInputHtml=(id,side)=>{const r=rawScore(id),v=r?r[side]:"";return `<input class="score" type="number" inputmode="numeric" min="0" max="${amPoints()}" id="${id}${side}" value="${v}" oninput="amInput('${id}','${side}')" aria-label="Points">`};
+const amInputHtml=(id,side)=>{const r=rawScore(id),v=r?r[side]:"";return `<input class="score" type="number" inputmode="numeric" min="0" max="${amPoints()}" id="${id}${side}" value="${v}" placeholder="–" oninput="amInput('${id}','${side}')" aria-label="Points">`};
 function amSitText(rd){return rd.sit.length?"Sitting out: "+rd.sit.map(i=>esc(teamName(i))).join(", "):""}
 function amBuildTable(ms){
   const C=courtsCfg().length,span=3+3*C;
@@ -188,7 +188,8 @@ function amBuildTable(ms){
 }
 function amBuildCards(ms){
   const side=(m,k)=>`<div class="mteam"><span class="tn" id="${m.id}-${k}" dir="auto"></span><div class="stepper"><button class="stepbtn" onclick="amBump('${m.id}','${k}',-1)" aria-label="One point less">−</button>${amInputHtml(m.id,k)}<button class="stepbtn" onclick="amBump('${m.id}','${k}',1)" aria-label="One point more">+</button></div></div>`;
-  return `<div class="mcards"><div class="mband">Americano <small>${ms.rounds.length} rounds · matches to ${amPoints()} points</small></div>${ms.rounds.map(rd=>`<div class="mslot" data-slot="${rd.slot}"><div class="mslot-h"><b>Round ${rd.round}</b><span class="slot-t" data-time="${rd.slot}"></span><span class="nowtag">Now</span><span class="nexttag">Next</span><span class="latebadge" data-slb="${rd.slot}" hidden>⏰ Late</span></div>${rd.ids.map(id=>{const m=ms.byId[id];return `<div class="mtile" data-m="${m.id}"><div class="mtile-h"><span class="court cname${m.court}"></span>${m.over?'<small class="overtag">after court hours</small>':""}</div>${side(m,"a")}${side(m,"b")}</div>`}).join("")}${rd.sit.length?`<p class="note amsit-card">${amSitText(rd)}</p>`:""}</div>`).join("")}<p class="note" id="filterEmpty" hidden>No matches to show here.</p></div>`
+  const slides=ms.rounds.map(rd=>`<div class="mslot" data-slot="${rd.slot}" data-label="Round ${rd.round} of ${ms.rounds.length}"><div class="mslot-h"><b class="slot-time" data-time="${rd.slot}"></b><span class="slotno">Round ${rd.round}</span><span class="nowtag">Now</span><span class="nexttag">Next</span><span class="latebadge" data-slb="${rd.slot}" hidden>⏰ Late</span></div>${rd.ids.map(id=>{const m=ms.byId[id];return `<div class="mtile" data-m="${m.id}"><div class="mtile-h"><span class="court cname${m.court}"></span>${m.over?'<small class="overtag">after court hours</small>':""}</div>${side(m,"a")}${side(m,"b")}</div>`}).join("")}${rd.sit.length?`<p class="note amsit-card">${amSitText(rd)}</p>`:""}</div>`).join("");
+  return `<div class="mcards">${carouselHtml(slides)}<p class="note" id="filterEmpty" hidden>No matches to show here.</p></div>`
 }
 function amRefreshSchedule(){
   courtsCfg().forEach((c,i)=>document.querySelectorAll(".cname"+(i+1)).forEach(el=>el.textContent=c.name));
@@ -232,7 +233,7 @@ function amRenderStandings(){
 function amRenderTeams(){
   const box=$("teams");box.classList.add("one");
   box.innerHTML=`<div class="group-box gbA am-players">${state.teams.map((_,i)=>`<div class="team"><div class="team-row"><span class="num">${i+1}</span><input data-team="${i}" value="${esc(teamName(i))}" maxlength="40" aria-label="Player name"></div><div class="tplayers" data-tp="${i}"></div></div>`).join("")}</div>`;
-  document.querySelectorAll("[data-team]").forEach(x=>x.oninput=()=>{if(!isAdmin())return;state.teams[+x.dataset.team]=x.value;save();refresh();clearTimeout(pending.teams);pending.teams=setTimeout(()=>{pending.teams=null;cloudWrite({teams:[...state.teams]})},600)});
+  document.querySelectorAll("[data-team]").forEach(x=>x.oninput=()=>{if(!isAdmin())return;state.teams[+x.dataset.team]=x.value;save();refresh();if($("teamsSum"))$("teamsSum").textContent=teamsSummary();clearTimeout(pending.teams);pending.teams=setTimeout(()=>{pending.teams=null;cloudWrite({teams:[...state.teams]})},600)});
 }
 function amChangeCount(v){
   v=+v;
@@ -323,7 +324,7 @@ function amSetStyle(v){
     document.body.classList.toggle("is-am",am);document.body.dataset.style=state.style||"groups_ko";
     $("nteams").innerHTML=teamCountOptions(am);$("nteams").value=String(teamCount());
     $("nteamsLbl").textContent=am?"Number of players":"Number of teams";
-    $("tabStand").textContent=am?"Leaderboard":"Standings";
+    $("tabStand").textContent=am?"Leaderboard":"Table";
     if($("ampts")&&!$("ampts").options.length)$("ampts").innerHTML=AM_POINTS.map(p=>`<option value="${p}">${p} points</option>`).join("");
     if(am){
       if(document.querySelector('.tab[data-tab="bracket"].active'))document.querySelector('.tab[data-tab="standings"]').click();
@@ -331,6 +332,7 @@ function amSetStyle(v){
       $("pills").innerHTML=[`${teamCount()} players`,"Americano",`${C} court${C>1?"s":""}`].map(t=>`<span>${t}</span>`).join("");
       $("formatHelp").textContent=amDescribe();
       if($("setupSum"))$("setupSum").textContent=setupSummary();
+      if($("teamsSum"))$("teamsSum").textContent=teamsSummary();
       $("ampts").value=String(amPoints());$("amrounds").value=String(amRounds());
       const w=$("schedWarn");w.hidden=!ms.overCount;
       w.innerHTML=ms.overCount?"⚠ "+esc(`${ms.overCount} match${ms.overCount>1?"es are":" is"} outside the court hours. Add a court, add hours, or play fewer rounds.`):"";
@@ -341,8 +343,8 @@ function amSetStyle(v){
   buildSchedule=function(){
     if(!isAm())return G.buildSchedule();
     const ms=allMatches();
-    $("schedBox").innerHTML=isPhone()?amBuildCards(ms):amBuildTable(ms);
-    $("schedTools").innerHTML=`<div class="seg" role="group" aria-label="Show">${[["all","All rounds"],["now","Now & next"],["open","Not played yet"]].map(([f,l])=>`<button class="${schedFilter===f?"on":""}" onclick="setFilter('${f}')">${l}</button>`).join("")}</div><span class="amhint">Type one side's points; the other side fills in to make ${amPoints()}.</span>`;
+    $("schedBox").innerHTML=isPhone()?amBuildCards(ms):amBuildTable(ms);if(isPhone())carStart();
+    $("schedTools").innerHTML=`<div class="seg" role="group" aria-label="Show">${[["all","All rounds"],["now","Now & next"],["open","Not played yet"]].map(([f,l])=>`<button class="${schedFilter===f?"on":""}" onclick="setFilter('${f}')">${l}</button>`).join("")}</div><span class="amhint" data-staff>Type one side's points; the other side fills in to make ${amPoints()}.</span>`;
   };
   refreshSchedule=function(){return isAm()?amRefreshSchedule():G.refreshSchedule()};
   printSheets=function(){return isAm()?amPrintSheets():G.printSheets()};

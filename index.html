@@ -17,6 +17,8 @@
 <header><div class="wrap hdr"><div><h1 class="brand"><a href="#" class="brandlink" onclick="brandHome();return false" title="Go to the home page"><svg class="ballmark" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E4F53B"></circle><path d="M5 6.5c3 2.5 3 8.5 0 11M19 6.5c-3 2.5-3 8.5 0 11" fill="none" stroke="#0B3D91" stroke-width="1.6"></path></svg><span>Padel Tour</span></a></h1><p id="hdrSub">Enter the scores — standings and the knockout bracket update automatically.</p></div><div class="hdr-right"><button id="backBtn" class="hbtn" onclick="goHome()" hidden>← Home</button><button id="shareBtn" class="hbtn" onclick="shareT()" hidden>Share</button><button type="button" class="hbtn themebtn" onclick="toggleTheme()" aria-label="Switch day/night mode"><svg class="ico-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg><svg class="ico-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button><div class="pills" id="pills"></div><div class="auth"><span id="roleChip" class="rolechip"></span><button id="loginBtn" onclick="openAuth()">Sign in</button></div></div></div></header>
 <main class="wrap">
 <div id="viewBanner" class="viewbar" hidden></div>
+<div id="liveBar" class="livebar" hidden></div>
+<div id="followBar" class="followbar" hidden></div>
 
 <div class="top-grid">
 <details class="card setupbox" id="setupBox">
@@ -43,6 +45,7 @@
 <button class="primary" data-admin onclick="generate()">Apply settings</button>
 <button class="secondary" onclick="printSheets()">Print court sheets (A4)</button>
 <button class="danger" data-admin onclick="resetAll()">Reset scores</button>
+<button class="danger" id="delTBtn" onclick="deleteCurrent()" hidden>Delete tournament</button>
 </div>
 <details class="help" data-gk><summary>Match length (best of)</summary>
 <p>Set a whole stage at once here, or change a single match in the Stage column of the schedule.</p>
@@ -52,24 +55,25 @@
 </div>
 </details>
 
-<div class="card">
-<h2 id="teamsTitle">Teams</h2>
+<details class="card setupbox" id="teamsBox">
+<summary><span class="setup-title"><h2 id="teamsTitle">Teams</h2><span class="setup-sum" id="teamsSum"></span></span><span class="setup-chev" aria-hidden="true"></span></summary>
+<div class="setup-body">
 <div class="team-grid" id="teams"></div>
 </div>
+</details>
 </div>
 
 <nav class="tabs" aria-label="Sections">
-<button class="tab active" data-tab="schedule" onclick="showTab('schedule',this)">Schedule &amp; scores</button>
-<button class="tab" data-tab="standings" id="tabStand" onclick="showTab('standings',this)">Standings</button>
+<button class="tab active" data-tab="schedule" onclick="showTab('schedule',this)">Matches</button>
+<button class="tab" data-tab="standings" id="tabStand" onclick="showTab('standings',this)">Table</button>
 <button class="tab" data-tab="bracket" data-gk onclick="showTab('bracket',this)">Bracket</button>
 <button class="tab" data-tab="ranking" onclick="showTab('ranking',this)">Ranking</button>
 <button class="tab" data-tab="access" id="accessTab" onclick="showTab('access',this)" hidden>Access</button>
 </nav>
 
 <section id="schedule" class="section active">
-<p class="note intro" data-am>Type the points each pair won; the other side fills in automatically so the match adds up. On a phone, use − and +. Every round brings new partners, and the leaderboard updates the moment a score is entered.</p>
-<p class="note intro" data-gk>Enter the rounds each team won (on a phone, use − and +). Winners are highlighted automatically, and the knockout rounds fill in once a group has finished. A dashed amber box is a match still being played; a red box means the score is not possible for that match length.</p>
-<div id="liveBar" class="livebar" hidden></div>
+<p class="note intro" data-am data-staff>Type the points each pair won; the other side fills in automatically so the match adds up. On a phone, use − and +. Every round brings new partners, and the leaderboard updates the moment a score is entered.</p>
+<p class="note intro" data-gk data-staff>Enter the rounds each team won (on a phone, use − and +). Winners are highlighted automatically, and the knockout rounds fill in once a group has finished. A dashed amber box is a match still being played; a red box means the score is not possible for that match length.</p>
 <div id="schedWarn" class="viewbar" hidden></div>
 <div id="schedTools"></div>
 <div id="schedBox"></div>
@@ -107,6 +111,7 @@
 </section>
 
 <footer id="footNote"></footer>
+<footer class="sitefoot"><button type="button" onclick="openInfo('about')">About &amp; contact</button><span aria-hidden="true">·</span><button type="button" onclick="openInfo('privacy')">Privacy</button></footer>
 </main>
 </div>
 
@@ -127,25 +132,21 @@
 <button class="secondary full" onclick="continueAsViewer()">← Back to home</button>
 <p class="note" style="margin:0">No account needed to follow tournaments: the home page shows every public one.</p>
 </div>
+<footer class="sitefoot"><button type="button" onclick="openInfo('about')">About &amp; contact</button><span aria-hidden="true">·</span><button type="button" onclick="openInfo('privacy')">Privacy</button></footer>
 </div>
 </div>
 
 <div id="landing" class="landing" hidden>
 <div class="land-hero"><div class="hero-tools"><button type="button" class="hbtn" id="heroSignIn" onclick="toLogin()">Sign in</button><button type="button" class="hbtn" id="heroProfile" onclick="openMyProfile()" hidden>My profile</button><button type="button" class="hbtn" id="heroSignOut" onclick="doSignOut()" hidden>Sign out</button><button type="button" class="hbtn themebtn" onclick="toggleTheme()" aria-label="Switch day/night mode"><svg class="ico-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg><svg class="ico-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button></div><h1 class="brand"><a href="#" class="brandlink" onclick="brandHome();return false" title="Go to the home page"><svg class="ballmark" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E4F53B"></circle><path d="M5 6.5c3 2.5 3 8.5 0 11M19 6.5c-3 2.5-3 8.5 0 11" fill="none" stroke="#0B3D91" stroke-width="1.6"></path></svg><span>Padel Tour</span></a></h1><p>Follow padel tournaments live, or sign in to run your own.</p></div>
 <div class="land-grid">
-<div class="stack">
-<div class="card land-card">
-<h2>Find a tournament</h2>
-<p class="note">Enter the tournament ID you were given. You can follow the results without an account.</p>
+<div class="card land-card pubcard" style="grid-column:1/-1">
+<div class="pubhead"><h2>Tournaments</h2><button class="secondary" onclick="loadPublic()">Refresh</button></div>
+<p class="note">Tap a tournament to follow it live. No account needed.</p>
+<div id="pubList" class="publist"></div>
+<details class="findid"><summary>Have a tournament ID?</summary>
 <div class="idrow"><input id="findId" placeholder="e.g. K7M2QXA" maxlength="12" autocapitalize="characters" autocomplete="off" onkeydown="if(event.key==='Enter')findTournament()"><button class="primary" onclick="findTournament()">Open</button></div>
 <p id="findMsg" class="note" style="margin-top:10px"></p>
-</div>
-<div class="card land-card mkt-teaser">
-<h2>Marketplace</h2>
-<p class="note">Find a partner, buy used gear, book a coach, or get a gift for a donation.</p>
-<div class="mkt-mini"><span>🤝 Partners</span><span>🎾 Used gear</span><span>🧑‍🏫 Coaches</span><span>🎁 Donation gifts</span></div>
-<button class="primary" onclick="openMarket()">Open marketplace</button>
-</div>
+</details>
 </div>
 <div class="card land-card">
 <div id="lOut" class="stack">
@@ -165,22 +166,26 @@
 </div>
 <p id="lMsg" class="note" style="margin-top:12px" role="status"></p>
 </div>
-<div class="card land-card" style="grid-column:1/-1">
-<div class="pubhead"><h2>Public tournaments</h2><button class="secondary" onclick="loadPublic()">Refresh</button></div>
-<p class="note">Tap a tournament to follow it live. No account needed.</p>
-<div id="pubList" class="publist"></div>
+<div class="card land-card mkt-teaser">
+<h2>Marketplace</h2>
+<p class="note">Find a partner, buy used gear, book a coach, or get a gift for a donation.</p>
+<div class="mkt-mini"><span>🤝 Partners</span><span>🎾 Used gear</span><span>🧑‍🏫 Coaches</span><span>🎁 Donation gifts</span></div>
+<button class="primary" onclick="openMarket()">Open marketplace</button>
 </div>
 </div>
+<footer class="sitefoot"><button type="button" onclick="openInfo('about')">About &amp; contact</button><span aria-hidden="true">·</span><button type="button" onclick="openInfo('privacy')">Privacy</button></footer>
 </div>
 <div id="marketView" class="landing" hidden>
 <div class="land-hero mkt-hero"><div class="mkt-top"><a href="#" class="brandlink mini" onclick="brandHome();return false" title="Go to the home page"><svg class="ballmark" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E4F53B"></circle><path d="M5 6.5c3 2.5 3 8.5 0 11M19 6.5c-3 2.5-3 8.5 0 11" fill="none" stroke="#0B3D91" stroke-width="1.6"></path></svg><span>Padel Tour</span></a><button type="button" class="hbtn themebtn" onclick="toggleTheme()" aria-label="Switch day/night mode"><svg class="ico-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg><svg class="ico-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button></div><h1>Marketplace</h1><p id="mktIntro"></p></div>
 <div class="mkt-wrap">
 <div class="card mkt-bar">
 <div class="seg mkt-cats" id="mktCats"></div>
-<div class="mkt-actions"><input id="mktQ" type="search" placeholder="Search listings…" oninput="mkt.q=this.value;renderMarket()" aria-label="Search listings"><button id="mktMine" class="secondary" onclick="toggleMine()" hidden>My listings</button><button id="mktPost" class="primary" onclick="startPost()">+ Post a listing</button></div>
+<div class="mkt-actions"><input id="mktQ" type="search" placeholder="Search listings…" oninput="mkt.q=this.value;renderMarket()" aria-label="Search listings"><button id="mktMine" class="secondary" onclick="toggleMine()" hidden>My listings</button><button id="mktReports" class="secondary" onclick="toggleReports()" hidden>Reports</button><button id="mktPost" class="primary" onclick="startPost()">+ Post a listing</button></div>
 </div>
+<div id="mktReportsBox" class="card mkt-reports" hidden></div>
 <div id="mktList" class="mkt-list"></div>
 <p class="note mkt-foot">Deals are made directly between people on WhatsApp. Padel Tour doesn't handle payments; meet in a safe place and check items before paying.</p>
+<footer class="sitefoot"><button type="button" onclick="openInfo('about')">About &amp; contact</button><span aria-hidden="true">·</span><button type="button" onclick="openInfo('privacy')">Privacy</button></footer>
 </div>
 </div>
 <dialog id="mktDlg"><form class="dlg" onsubmit="saveListing(event)">
@@ -199,6 +204,7 @@
 <div id="profileView" class="landing" hidden>
 <div class="land-hero prof-hero"><div class="mkt-top"><a href="#" class="brandlink mini" onclick="brandHome();return false" title="Go to the home page"><svg class="ballmark" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E4F53B"></circle><path d="M5 6.5c3 2.5 3 8.5 0 11M19 6.5c-3 2.5-3 8.5 0 11" fill="none" stroke="#0B3D91" stroke-width="1.6"></path></svg><span>Padel Tour</span></a><div class="hero-tools static"><button type="button" class="hbtn themebtn" onclick="toggleTheme()" aria-label="Switch day/night mode"><svg class="ico-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg><svg class="ico-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button></div></div></div>
 <div class="prof-wrap" id="profileBody"></div>
+<footer class="sitefoot"><button type="button" onclick="openInfo('about')">About &amp; contact</button><span aria-hidden="true">·</span><button type="button" onclick="openInfo('privacy')">Privacy</button></footer>
 </div>
 <dialog id="profileDlg"><form class="dlg pform" onsubmit="saveProfileForm(event)">
 <h2>Edit profile</h2>
@@ -232,6 +238,10 @@
 <p class="note">Only public profiles can be found here. Players with a private profile can be added as guests.</p>
 <p id="ppMsg" class="note" role="status"></p>
 <div class="actions" style="margin:0"><button type="button" class="secondary" onclick="$('playerDlg').close()">Close</button></div>
+</div></dialog>
+<dialog id="infoDlg"><div class="dlg">
+<div id="infoBody"></div>
+<div class="actions" style="margin:0"><button class="secondary" onclick="$('infoDlg').close()">Close</button></div>
 </div></dialog>
 <div id="toast" class="toast" role="status" hidden></div>
 <dialog id="authDlg"><div class="dlg">
@@ -281,6 +291,8 @@
 <script src="js/players.js"></script>
 <script src="js/profile.js"></script>
 <script src="js/americano.js"></script>
+<script src="js/follow.js"></script>
+<script src="js/info.js"></script>
 <script src="js/main.js"></script>
 <script type="module" src="js/cloud.js"></script>
 </body>

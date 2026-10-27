@@ -28,7 +28,7 @@ function setTeamPlayers(i,list){
   if(!isAdmin())return;
   const tp={...(state.teamPlayers||{})};
   if(list.length)tp[i]=list;else delete tp[i];
-  state.teamPlayers=tp;save();renderTeamPlayers();
+  state.teamPlayers=tp;save();renderTeamPlayers();if($("teamsSum"))$("teamsSum").textContent=teamsSummary();
   cloudWrite({teamPlayers:tp,playerUids:allPlayerUids()})
 }
 function removePlayer(i,k){const l=[...playersOf(i)];l.splice(k,1);setTeamPlayers(i,l)}

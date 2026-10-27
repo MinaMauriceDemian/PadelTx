@@ -8,7 +8,11 @@ const MARKET_CATS=[
 ];
 const MKT_PRICE={partner:["Level / when","e.g. Intermediate, Saturday mornings"],gear:["Price","e.g. 60 €"],coach:["Price per lesson","e.g. 40 € / hour"],gift:["Suggested donation","e.g. 20 €"]};
 const MKT_TITLE_PH={partner:"e.g. Looking for a right-side partner for the Autumn Cup",gear:"e.g. Bullpadel Vertex 03, used one season",coach:"e.g. Beginner lessons, groups of 4",gift:"e.g. Padel Tour T-shirt for a 20 € donation"};
-let mkt={list:[],cat:"all",q:"",mine:false,loading:false,editing:null};
+let mkt={list:[],cat:"all",q:"",mine:false,loading:false,editing:null,reports:null};
+// Listings stay up for 30 days; the owner can renew them
+const LISTING_DAYS=30,DAY_MS=86400000;
+const daysLeft=l=>Math.ceil(((l.createdAt||0)+LISTING_DAYS*DAY_MS-Date.now())/DAY_MS);
+const isExpired=l=>daysLeft(l)<=0;
 const mktCat=k=>MARKET_CATS.find(c=>c[0]===k)||MARKET_CATS[1];
 function isSiteAdmin(){return !!(authUser&&(window.MARKET_ADMINS||[]).map(x=>x.toLowerCase()).includes((authUser.email||"").toLowerCase()))}
 
@@ -32,17 +36,19 @@ if(!r.ok){box.innerHTML=`<p class="note">Could not load the marketplace (${esc(r
 mkt.list=r.list;renderMarket()
 }
 function renderMarketTools(){
-const counts={};mkt.list.forEach(l=>counts[l.category]=(counts[l.category]||0)+1);
+const live=mkt.list.filter(l=>!isExpired(l)),counts={};live.forEach(l=>counts[l.category]=(counts[l.category]||0)+1);
 $("mktCats").innerHTML=[["all","🛒","All"],...MARKET_CATS].map(([k,ic,l])=>`<button class="${mkt.cat===k?"on":""}" onclick="setMktCat('${k}')">${ic} ${l}${k==="all"?(mkt.list.length?` (${mkt.list.length})`:""):(counts[k]?` (${counts[k]})`:"")}</button>`).join("");
 $("mktMine").hidden=!authUser;
 $("mktMine").classList.toggle("on",mkt.mine);
 $("mktPost").textContent=authUser?"+ Post a listing":"Sign in to post";
+$("mktReports").hidden=!isSiteAdmin();
 }
 function setMktCat(k){mkt.cat=k;renderMarket()}
 function toggleMine(){mkt.mine=!mkt.mine;renderMarket()}
 function mktFiltered(){
 const q=mkt.q.trim().toLowerCase();
-return mkt.list.filter(l=>(mkt.cat==="all"||l.category===mkt.cat)&&(!mkt.mine||(authUser&&l.ownerUid===authUser.uid))&&(!q||[l.title,l.description,l.location,l.price].join(" ").toLowerCase().includes(q)))
+const own=l=>authUser&&l.ownerUid===authUser.uid;
+return mkt.list.filter(l=>(mkt.cat==="all"||l.category===mkt.cat)&&(!mkt.mine||own(l))&&(!isExpired(l)||(mkt.mine&&own(l)))&&(!q||[l.title,l.description,l.location,l.price].join(" ").toLowerCase().includes(q)))
 }
 function ago(ms){
 if(!ms)return "";const m=Math.round((Date.now()-ms)/60000);
@@ -56,7 +62,9 @@ const list=mktFiltered(),c=mkt.cat==="all"?null:mktCat(mkt.cat);
 $("mktIntro").textContent=c?c[3]+".":"Partner search, used gear, coaches & lessons, and donation gifts from the padel community.";
 $("mktList").innerHTML=list.length?list.map(l=>{
   const cat=mktCat(l.category),own=authUser&&l.ownerUid===authUser.uid,id=esc(l.id);
-  return `<article class="lcard"><div class="lcard-h"><span class="chip lcat lcat-${esc(l.category)}">${cat[1]} ${cat[2]}</span><small>${ago(l.createdAt)}</small></div>`+
+  const left=daysLeft(l);
+  return `<article class="lcard${isExpired(l)?" expired":""}"><div class="lcard-h"><span class="chip lcat lcat-${esc(l.category)}">${cat[1]} ${cat[2]}</span><small>${ago(l.createdAt)}</small></div>`+
+  (own?`<p class="lexp">${left>0?`Visible for ${left} more day${left>1?"s":""}`:"Expired: hidden from others"}${left<=7?` · <button type="button" class="linkbtn" onclick="renewListing('${id}')">Renew for ${LISTING_DAYS} days</button>`:""}</p>`:"")+
   `<h3 dir="auto">${esc(l.title)}</h3>`+
   (l.price?`<p class="lprice"><span>${esc(MKT_PRICE[l.category]?MKT_PRICE[l.category][0]:"Price")}:</span> ${esc(l.price)}</p>`:"")+
   (l.description?`<p class="ldesc" dir="auto">${esc(l.description)}</p>`:"")+
@@ -64,6 +72,7 @@ $("mktList").innerHTML=list.length?list.map(l=>{
   `<div class="lcard-f"><a class="btn wa" href="${waListingLink(l)}" target="_blank" rel="noopener">Message on WhatsApp</a>`+
   (own?`<button class="secondary" onclick="editListing('${id}')">Edit</button>`:"")+
   (own||isSiteAdmin()?`<button class="danger" onclick="removeListing('${id}')">${own?"Remove":"Remove (admin)"}</button>`:"")+
+  (!own?`<button type="button" class="linkbtn lreport" onclick="reportListing('${id}')">Report</button>`:"")+
   `</div></article>`
 }).join(""):`<div class="mkt-empty"><p><b>Nothing here yet.</b></p><p class="note">${authUser?"Be the first to post a listing.":"Sign in to post the first listing."}</p></div>`
 }
@@ -119,4 +128,37 @@ if(!confirm("Remove this listing? This can't be undone."))return;
 const r=await window.__cloud.deleteListing(id);
 if(!r.ok){toast("Could not remove it ("+r.error+").");return}
 mkt.list=mkt.list.filter(l=>l.id!==id);renderMarket();toast("Listing removed.")
+}
+
+/* ---------- Renewing, reporting and reviewing reports ---------- */
+async function renewListing(id){
+  const r=await window.__cloud.updateListing(id,{createdAt:Date.now()});
+  if(!r.ok){toast("Could not renew it ("+r.error+").");return}
+  const l=mkt.list.find(x=>x.id===id);if(l)l.createdAt=Date.now();renderMarket();toast(`Renewed: visible for ${LISTING_DAYS} days.`)
+}
+async function reportListing(id){
+  if(!authUser){openAuth();$("authMsg").textContent="Sign in to report a listing.";return}
+  const reason=prompt("What's wrong with this listing? (e.g. scam, offensive, already sold)");
+  if(reason===null)return;
+  const r=await window.__cloud.reportListing(id,reason.trim().slice(0,300));
+  toast(r.ok?"Thanks. The site admin will review this listing.":"Could not send the report ("+r.error+").")
+}
+async function toggleReports(){
+  const box=$("mktReportsBox");
+  if(!box.hidden){box.hidden=true;return}
+  box.hidden=false;box.innerHTML='<p class="note">Loading reports…</p>';
+  const r=await window.__cloud.listReports();
+  if(!r.ok){box.innerHTML=`<p class="note">Could not load reports (${esc(r.error)}).</p>`;return}
+  mkt.reports=r.list;renderReports()
+}
+function renderReports(){
+  const box=$("mktReportsBox"),list=mkt.reports||[];
+  box.innerHTML=`<h3>Reported listings</h3>`+(list.length?list.map(rp=>{const l=mkt.list.find(x=>x.id===rp.listingId);return `<div class="rprow"><div class="rp-main"><b dir="auto">${l?esc(l.title):"Listing already removed"}</b><small>${esc(rp.reason||"No reason given")} · ${ago(rp.createdAt)}</small></div>${l?`<button class="danger" onclick="removeReported('${esc(rp.id)}','${esc(rp.listingId)}')">Remove listing</button>`:""}<button class="secondary" onclick="dismissReport('${esc(rp.id)}')">Dismiss</button></div>`}).join(""):'<p class="note">No reports. All clear.</p>')
+}
+async function dismissReport(rid){await window.__cloud.dismissReport(rid);mkt.reports=(mkt.reports||[]).filter(x=>x.id!==rid);renderReports()}
+async function removeReported(rid,lid){
+  if(!confirm("Remove this listing for everyone?"))return;
+  const r=await window.__cloud.deleteListing(lid);
+  if(!r.ok){toast("Could not remove it ("+r.error+").");return}
+  mkt.list=mkt.list.filter(l=>l.id!==lid);await dismissReport(rid);renderMarket();toast("Listing removed.")
 }

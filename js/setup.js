@@ -14,14 +14,27 @@ function renderTeams(){
 const gm=groupMembers(),gl=Object.keys(gm),box=$("teams");
 box.classList.toggle("one",gl.length===1);
 box.innerHTML=gl.map(g=>`<div class="group-box gb${g}"><h3 class="group-title"><span class="chip chip${g}">Group ${g}</span></h3>${gm[g].map((i,k)=>`<div class="team"><div class="team-row"><span class="num">${k+1}</span><input data-team="${i}" value="${esc(teamName(i))}" maxlength="40" aria-label="Team name"></div><div class="tplayers" data-tp="${i}"></div></div>`).join("")}</div>`).join("");
-document.querySelectorAll("[data-team]").forEach(x=>x.oninput=()=>{if(!isAdmin())return;state.teams[+x.dataset.team]=x.value;save();refresh();clearTimeout(pending.teams);pending.teams=setTimeout(()=>{pending.teams=null;cloudWrite({teams:[...state.teams]})},600)});
+document.querySelectorAll("[data-team]").forEach(x=>x.oninput=()=>{if(!isAdmin())return;state.teams[+x.dataset.team]=x.value;save();refresh();if($("teamsSum"))$("teamsSum").textContent=teamsSummary();clearTimeout(pending.teams);pending.teams=setTimeout(()=>{pending.teams=null;cloudWrite({teams:[...state.teams]})},600)});
 }
 function init(){fillStatic();initSetupPanel();rebuild();syncInputs();applyRole()}
 // Setup is a collapsible panel; remember open/closed in this browser
+// Setup and Teams are collapsible panels; each remembers open/closed in this browser
 function initSetupPanel(){
-const box=$("setupBox");if(!box)return;
-try{box.open=localStorage.getItem("padelSetupOpen")==="1"}catch(e){}
-box.addEventListener("toggle",()=>{try{localStorage.setItem("padelSetupOpen",box.open?"1":"0")}catch(e){}})
+[["setupBox","padelSetupOpen"],["teamsBox","padelTeamsOpen"]].forEach(([id,key])=>{
+  const box=$(id);if(!box)return;
+  try{box.open=localStorage.getItem(key)==="1"}catch(e){}
+  box.addEventListener("toggle",()=>{try{localStorage.setItem(key,box.open?"1":"0")}catch(e){}})
+})
+}
+// One-line summary shown on the closed Teams / Players panel
+function teamsSummary(){
+const n=teamCount(),am=typeof isAm==="function"&&isAm(),gl=groupLetters();
+const linked=Object.values(state.teamPlayers||{}).filter(l=>l&&l.length).length;
+const names=state.teams.slice(0,4).map(t=>t||"").filter(Boolean).join(", ")+(n>4?"…":"");
+const parts=[am?`${n} players`:`${n} teams`];
+if(!am)parts.push(`${gl.length} group${gl.length>1?"s":""}`);
+if(linked)parts.push(am?`${linked} linked to profiles`:`${linked} with players`);
+return parts.join(" · ")+(names?" · "+names:"")
 }
 function setupSummary(){
 const s=state.settings,C=courtsCfg().length,d=s.date?new Date(s.date+"T00:00"):null;
@@ -110,6 +123,7 @@ const gl=groupLetters(),C=courtsCfg().length,ms=allMatches();
 $("pills").innerHTML=[`${teamCount()} teams`,`${gl.length} group${gl.length>1?"s":""}`,`${C} court${C>1?"s":""}`].map(t=>`<span>${t}</span>`).join("");
 $("formatHelp").textContent=describeFormat();
 if($("setupSum"))$("setupSum").textContent=setupSummary();
+if($("teamsSum"))$("teamsSum").textContent=teamsSummary();
 const kinds=[["group","Group matches"],["qf","Quarter-finals"],["sf","Semi-finals"],["final","Final"],["place","Placement matches"]].filter(([k])=>ms.some(x=>stageGroup(x.id)===k));
 $("stageBo").innerHTML=kinds.map(([k,l])=>`<label>${l}<select data-admin onchange="setStageBestOf('${k}',this.value);this.value=''"><option value="">Set all…</option>${boOptions()}</select></label>`).join("");
 const w=$("schedWarn"),items=[];

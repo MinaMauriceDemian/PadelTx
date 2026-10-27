@@ -4,14 +4,14 @@ const isPhone=()=>phoneMQ.matches;
 let schedFilter="all"; // "all" | "now" (now & next) | "open" (not played yet)
 
 function chipFor(m){return m.group?(m.group==="A"?"chipA":"chipB"):(["qf","sf"].includes(koKind(m.id))?"chipK":"chipF")}
-const scoreInput=(id,side)=>{const r=rawScore(id);const v=r?r[side]:"";return `<input class="score" type="number" inputmode="numeric" min="0" max="${bestOf(id)}" id="${id}${side}" value="${v}" oninput="onScore('${id}')" aria-label="Score">`};
+const scoreInput=(id,side)=>{const r=rawScore(id);const v=r?r[side]:"";return `<input class="score" type="number" inputmode="numeric" min="0" max="${bestOf(id)}" id="${id}${side}" value="${v}" placeholder="–" oninput="onScore('${id}')" aria-label="Score">`};
 const boSelect=id=>`<select class="bosel" data-admin data-bo="${id}" onchange="setBestOf('${id}',this.value)" aria-label="Match length">${boOptions()}</select>`;
 const sfPicker=()=>`<label for="sfSel">Semi-final pairing <select id="sfSel" data-admin onchange="setSF(this.value)"></select></label>`;
 function slotsBySection(ms){
 // Every slot that has (or originally had) matches, plus the extra-time slots
 const all=[...new Set([...ms.autoSlots,...ms.slots,...Array.from({length:ms.totalSlots-ms.autoLast},(_,i)=>ms.autoLast+1+i)])].sort((a,b)=>a-b);
 const gs=all.filter(s=>s<=ms.groupSlots),ks=all.filter(s=>s>ms.groupSlots&&s<=ms.autoLast),xs=all.filter(s=>s>ms.autoLast);
-return {gs,ks,xs,range:a=>a.length?(a[0]===a[a.length-1]?`slot ${a[0]}`:`slots ${a[0]}–${a[a.length-1]}`):""}
+return {gs,ks,xs,range:a=>a.length?`${timeFor(a[0])}–${fmtMin(slotStart(a[a.length-1])+slotDur())}`:""}
 }
 // Admin tools shown next to each match: move button, and "undo" when it was moved
 const moveTools=x=>`<span class="adminonly mvtools"><button type="button" class="mvbtn" onclick="openMove('${x.id}')" title="Move this match">⇄ Move</button>${x.moved?`<button type="button" class="mvbtn undo" onclick="resetMove('${x.id}')" title="Back to its original slot">↺ Undo</button>`:""}</span>`;
@@ -20,7 +20,7 @@ const spareTools=()=>`<span class="adminonly spare-tools"><button type="button" 
 /* ---------- Building ---------- */
 function buildSchedule(){
 const ms=allMatches();
-$("schedBox").innerHTML=isPhone()?buildCards(ms):buildTable(ms);
+$("schedBox").innerHTML=isPhone()?buildCards(ms):buildTable(ms);if(isPhone())carStart();
 $("schedTools").innerHTML=`<div class="seg" role="group" aria-label="Show">${[["all","All matches"],["now","Now & next"],["open","Not played yet"]].map(([f,l])=>`<button class="${schedFilter===f?"on":""}" onclick="setFilter('${f}')">${l}</button>`).join("")}</div><span class="adminonly drag-hint">Admin: drag a team name to a free court (for example an extra-time slot) to move that match.</span>`;
 }
 function buildTable(ms){
@@ -59,16 +59,43 @@ return `<div class="table-wrap" style="overflow:auto"><table class="sched" id="s
 }
 function buildCards(ms){
 const bySlot={};ms.forEach(m=>(bySlot[m.slot]=bySlot[m.slot]||[]).push(m));
-const {gs,ks,xs,range}=slotsBySection(ms);
+const {gs,ks,xs}=slotsBySection(ms);
 const side=(m,k)=>`<div class="mteam"><span class="tn" id="${m.id}-${k}" dir="auto"></span><div class="stepper"><button class="stepbtn" onclick="bump('${m.id}','${k}',-1)" aria-label="One round less">−</button>${scoreInput(m.id,k)}<button class="stepbtn" onclick="bump('${m.id}','${k}',1)" aria-label="One round more">+</button></div></div>`;
 const tile=m=>`<div class="mtile${m.moved?" movedtile":""}" data-m="${m.id}"><div class="mtile-h"><span class="court cname${m.court}"></span><span class="chip ${chipFor(m)}">${esc(m.stage)}</span></div>${side(m,"a")}${side(m,"b")}<div class="mtile-f">${boSelect(m.id)}${moveTools(m)}${m.over?'<small class="overtag">after court hours</small>':""}</div></div>`;
-const card=s=>{const list=bySlot[s]||[];return `<div class="mslot${s>ms.autoLast?" xslot":""}" data-slot="${s}"><div class="mslot-h"><b>Slot ${s}</b><span class="slot-t" data-time="${s}"></span><span class="nowtag">Now</span><span class="nexttag">Next</span><span class="latebadge" data-slb="${s}" hidden>⏰ Late</span></div>${list.length?list.map(tile).join(""):`<p class="note mfree">${s>ms.autoLast?"Extra time: free":"Free"}</p>`}</div>`};
-let h=`<div class="mband">Group stage <small>${range(gs)}</small></div>`+gs.map(card).join("");
-h+=`<div class="mband">Knockout stage <small>${range(ks)}</small></div>`;
-if(ms.tpl.sfPicker)h+=`<div class="picker">${sfPicker()}</div>`;
-h+=ks.map(card).join("");
-h+=`<div class="mband">Extra time <small>${xs.length?range(xs):"none reserved"}</small>${spareTools()}</div>`+xs.map(card).join("");
-return `<div class="mcards">${h}<p class="note" id="filterEmpty" hidden>No matches to show here.</p></div>`
+const part=s=>s>ms.autoLast?"Extra time":s>ms.groupSlots?"Knockout":"Group stage";
+const card=s=>{const list=bySlot[s]||[];return `<div class="mslot${s>ms.autoLast?" xslot":""}" data-slot="${s}" data-label="${part(s)}"><div class="mslot-h"><b class="slot-time" data-time="${s}"></b><span class="slotno">${part(s)}</span><span class="nowtag">Now</span><span class="nexttag">Next</span><span class="latebadge" data-slb="${s}" hidden>⏰ Late</span></div>${list.length?list.map(tile).join(""):`<p class="note mfree">${s>ms.autoLast?"Extra time: free":"Free"}</p>`}</div>`};
+let h=(ms.tpl.sfPicker?`<div class="picker">${sfPicker()}</div>`:"")+`<div class="mcar-admin adminonly">${spareTools()}</div>`;
+return `<div class="mcards">${h}${carouselHtml([...gs,...ks,...xs].map(card).join(""))}<p class="note" id="filterEmpty" hidden>No matches to show here.</p></div>`
+}
+// Swipeable row of slots (phones): one slot per view, arrows and a position label
+function carouselHtml(slides){
+return `<div class="mcar-nav"><button type="button" class="mcar-btn" onclick="carStep(-1)" aria-label="Previous slot">‹</button><div class="mcar-pos" id="mcarPos" aria-live="polite"></div><button type="button" class="mcar-btn" onclick="carStep(1)" aria-label="Next slot">›</button></div><div class="mcar" id="mcar" onscroll="carScrolled()" ontouchstart="carPick()" onpointerdown="carPick()">${slides}</div>`
+}
+let carSlot=null,carTimer=null,carPicked=null;
+// Remember a slot only when the person moved the row themselves (per tournament)
+function carPick(){carPicked=currentTid||"local"}
+const carSlides=()=>[...document.querySelectorAll("#mcar > .mslot")].filter(el=>!el.hidden);
+function carIndex(){const car=$("mcar"),sl=carSlides();if(!car||!sl.length)return -1;let bi=0,bd=Infinity;sl.forEach((el,i)=>{const d=Math.abs(el.offsetLeft-car.scrollLeft);if(d<bd){bd=d;bi=i}});return bi}
+function carUpdate(){
+const sl=carSlides(),i=carIndex(),pos=$("mcarPos");if(!pos)return;
+if(i<0){pos.textContent="";return}
+const el=sl[i],s=+el.dataset.slot;carSlot=s;
+pos.innerHTML=`<b>${timeFor(s)}–${fmtMin(slotStart(s)+slotDur())}</b><span>${esc(el.dataset.label)} · ${i+1} of ${sl.length}</span>`;
+document.querySelectorAll(".mcar-btn").forEach((b,k)=>b.disabled=k===0?i===0:i===sl.length-1)
+}
+function carScrolled(){clearTimeout(carTimer);carTimer=setTimeout(carUpdate,60)}
+function carStep(d){carPick();const sl=carSlides(),i=carIndex();const t=sl[Math.max(0,Math.min(sl.length-1,i+d))];if(t)carGoSlot(+t.dataset.slot,true)}
+function carGoSlot(s,smooth){
+const car=$("mcar");if(!car)return;
+const sl=carSlides(),t=sl.find(el=>+el.dataset.slot===s)||sl.find(el=>+el.dataset.slot>s)||sl[sl.length-1];if(!t)return;
+if(car.scrollTo)car.scrollTo({left:t.offsetLeft,behavior:smooth?"smooth":"auto"});else car.scrollLeft=t.offsetLeft;carSlot=+t.dataset.slot;setTimeout(carUpdate,smooth?350:0)
+}
+// Where the row opens: the slot you were on, else what's playing now, else the first slot still to play
+function carStart(){
+const car=$("mcar");if(!car)return;
+const L=liveInfo(),ms=allMatches(),open=ms.filter(m=>!score(m.id)).map(m=>m.slot).sort((a,b)=>a-b);
+const s=carSlot!=null&&carPicked===(currentTid||"local")?carSlot:L&&L.cur!=null?L.cur:open.length?open[0]:ms.slots[0];
+requestAnimationFrame(()=>carGoSlot(s,false))
 }
 
 /* ---------- Drag & drop (computer) and the Move dialog (phone or keyboard) ---------- */
@@ -169,26 +196,29 @@ document.querySelectorAll("#schedBox [data-m]").forEach(el=>el.classList.toggle(
 const lateSlots=new Set(L?[...L.late].map(id=>ms.byId[id].slot):[]);
 document.querySelectorAll("[data-slb]").forEach(el=>el.hidden=!lateSlots.has(+el.dataset.slb));
 const bar=$("liveBar"),day=state.settings.date;
+const nowList=s=>ms.filter(m=>m.slot===s).sort((a,b)=>a.court-b.court).map(m=>`<span class="lb-m"><b>${esc(courtName(m.court))}</b> ${esc(sideLabel(m,"a"))} <i>vs</i> ${esc(sideLabel(m,"b"))}</span>`).join("");
 let html="";
 if(L){
-  const parts=[];
-  if(L.cur!=null)parts.push(`<b>● Now: slot ${L.cur}</b> · ${timeFor(L.cur)}–${fmtMin(slotStart(L.cur)+slotDur())}`);
-  else if(L.before)parts.push(`<b>⏳ Starts at ${timeFor(ms.slots[0])}</b>`);
-  else if(L.after)parts.push(`<b>Last slot is over</b>`);
-  else parts.push(`<b>Break</b>`);
-  if(L.next!=null)parts.push(`Next: slot ${L.next} at ${timeFor(L.next)}`);
-  if(L.late.size)parts.push(`<span class="latetxt">⏰ ${L.late.size} match${L.late.size>1?"es":""} running late</span>`);
-  if(L.cur!=null)parts.push(`<a href="#" onclick="jumpToNow();return false">Jump to now</a>`);
-  html=parts.join(" · ");
+  let head="";
+  if(L.cur!=null)head=`<b class="lb-now">● Now playing</b> <span>${timeFor(L.cur)}–${fmtMin(slotStart(L.cur)+slotDur())}</span>`;
+  else if(L.before)head=`<b>⏳ Starts at ${timeFor(ms.slots[0])}</b>`;
+  else if(L.after)head=`<b>All matches are over</b>`;
+  else head=`<b>Break</b>`;
+  const extra=[];
+  if(L.next!=null)extra.push(`Next at ${timeFor(L.next)}`);
+  if(L.late.size)extra.push(`<span class="latetxt">⏰ ${L.late.size} match${L.late.size>1?"es":""} running late</span>`);
+  if(L.cur!=null)extra.push(`<a href="#" onclick="jumpToNow();return false">Show</a>`);
+  html=`<div class="lb-head">${head}${extra.length?" · "+extra.join(" · "):""}</div>${L.cur!=null?`<div class="lb-list">${nowList(L.cur)}</div>`:""}`;
 }else if(day){
   const d=new Date(day+"T00:00");
-  html=`📅 Tournament day: ${isNaN(d)?esc(day):d.toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"})}. The live “now” marker turns on that day.`;
-}else if(isAdmin())html=`Set the <b>tournament date</b> in Setup to turn on the live “now” marker and late-match warnings.`;
+  html=`📅 ${isNaN(d)?esc(day):d.toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"})}${state.settings.start?" · starts "+esc(state.settings.start):""}${state.settings.venue?" · "+esc(state.settings.venue):""}`;
+}else if(isAdmin())html=`Set the <b>tournament date</b> in Setup to show what's playing now and which matches run late.`;
 bar.innerHTML=html;bar.hidden=!html;bar.classList.toggle("on",!!L);
-applyFilter(L)
+applyFilter(L);
+if(typeof renderFollow==="function")renderFollow()
 }
-function jumpToNow(){const el=document.querySelector("#schedBox .now");if(el)el.scrollIntoView({behavior:"smooth",block:"center"})}
-function setFilter(f){schedFilter=f;document.querySelectorAll("#schedTools .seg button").forEach(b=>b.classList.toggle("on",b.getAttribute("onclick").includes(`'${f}'`)));applyFilter(liveInfo())}
+function jumpToNow(){const L=liveInfo();if(L&&L.cur!=null)goToSlot(L.cur)}
+function setFilter(f){schedFilter=f;document.querySelectorAll("#schedTools .seg button").forEach(b=>b.classList.toggle("on",b.getAttribute("onclick").includes(`'${f}'`)));applyFilter(liveInfo());if($("mcar")){const s=carSlides();if(s.length&&!s.some(el=>+el.dataset.slot===carSlot))carSlot=+s[0].dataset.slot;carGoSlot(carSlot,false)}}
 function applyFilter(L){
 const ms=allMatches(),open=new Set(ms.filter(m=>!score(m.id)).map(m=>m.slot));
 let show=null;
@@ -202,6 +232,7 @@ let any=false;
 document.querySelectorAll("#schedBox [data-slot]").forEach(el=>{const v=!show||show.has(+el.dataset.slot);el.hidden=!v;if(v)any=true});
 document.querySelectorAll("#schedBox .band,#schedBox .mband,#schedBox .picker").forEach(el=>el.hidden=!!show);
 const e=$("filterEmpty");if(e)e.hidden=any;
+if($("mcar")){const nav=document.querySelector(".mcar-nav");if(nav)nav.hidden=!any}
 }
 
 /* ---------- Printing ---------- */
