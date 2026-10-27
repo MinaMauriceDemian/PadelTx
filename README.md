@@ -45,3 +45,4 @@ check courts and hours, best-of settings, the phone view, the live marker and Wh
 ## Deploy
 
 GitHub Pages publishes the repository as it is (no build step). Every commit to `main` updates the live site within about a minute. The repository must stay public for GitHub Pages on the free plan.
+1
