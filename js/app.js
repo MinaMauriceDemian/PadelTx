@@ -57,6 +57,7 @@ if(d){
   state.style=d.style||"groups_ko";
   state.visibility=d.visibility==="private"?"private":"public";
   state.teamPlayers=d.teamPlayers||{};
+  state.regOpen=!!d.regOpen;
   state._visMissing=!d.visibility;
 }
 if(teamCount()!==lastBuiltN||document.body.dataset.style!==(state.style||"groups_ko")||!document.querySelector("[data-team]")||document.querySelectorAll("[data-team]").length!==teamCount())rebuild();
@@ -92,6 +93,7 @@ document.querySelectorAll("input.score,.stepbtn").forEach(el=>el.disabled=!ed);
 document.querySelectorAll("[data-team],[data-admin]").forEach(el=>el.disabled=!ad);
 const sf=$("sfSel");if(sf)sf.disabled=!ad;
 if(typeof renderTeamPlayers==="function")renderTeamPlayers();
+if(typeof renderRegistration==="function")renderRegistration();
 document.body.classList.toggle("can-move",ad);document.body.classList.toggle("is-admin",ad);document.body.classList.toggle("can-score",ed);
 const dt=$("delTBtn");if(dt)dt.hidden=!(window.CLOUD_ON&&authUser&&((state.ownerUid&&state.ownerUid===authUser.uid)||isSiteAdmin()));
 const chip=$("roleChip"),btn=$("loginBtn"),bar=$("viewBanner"),foot=$("footNote");
@@ -172,7 +174,7 @@ if(!r.ok){say('<p class="note">Could not load the list ('+esc(r.error)+').</p>')
 pubCache=sortTournaments(r.list);renderPublic()
 }
 const pubCard=t=>{
-const c=`<button type="button" class="tcard pubcard-item" onclick="enterTournament('${esc(t.id)}','findMsg')"><span class="tc-main"><span class="tc-top">${statusChip(t)}</span><b dir="auto">${esc(t.name)}</b><span class="note">${tMeta(t)}</span></span><span class="tc-go" aria-hidden="true">›</span></button>`;
+const c=`<button type="button" class="tcard pubcard-item" onclick="enterTournament('${esc(t.id)}','findMsg')"><span class="tc-main"><span class="tc-top">${statusChip(t)}${t.regOpen?'<span class="chip regchip">Registration open</span>':""}</span><b dir="auto">${esc(t.name)}</b><span class="note">${tMeta(t)}</span></span><span class="tc-go" aria-hidden="true">›</span></button>`;
 // the site admin gets a Delete button under every tournament
 return isSiteAdmin()?`<div class="pubitem">${c}<button type="button" class="danger pubdel" onclick="pubDelete('${esc(t.id)}')">Delete (admin)</button></div>`:c
 };
@@ -233,7 +235,7 @@ return true
 function goHome(){
 autoOpen=false;
 if(window.__cloud)window.__cloud.leave();
-currentTid=null;myReq=null;requests=[];
+currentTid=null;myReq=null;requests=[];entries=[];myEntry=null;
 history.replaceState(null,"",location.pathname+location.search);
 showView(homeView());renderLanding();
 $("findMsg").textContent="";$("lMsg").textContent=""
@@ -261,6 +263,7 @@ if(navigator.clipboard)navigator.clipboard.writeText(url).then(()=>toast("Link c
 function copyId(){if(currentTid&&navigator.clipboard)navigator.clipboard.writeText(currentTid).then(()=>toast("ID copied: "+currentTid))}
 window.addEventListener("hashchange",()=>{
 if(!window.CLOUD_ON||!booted)return;
+captureJoin();if(joinReq&&hashId()===currentTid)renderRegistration();
 if(location.hash==="#market"){if(currentTid&&window.__cloud){window.__cloud.leave();currentTid=null}showMarket();return}
 if(location.hash==="#tours"){if(currentTid&&window.__cloud){window.__cloud.leave();currentTid=null}showTours();return}
 if(view==="tours"&&!hashId()){showView("landing");renderLanding();return}

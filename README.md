@@ -20,6 +20,7 @@ Live site: https://minamauricedemian.github.io/PadelTx/ (GitHub Pages; use this 
 | `js/market.js` | Marketplace: partner search, used gear, coaches & lessons, donation gifts |
 | `js/americano.js` | Americano style: rotating partners (no repeats), points-per-match scoring, leaderboard; takes over the shared screens only for Americano tournaments |
 | `js/players.js` | Players on teams: up to two per team, a linked profile or a guest name |
+| `js/register.js` | Registration: players sign up themselves (a whole team, or one player for Americano), invite links for partners, the organiser's Registrations tab |
 | `js/profile.js` | Player profile (created automatically at sign-in): level (self-reported, 0–7 with a level guide), progression, matches, statistics, preferences, partners & opponents, clubs |
 | `js/follow.js` | Follow a team or player: highlights their matches and shows their next match |
 | `js/info.js` | About & contact and Privacy texts (contact details come from `SITE_CONTACT` in `js/config.js`) |

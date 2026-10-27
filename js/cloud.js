@@ -6,7 +6,7 @@ if(window.CLOUD_ON){
     const [{initializeApp},A,F]=await Promise.all([import(base+"firebase-app.js"),import(base+"firebase-auth.js"),import(base+"firebase-firestore.js")]);
     const app=initializeApp(window.FIREBASE_CONFIG), auth=A.getAuth(app), db=F.getFirestore(app);
     const T=id=>F.doc(db,"tournaments",id);
-    let tid=null,unsubT=null,unsubAux=null,lastData=null,roleKey=null,auxKey=null,firstAuth=true;
+    let tid=null,unsubT=null,unsubAux=null,unsubReg=null,unsubMyReg=null,lastData=null,roleKey=null,auxKey=null,firstAuth=true;
     const ALPHA="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const genId=()=>{const a=new Uint32Array(7);crypto.getRandomValues(a);return Array.from(a,n=>ALPHA[n%ALPHA.length]).join("")};
     const err=e=>e.code||e.message||"error";
@@ -21,13 +21,19 @@ if(window.CLOUD_ON){
         if(tid&&r==="admin")unsubAux=F.onSnapshot(F.collection(db,"tournaments",tid,"requests"),s=>window.__setRequests(s.docs.map(d=>({uid:d.id,...d.data()}))),()=>{});
         else if(tid&&u)unsubAux=F.onSnapshot(F.doc(db,"tournaments",tid,"requests",u.uid),s=>window.__setMyRequest(s.exists()?s.data().status:null),()=>{});
         else window.__setMyRequest(null);
+        // registrations: the admin sees all of them, everyone signed in sees their own
+        if(unsubReg){unsubReg();unsubReg=null}if(unsubMyReg){unsubMyReg();unsubMyReg=null}
+        if(tid&&r==="admin")unsubReg=F.onSnapshot(F.collection(db,"tournaments",tid,"entries"),s=>window.__setEntries(s.docs.map(d=>({uid:d.id,...d.data()}))),()=>{});
+        else window.__setEntries([]);
+        if(tid&&u)unsubMyReg=F.onSnapshot(F.doc(db,"tournaments",tid,"entries",u.uid),s=>window.__setMyEntry(s.exists()?{uid:s.id,...s.data()}:null),()=>window.__setMyEntry(null));
+        else window.__setMyEntry(null);
       }
     }
-    function leave(){if(unsubT){unsubT();unsubT=null}if(unsubAux){unsubAux();unsubAux=null}tid=null;lastData=null;roleKey=null;auxKey=null}
+    function leave(){if(unsubT){unsubT();unsubT=null}if(unsubAux){unsubAux();unsubAux=null}if(unsubReg){unsubReg();unsubReg=null}if(unsubMyReg){unsubMyReg();unsubMyReg=null}tid=null;lastData=null;roleKey=null;auxKey=null}
 
     // What the home page needs to show a tournament card
     const summary=(id,x,u)=>({id,name:x.name||"Tournament",teams:(x.teams||[]).length,style:x.style||"groups_ko",visibility:x.visibility||"public",
-      date:(x.settings||{}).date||"",venue:(x.settings||{}).venue||"",start:(x.settings||{}).start||"",results:Object.keys(x.scores||{}).length,
+      date:(x.settings||{}).date||"",venue:(x.settings||{}).venue||"",start:(x.settings||{}).start||"",results:Object.keys(x.scores||{}).length,regOpen:!!x.regOpen,
       createdAt:x.createdAt||0,updatedAt:x.updatedAt||0,role:u?((x.members||{})[u.uid]||"editor"):null,owner:!!u&&x.ownerUid===u.uid});
     window.__cloud={
       async open(id){
@@ -164,6 +170,28 @@ if(window.CLOUD_ON){
           try{await F.updateDoc(F.doc(db,"tournaments",tid,"requests",uid),{status:role?"approved":"removed"})}catch(e){}
           return {ok:true}
         }catch(e){return {ok:false,error:err(e)}}
+      },
+      // Registrations (tournaments/{tid}/entries/{uid}); see js/register.js
+      async register(data){
+        const u=auth.currentUser;if(!u||!tid)return {ok:false,error:"not signed in"};
+        try{await F.setDoc(F.doc(db,"tournaments",tid,"entries",u.uid),data);return {ok:true}}catch(e){return {ok:false,error:err(e)}}
+      },
+      async cancelEntry(){
+        const u=auth.currentUser;if(!u||!tid)return {ok:false,error:"not signed in"};
+        try{await F.deleteDoc(F.doc(db,"tournaments",tid,"entries",u.uid));return {ok:true}}catch(e){return {ok:false,error:err(e)}}
+      },
+      async updateEntry(uid,upd){
+        if(!tid)return {ok:false,error:"no tournament"};
+        try{await F.updateDoc(F.doc(db,"tournaments",tid,"entries",uid),upd);return {ok:true}}catch(e){return {ok:false,error:err(e)}}
+      },
+      async deleteEntry(uid){
+        if(!tid)return {ok:false,error:"no tournament"};
+        try{await F.deleteDoc(F.doc(db,"tournaments",tid,"entries",uid));return {ok:true}}catch(e){return {ok:false,error:err(e)}}
+      },
+      // The partner (from an invite link) puts their own account on the registration
+      async claimPartner(regUid,partner){
+        if(!tid)return {ok:false,error:"no tournament"};
+        try{await F.updateDoc(F.doc(db,"tournaments",tid,"entries",regUid),{partner,updatedAt:Date.now()});return {ok:true}}catch(e){return {ok:false,error:err(e)}}
       },
       async dismissRequest(uid){try{await F.deleteDoc(F.doc(db,"tournaments",tid,"requests",uid))}catch(e){window.__toast("Could not dismiss ("+err(e)+")")}}
     };

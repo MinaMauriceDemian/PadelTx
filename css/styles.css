@@ -217,6 +217,16 @@ input.score.bad{border-color:#d64545;background:#fff1f1}
 .pubitem{display:flex;flex-direction:column;gap:6px}
 .pubdel{align-self:flex-end;min-height:32px;padding:5px 12px;font-size:13px}
 .privchip{background:#fde2e2;color:#9b1c1c}
+/* Registration */
+.regbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px;margin:0 0 16px;padding:10px 14px;border-radius:12px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-left:4px solid var(--accent);font-weight:600;font-size:14px}
+.regbar button{min-height:34px;padding:6px 12px}
+.regchip{background:#d1f2ec;color:#0b6b62}
+.regstate b{font-size:15px}
+.regrow .reg-main{display:flex;flex-direction:column;min-width:0}
+.regrow .reg-main small{color:var(--muted)}
+.regrow button{min-height:34px;padding:6px 12px}
+.regst-pending{background:#fdecc8;color:#8a5a00}.regst-waitlist{background:#dbe8fe;color:#1e4fa3}
+.regst-accepted{background:#d1f2ec;color:#0b6b62}.regst-declined{background:#fde2e2;color:#9b1c1c}
 footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
 #printArea{display:none}
 .psheet{width:100%;color:#14263a;font-family:Inter,system-ui,Arial,sans-serif}

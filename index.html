@@ -17,6 +17,7 @@
 <header><div class="wrap hdr"><div><h1 class="brand"><a href="#" class="brandlink" onclick="brandHome();return false" title="Go to the home page"><svg class="ballmark" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E4F53B"></circle><path d="M5 6.5c3 2.5 3 8.5 0 11M19 6.5c-3 2.5-3 8.5 0 11" fill="none" stroke="#0B3D91" stroke-width="1.6"></path></svg><span>Padel Tour</span></a></h1><p id="hdrSub">Enter the scores — standings and the knockout bracket update automatically.</p></div><div class="hdr-right"><button id="backBtn" class="hbtn" onclick="goHome()" hidden>← Home</button><button id="shareBtn" class="hbtn" onclick="shareT()" hidden>Share</button><button type="button" class="hbtn themebtn" onclick="toggleTheme()" aria-label="Switch day/night mode"><svg class="ico-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg><svg class="ico-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button><div class="pills" id="pills"></div><div class="auth"><span id="roleChip" class="rolechip"></span><button id="loginBtn" onclick="openAuth()">Sign in</button></div></div></div></header>
 <main class="wrap">
 <div id="viewBanner" class="viewbar" hidden></div>
+<div id="regBar" class="regbar" hidden></div>
 <div id="liveBar" class="livebar" hidden></div>
 <div id="followBar" class="followbar" hidden></div>
 
@@ -68,6 +69,7 @@
 <button class="tab" data-tab="standings" id="tabStand" onclick="showTab('standings',this)">Table</button>
 <button class="tab" data-tab="bracket" data-gk onclick="showTab('bracket',this)">Bracket</button>
 <button class="tab" data-tab="ranking" onclick="showTab('ranking',this)">Ranking</button>
+<button class="tab" data-tab="registrations" id="regTab" onclick="showTab('registrations',this)" hidden>Registrations</button>
 <button class="tab" data-tab="access" id="accessTab" onclick="showTab('access',this)" hidden>Access</button>
 </nav>
 
@@ -100,6 +102,13 @@
 <div class="sharebar"><h2>Final ranking</h2><button class="wa" onclick="waShare('results')">Share on WhatsApp</button></div>
 <table class="standings rank-table"><thead><tr><th>Place</th><th>Team</th><th>Decided by</th></tr></thead><tbody id="rankBody"></tbody></table>
 <p class="note" style="margin-top:12px">The ranking fills in as the matches are played.</p>
+</section>
+
+<section id="registrations" class="section card access">
+<h2>Registrations</h2>
+<div class="mrow2 regstate" id="regState"></div>
+<p class="note">When registration is open, signed-in people see a Register button on this tournament. Accepting puts them in the next free spot (a “Team N” / “Player N” without players). If you need more spots, raise the number in Setup first.</p>
+<div id="regList"></div>
 </section>
 
 <section id="access" class="section card access">
@@ -240,6 +249,17 @@
 <p id="pfMsg" class="note" role="status"></p>
 <div class="actions" style="margin:0"><button type="submit" class="primary">Save profile</button><button type="button" class="secondary" onclick="$('profileDlg').close()">Cancel</button></div>
 </form></dialog>
+<dialog id="regDlg"><form class="dlg" onsubmit="submitReg(event)">
+<h2 id="regTitle">Register</h2>
+<p class="note" id="regIntro"></p>
+<label data-rteam>Team name (optional)<input id="rTeam" maxlength="40" placeholder="e.g. Smash Brothers"></label>
+<label>Your name<input id="rMe" maxlength="40" autocomplete="name"></label>
+<label data-rteam>Partner's name<input id="rPartner" maxlength="40" placeholder="They can link their account later"></label>
+<label>WhatsApp number (optional)<input id="rPhone" type="tel" inputmode="tel" placeholder="+20 100 123 4567"></label>
+<p class="note">Include your country code. Only the organiser sees your number.</p>
+<p id="rMsg" class="note" role="status"></p>
+<div class="actions" style="margin:0"><button type="submit" class="primary" id="rSave">Send registration</button><button type="button" class="secondary" onclick="$('regDlg').close()">Cancel</button></div>
+</form></dialog>
 <dialog id="playerDlg"><div class="dlg">
 <h2>Add a player to <span id="ppTeam"></span></h2>
 <input id="ppQ" type="search" placeholder="Search players by name, city or club" oninput="renderPicker()" aria-label="Search players">
@@ -300,6 +320,7 @@
 <script src="js/share.js"></script>
 <script src="js/market.js"></script>
 <script src="js/players.js"></script>
+<script src="js/register.js"></script>
 <script src="js/profile.js"></script>
 <script src="js/americano.js"></script>
 <script src="js/follow.js"></script>

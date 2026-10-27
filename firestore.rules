@@ -82,6 +82,39 @@ service cloud.firestore {
       // The creator, or the site admin, can delete it
       allow delete: if signedIn() && (resource.data.ownerUid == request.auth.uid || isSiteAdmin());
 
+      // Registrations (one per signed-in person, stored under their uid): see js/register.js.
+      // The registrant creates and cancels their own; the partner from an invite link (who must know
+      // the secret code) can put their account on it once; tournament admins manage everything.
+      match /entries/{uid} {
+        function validEntry(d) {
+          return d.keys().hasOnly(['kind','name','me','partner','phone','status','code','createdAt','updatedAt'])
+            && d.kind in ['team','player']
+            && d.name is string && d.name.size() > 0 && d.name.size() <= 40
+            && d.me is map && d.me.uid == uid && d.me.name is string && d.me.name.size() > 0 && d.me.name.size() <= 40
+            && (d.partner == null || (d.partner is map && !d.partner.keys().hasAny(['uid'])
+                && d.partner.name is string && d.partner.name.size() > 0 && d.partner.name.size() <= 40))
+            && d.phone is string && (d.phone == '' || d.phone.matches('^[0-9]{7,15}$'))
+            && d.code is string && d.code.size() >= 8 && d.code.size() <= 32
+            && d.status in ['pending','waitlist'];
+        }
+        allow read: if (signedIn() && request.auth.uid == uid) || tRole(tid, ['admin'])
+          || (signedIn() && resource.data.partner != null && resource.data.partner.get('uid', '') == request.auth.uid);
+        allow create: if signedIn() && request.auth.uid == uid
+          && get(/databases/$(database)/documents/tournaments/$(tid)).data.get('regOpen', false) == true
+          && validEntry(request.resource.data);
+        allow update: if tRole(tid, ['admin'])
+          || (signedIn() && request.auth.uid != uid && resource.data.kind == 'team'
+              && resource.data.partner != null && !resource.data.partner.keys().hasAny(['uid'])
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['partner','updatedAt'])
+              && request.resource.data.partner.keys().hasOnly(['uid','name','photoURL','code'])
+              && request.resource.data.partner.uid == request.auth.uid
+              && request.resource.data.partner.code == resource.data.code
+              && request.resource.data.partner.name is string
+              && request.resource.data.partner.name.size() > 0 && request.resource.data.partner.name.size() <= 40);
+        allow delete: if tRole(tid, ['admin'])
+          || (signedIn() && request.auth.uid == uid && resource.data.status in ['pending','waitlist','declined']);
+      }
+
       // Edit-access requests: you manage your own, admins manage all
       match /requests/{uid} {
         allow read, delete: if (signedIn() && request.auth.uid == uid) || tRole(tid, ['admin']);
