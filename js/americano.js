@@ -2,10 +2,17 @@
 // Each match is played to a fixed total of points (e.g. 24 → 14–10). Players keep the points their side won;
 // the leaderboard ranks by total points. Someone sitting out a round gets half the match points (the round's average).
 //
-// This file only takes over when a tournament's style is "americano": it wraps the Groups + knockout functions
+// Mexicano is the same game with one difference: only round 1 is set in advance (by the order of the player list);
+// every later round is drawn from the leaderboard once the round before is finished: on each court, from the top,
+// 1st & 3rd play 2nd & 4th, then 5th & 7th play 6th & 8th, and so on. Each drawn round is stored with the scores
+// (scores["mx<round>"]) so correcting an earlier result later doesn't reshuffle rounds already played.
+//
+// This file only takes over when a tournament's style is "americano" or "mexicano": it wraps the Groups + knockout functions
 // (allMatches, score checks, setup, schedule, results, sharing, printing) and calls the originals otherwise.
 const AM_MAX=24,AM_POINTS=[16,21,24,32];
-const isAm=()=>state.style==="americano";
+const isAm=()=>state.style==="americano"||state.style==="mexicano";
+const isMx=()=>state.style==="mexicano";
+const amLabel=()=>isMx()?"Mexicano":"Americano";
 function amPoints(){const v=+state.settings.points;return v>=4&&v<=64?v:24}
 function amDefaultRounds(n){return Math.min(10,n%4===0?n-1:n)}
 function amRounds(){const v=Math.round(+state.settings.rounds);return v>=1&&v<=30?v:amDefaultRounds(teamCount())}
@@ -103,11 +110,56 @@ function amMode(N,courtKey){
   }
   _modeKey=key;_mode=mode;return mode
 }
+/* ---------- Mexicano: each round drawn from the leaderboard ---------- */
+// A stored draw: {m:"a,b,c,d;…" (pair a&b against c&d, one group per court), s:"x,y" (sitting out)}
+function mxStored(r,N,k){
+  const v=state.scores["mx"+r];if(!v||typeof v.m!=="string")return null;
+  const ok=x=>Number.isInteger(x)&&x>=0&&x<N;
+  const pairs=v.m.split(";").map(g=>g.split(",").map(Number)).map(g=>[[g[0],g[1]],[g[2],g[3]]]);
+  const sit=v.s?String(v.s).split(",").map(Number):[];
+  return pairs.length===k&&pairs.flat(2).every(ok)&&sit.every(ok)?{pairs,sit}:null
+}
+function mxBuild(N,R){
+  const m=[],rounds=[],byId={},byes=Array(N).fill(0),draws=[];let slot=1,wait=null;
+  const nextCourts=()=>{for(let g=0;g<2000;g++){const c=courtsAt(slot);if(c.list.length)return c;slot++}return {list:[0],over:true}};
+  for(let r=1;r<=R;r++){
+    // a round can only be drawn once every match of the round before has a final score
+    if(r>1&&!rounds[r-2].ids.every(id=>score(id))){wait=r;break}
+    const cs=nextCourts(),k=Math.max(1,Math.min(Math.floor(N/4),cs.list.length)),sitN=N-4*k;
+    let d=mxStored(r,N,k);
+    if(!d){
+      // sitting out: whoever has sat out least, taking turns in player order (as in Americano)
+      const turn=x=>((x-(r-1)*sitN)%N+N)%N;
+      const sit=[...Array(N).keys()].sort((x,y)=>byes[x]-byes[y]||turn(x)-turn(y)).slice(0,sitN).sort((a,b)=>a-b);
+      const rank=r===1?[...Array(N).keys()]:amRows(rounds,byId).map(x=>x.i);
+      const act=rank.filter(x=>!sit.includes(x)),pairs=[];
+      for(let g=0;g<k;g++){const [a,b,c,e]=act.slice(g*4,g*4+4);pairs.push([[a,c],[b,e]])}
+      d={pairs,sit};
+      if(r>1)draws.push([r,{m:pairs.map(([x,y])=>[...x,...y].join(",")).join(";"),s:sit.join(",")}]);
+    }
+    d.sit.forEach(x=>byes[x]++);
+    const list=d.pairs.map(([a,b],ci)=>({id:`r${r}c${cs.list[ci]+1}`,slot,court:cs.list[ci]+1,over:cs.over,stage:"Round "+r,round:r,am:true,pa:a,pb:b}));
+    list.forEach(x=>byId[x.id]=x);
+    m.push(...list);rounds.push({round:r,slot,sit:d.sit,ids:list.map(x=>x.id)});slot++;
+  }
+  return {m,rounds,slot,P:[],wait,draws}
+}
+// Whoever enters the last score of a round stores the next round's draw, so it stays fixed from then on
+function mxSaveDraws(draws){
+  if(!draws.length||!canScore())return;
+  setTimeout(()=>{
+    const upd={};
+    draws.forEach(([r,v])=>{if(!state.scores["mx"+r]){state.scores["mx"+r]=v;upd["scores.mx"+r]=v}});
+    if(Object.keys(upd).length){save();cloudWrite(upd)}
+  },0)
+}
 function amAllMatches(){
   const N=teamCount(),R=amRounds(),courtKey=[state.settings.start,slotDur(),JSON.stringify(courtsCfg())].join("|");
-  const key=N+"|"+R+"|"+courtKey;
+  const key=(isMx()?"mx|"+JSON.stringify(state.scores)+"|"+state.teams.join("\u0001")+"|":"")+N+"|"+R+"|"+courtKey;
   if(_am&&_amKey===key)return _am;
-  const {m,rounds,slot,P}=amBuild(N,R,amMode(N,courtKey));
+  const mx=isMx()?mxBuild(N,R):null;
+  const {m,rounds,slot,P}=mx||amBuild(N,R,amMode(N,courtKey));
+  m.mxWait=mx?mx.wait:null;if(mx)mxSaveDraws(mx.draws);
   m.rounds=rounds;m.groupSlots=slot-1;m.autoLast=slot-1;m.totalSlots=slot-1;m.tpl={rounds:[],places:[]};m.warnings=[];
   m.byId=Object.fromEntries(m.map(x=>[x.id,x]));m.slots=rounds.map(r=>r.slot);m.autoSlots=m.slots;m.lastSlot=m.slots[m.slots.length-1]||1;
   m.overCount=m.filter(x=>x.over).length;m.partnerRepeats=P.flat().filter(c=>c>1).length/2;
@@ -117,13 +169,15 @@ function amAllMatches(){
 /* ---------- Scores and leaderboard ---------- */
 function amValid(s){if(!s)return false;const a=+s.a,b=+s.b;return Number.isInteger(a)&&Number.isInteger(b)&&a>=0&&b>=0&&a+b===amPoints()}
 function amState(s){if(!s)return "";const a=+s.a,b=+s.b;if(!Number.isInteger(a)||!Number.isInteger(b)||a<0||b<0||a+b>amPoints())return "bad";return a+b===amPoints()?"done":"progress"}
-function amTable(){
-  const ms=allMatches(),half=amPoints()/2;
+function amTable(){const ms=allMatches();return amRows(ms.rounds,ms.byId)}
+// Leaderboard rows from a list of rounds (also used to draw the next Mexicano round)
+function amRows(roundList,byId){
+  const half=amPoints()/2;
   const rows=state.teams.map((_,i)=>({i,pts:0,bonus:0,played:0,w:0,d:0,l:0,pf:0,pa:0,byes:0}));
-  ms.rounds.forEach(rd=>{
+  roundList.forEach(rd=>{
     let done=true;
     rd.ids.forEach(id=>{
-      const m=ms.byId[id],s=score(id);if(!s){done=false;return}
+      const m=byId[id],s=score(id);if(!s){done=false;return}
       const add=(side,f,a)=>side.forEach(x=>{const r=rows[x];r.pts+=f;r.pf+=f;r.pa+=a;r.played++;if(f>a)r.w++;else if(f<a)r.l++;else r.d++});
       add(m.pa,s.a,s.b);add(m.pb,s.b,s.a);
     });
@@ -132,7 +186,7 @@ function amTable(){
   rows.forEach(r=>{r.total=r.pts+r.bonus;r.diff=r.pf-r.pa});
   return rows.sort((x,y)=>y.total-x.total||y.w-x.w||y.diff-x.diff||teamName(x.i).localeCompare(teamName(y.i)))
 }
-function amAllDone(){return allMatches().every(m=>score(m.id))}
+function amAllDone(){const ms=allMatches();return ms.rounds.length===amRounds()&&ms.every(m=>score(m.id))}
 function amPlacements(){
   if(!amAllDone())return state.teams.map(()=>({t:null,by:"Decided after the last round"}));
   return amTable().map(r=>({t:r.i,by:fmtPts(r.total)+" points · "+r.w+" won"}))
@@ -141,7 +195,7 @@ function amPlacements(){
 /* ---------- Setup ---------- */
 function teamCountOptions(am){const max=am?AM_MAX:MAX_TEAMS;return Array.from({length:max-MIN_TEAMS+1},(_,i)=>`<option value="${i+MIN_TEAMS}">${i+MIN_TEAMS} ${am?"players":"teams"}</option>`).join("")}
 function onNewStyle(){
-  const am=$("newStyle").value==="americano",cur=+$("newTeams").value||8;
+  const am=["americano","mexicano"].includes($("newStyle").value),cur=+$("newTeams").value||8;
   $("newTeams").innerHTML=teamCountOptions(am);$("newTeams").value=String(Math.min(cur,am?AM_MAX:MAX_TEAMS));
   $("newTeamsLbl").textContent=am?"Number of players":"Number of teams"
 }
@@ -160,17 +214,22 @@ function setAmRounds(v){
 function amDescribe(){
   const N=teamCount(),ms=allMatches(),R=ms.rounds.length,P=amPoints(),k=ms.rounds.length?ms.rounds[0].ids.length:0,sit=N-4*k;
   const ex=Math.ceil(P/2)+2;
+  if(isMx()){
+    const RR=amRounds(),k1=Math.max(1,Math.min(Math.floor(N/4),courtsCfg().length)),s1=N-4*k1;
+    return `${N} players play ${RR} round${RR>1?"s":""} of Mexicano on ${k1} court${k1>1?"s":""} at a time. Round 1 follows the order of the player list (1st & 3rd against 2nd & 4th, and so on, so you can list players by level). After each round the next one is drawn from the leaderboard: the top four play together on the first court (1st & 3rd against 2nd & 4th), the next four on the next court, and so on, so you keep playing people at your level. Each match is played to ${P} points in total, e.g. ${ex}–${P-ex}, and every player keeps the points their side won. ${s1>0?`Each round ${s1} player${s1>1?"s sit":" sits"} out in turn and get${s1>1?"":"s"} ${fmtPts(P/2)} points, the average. `:""}The leaderboard ranks players by total points, then wins.`
+  }
   return `${N} players play ${R} round${R>1?"s":""} of Americano on ${k} court${k>1?"s":""} at a time. Every round you get a new partner and new opponents (as far as possible). Each match is played to ${P} points in total, e.g. ${ex}–${P-ex}, and every player keeps the points their side won. ${sit>0?`Each round ${sit} player${sit>1?"s sit":" sits"} out in turn and get${sit>1?"":"s"} ${fmtPts(P/2)} points, the average. `:""}The leaderboard ranks players by total points, then wins. The last round ends around ${fmtMin(slotStart(ms.lastSlot)+slotDur())}.`
 }
 
 /* ---------- Schedule screens ---------- */
+const mxWaitText=ms=>`is drawn from the leaderboard when round ${ms.mxWait-1} is finished${ms.mxWait<amRounds()?` (then rounds ${ms.mxWait+1}–${amRounds()} one by one)`:""}.`;
 const amInputHtml=(id,side)=>{const r=rawScore(id),v=r?r[side]:"";return `<input class="score" type="number" inputmode="numeric" min="0" max="${amPoints()}" id="${id}${side}" value="${v}" placeholder="–" oninput="amInput('${id}','${side}')" aria-label="Points">`};
 function amSitText(rd){return rd.sit.length?"Sitting out: "+rd.sit.map(i=>esc(teamName(i))).join(", "):""}
 function amBuildTable(ms){
   const C=courtsCfg().length,span=3+3*C;
   let h=`<colgroup><col style="width:70px"><col style="width:70px">${Array.from({length:C},()=>`<col><col style="width:40px"><col>`).join("")}<col style="width:170px"></colgroup>`;
   h+=`<thead><tr><th>Round</th><th>Time</th>${Array.from({length:C},(_,i)=>`<th colspan="3"${i?' class="c2"':""}><span class="cname${i+1}"></span></th>`).join("")}<th>Info</th></tr></thead><tbody>`;
-  h+=`<tr class="band"><td colspan="${span}">Americano<small>${ms.rounds.length} rounds · matches to ${amPoints()} points</small></td></tr>`;
+  h+=`<tr class="band"><td colspan="${span}">${amLabel()}<small>${amRounds()} rounds · matches to ${amPoints()} points</small></td></tr>`;
   ms.rounds.forEach(rd=>{
     const s=rd.slot,cls=rd.round%2?"rowA":"rowB",at=c=>rd.ids.map(id=>ms.byId[id]).find(x=>x.court===c);
     let r1=`<tr class="${cls} first" data-slot="${s}"><td class="slotn" rowspan="2">${rd.round}</td><td class="time" rowspan="2" data-time="${s}"></td>`,r2=`<tr class="${cls}" data-slot="${s}">`;
@@ -184,14 +243,18 @@ function amBuildTable(ms){
     r1+=`<td class="stage" rowspan="2"><span class="chip chipA">Round ${rd.round}</span>${rd.sit.length?`<small class="amsit">${amSitText(rd)}</small>`:""}${over?'<small class="overtag">after court hours</small>':""}<span class="latebadge" data-slb="${s}" hidden>⏰ Running late</span></td></tr>`;
     h+=r1+r2+`</tr>`;
   });
+  if(ms.mxWait)h+=`<tr class="band mxwait"><td colspan="${span}">Round ${ms.mxWait}<small>${mxWaitText(ms)}</small></td></tr>`;
   return `<div class="table-wrap" style="overflow:auto"><table class="sched am" id="sched" style="min-width:${Math.max(640,320+C*300)}px">${h}</tbody></table></div>`
 }
 function amBuildCards(ms){
   const side=(m,k)=>`<div class="mteam"><span class="tn" id="${m.id}-${k}" dir="auto"></span><div class="stepper"><button class="stepbtn" onclick="amBump('${m.id}','${k}',-1)" aria-label="One point less">−</button>${amInputHtml(m.id,k)}<button class="stepbtn" onclick="amBump('${m.id}','${k}',1)" aria-label="One point more">+</button></div></div>`;
-  const slides=ms.rounds.map(rd=>`<div class="mslot" data-slot="${rd.slot}" data-label="Round ${rd.round} of ${ms.rounds.length}"><div class="mslot-h"><b class="slot-time" data-time="${rd.slot}"></b><span class="slotno">Round ${rd.round}</span><span class="nowtag">Now</span><span class="nexttag">Next</span><span class="latebadge" data-slb="${rd.slot}" hidden>⏰ Late</span></div>${rd.ids.map(id=>{const m=ms.byId[id];return `<div class="mtile" data-m="${m.id}"><div class="mtile-h"><span class="court cname${m.court}"></span>${m.over?'<small class="overtag">after court hours</small>':""}</div>${side(m,"a")}${side(m,"b")}</div>`}).join("")}${rd.sit.length?`<p class="note amsit-card">${amSitText(rd)}</p>`:""}</div>`).join("");
-  return `<div class="mcards">${carouselHtml(slides)}<p class="note" id="filterEmpty" hidden>No matches to show here.</p></div>`
+  const slides=ms.rounds.map(rd=>`<div class="mslot" data-slot="${rd.slot}" data-label="Round ${rd.round} of ${amRounds()}"><div class="mslot-h"><b class="slot-time" data-time="${rd.slot}"></b><span class="slotno">Round ${rd.round}</span><span class="nowtag">Now</span><span class="nexttag">Next</span><span class="latebadge" data-slb="${rd.slot}" hidden>⏰ Late</span></div>${rd.ids.map(id=>{const m=ms.byId[id];return `<div class="mtile" data-m="${m.id}"><div class="mtile-h"><span class="court cname${m.court}"></span>${m.over?'<small class="overtag">after court hours</small>':""}</div>${side(m,"a")}${side(m,"b")}</div>`}).join("")}${rd.sit.length?`<p class="note amsit-card">${amSitText(rd)}</p>`:""}</div>`).join("");
+  return `<div class="mcards">${carouselHtml(slides)}<p class="note" id="filterEmpty" hidden>No matches to show here.</p>${ms.mxWait?`<p class="note mxwait-note">Round ${ms.mxWait} ${mxWaitText(ms)}</p>`:""}</div>`
 }
+let amBuiltRounds=-1;
 function amRefreshSchedule(){
+  // Mexicano: a new round was drawn (or a draw was undone), so the screen needs its rows first
+  if(allMatches().rounds.length!==amBuiltRounds){buildSchedule();applyRole()}
   courtsCfg().forEach((c,i)=>document.querySelectorAll(".cname"+(i+1)).forEach(el=>el.textContent=c.name));
   document.querySelectorAll("[data-time]").forEach(el=>{const s=+el.dataset.time;el.textContent=isPhone()?`${timeFor(s)}–${fmtMin(slotStart(s)+slotDur())}`:timeFor(s)});
   const P=amPoints();
@@ -247,7 +310,7 @@ function amChangeCount(v){
 
 /* ---------- Sharing and printing ---------- */
 function amResultsText(){
-  const L=[`🎾 *${tName()}* · Americano`],done=amAllDone(),med=["🥇","🥈","🥉"];
+  const L=[`🎾 *${tName()}* · ${amLabel()}`],done=amAllDone(),med=["🥇","🥈","🥉"];
   L.push("",done?"🏆 *Final ranking*":"📊 *Leaderboard so far*");
   amTable().forEach((r,i)=>L.push(`${done?(med[i]||ord(i+1)+"."):(i+1)+"."} ${teamName(r.i)}: ${fmtPts(r.total)} pts (${r.w}W ${r.d}D ${r.l}L)`));
   if(currentTid)L.push("",`Live scores: ${tournamentUrl()}`);
@@ -268,7 +331,7 @@ function amPrintSheets(){
       }
       if(!rows)continue;
       const cn=esc(courtName(c));
-      out+=`<div class="psheet"><h2>${cn}</h2><p class="psub">${timeFor(from)} – ${timeFor(to+1)} · Americano</p><table class="ptable"><colgroup><col style="width:16%"><col style="width:18%"><col style="width:30%"><col style="width:8%"><col style="width:28%"></colgroup><thead><tr><th>Round</th><th>Time</th><th colspan="3">${cn}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      out+=`<div class="psheet"><h2>${cn}</h2><p class="psub">${timeFor(from)} – ${timeFor(to+1)} · ${amLabel()}</p><table class="ptable"><colgroup><col style="width:16%"><col style="width:18%"><col style="width:30%"><col style="width:8%"><col style="width:28%"></colgroup><thead><tr><th>Round</th><th>Time</th><th colspan="3">${cn}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     }
   }
   $("printArea").innerHTML=out;window.print()
@@ -282,7 +345,7 @@ function amCollectStats(ti,t,acc){
     const s=score(m.id);if(!s)return;
     const my=mine==="a"?m.pa:m.pb,their=mine==="a"?m.pb:m.pa,us=s[mine],them=s[mine==="a"?"b":"a"];
     const partner=who(my.find(x=>x!==ti)),opps=their.map(who),won=us>them,draw=us===them;
-    acc.matches.push({tid:t.id,tname:t.name||"Tournament",date:state.settings.date||"",time:timeFor(m.slot),slot:m.slot,stage:"Round "+m.round+" · Americano",partner,opp:pairName(their),oppPlayers:opps,us,them,won,draw});
+    acc.matches.push({tid:t.id,tname:t.name||"Tournament",date:state.settings.date||"",time:timeFor(m.slot),slot:m.slot,stage:"Round "+m.round+" · "+amLabel(),partner,opp:pairName(their),oppPlayers:opps,us,them,won,draw});
     acc.bump(acc.partners,partner,won);opps.forEach(p=>acc.bump(acc.opponents,p,!won&&!draw));
   });
   const P=amPlacements(),pi=P.findIndex(p=>p.t===ti);
@@ -294,7 +357,7 @@ function amSetStyle(v){
   const s=STYLES.find(x=>x[0]===v);
   if(!isAdmin()||!s||!s[2]){syncInputs();toast("That tournament style is coming soon.");return}
   if(v===(state.style||"groups_ko")){syncInputs();return}
-  const toAm=v==="americano",has=Object.keys(state.scores).length;
+  const toAm=v==="americano"||v==="mexicano",has=Object.keys(state.scores).length;
   if(!confirm(`Switch to ${s[1]}? The schedule is rebuilt${has?" and all scores are cleared":""}.`)){syncInputs();return}
   let teams=[...state.teams];
   if(toAm)teams=teams.map((n,i)=>defaultTeams.includes(n)||/^Team \d+$/.test(n)?"Player "+(i+1):n);
@@ -303,11 +366,15 @@ function amSetStyle(v){
   Object.assign(state,{style:v,teams,teamPlayers:tp,scores:{},bestOf:{},moves:{},sfPairing:0});
   save();rebuild();
   cloudWrite({style:v,teams,teamPlayers:tp,playerUids:allPlayerUids(),scores:{},bestOf:{},moves:{},sfPairing:0});
-  toast(toAm?"Americano: one name per player. Set points and rounds in Setup.":"Groups + knockout.")
+  toast(toAm?`${s[1]}: one name per player. Set points and rounds in Setup.`:"Groups + knockout.")
 }
 
 /* ---------- Take over the shared functions when the style is Americano ---------- */
+// Rules text under the schedule (the Americano text is the one written in index.html)
+let AM_RULES="";
+const MX_RULES="Round 1 follows the order of the player list. After that, every round is drawn from the leaderboard: the top four play together on the first court (1st & 3rd against 2nd & 4th), the next four on the next court, and so on, so you keep meeting players at your level. A new round appears as soon as every match of the round before has its final score. A match is played to a fixed total of points (set in Setup, e.g. 24), so 14–10 or 12–12, and every player keeps the points their pair won. Players who sit out a round get half the match points. The leaderboard ranks by total points, then wins.";
 (function(){
+  AM_RULES=$("amRulesText")?$("amRulesText").textContent:"";
   const G={allMatches,validScore,scoreState,bestOf,placements,defaultTeamName,renderTeams,describeFormat,renderFormatInfo,setupSummary,
     buildSchedule,refreshSchedule,printSheets,renderStandings,renderBracket,resultsText,changeTeamCount,setStyle,fillStatic};
   allMatches=function(){return isAm()?amAllMatches():G.allMatches()};
@@ -318,7 +385,7 @@ function amSetStyle(v){
   defaultTeamName=function(i){return isAm()?"Player "+(i+1):G.defaultTeamName(i)};
   renderTeams=function(){$("teamsTitle").textContent=isAm()?"Players":"Teams";return isAm()?amRenderTeams():G.renderTeams()};
   describeFormat=function(){return isAm()?amDescribe():G.describeFormat()};
-  setupSummary=function(){const t=G.setupSummary();return isAm()?t.replace(/(\d+) teams$/,"$1 players · Americano"):t};
+  setupSummary=function(){const t=G.setupSummary();return isAm()?t.replace(/(\d+) teams$/,"$1 players · "+amLabel()):t};
   renderFormatInfo=function(){
     const am=isAm();
     document.body.classList.toggle("is-am",am);document.body.dataset.style=state.style||"groups_ko";
@@ -329,8 +396,9 @@ function amSetStyle(v){
     if(am){
       if(document.querySelector('.tab[data-tab="bracket"].active'))document.querySelector('.tab[data-tab="standings"]').click();
       const C=courtsCfg().length,ms=allMatches();
-      $("pills").innerHTML=[`${teamCount()} players`,"Americano",`${C} court${C>1?"s":""}`].map(t=>`<span>${t}</span>`).join("");
+      $("pills").innerHTML=[`${teamCount()} players`,amLabel(),`${C} court${C>1?"s":""}`].map(t=>`<span>${t}</span>`).join("");
       $("formatHelp").textContent=amDescribe();
+      $("amRulesSum").textContent=amLabel()+" rules";$("amRulesText").textContent=isMx()?MX_RULES:AM_RULES;
       if($("setupSum"))$("setupSum").textContent=setupSummary();
       if($("teamsSum"))$("teamsSum").textContent=teamsSummary();
       $("ampts").value=String(amPoints());$("amrounds").value=String(amRounds());
@@ -343,7 +411,7 @@ function amSetStyle(v){
   buildSchedule=function(){
     if(!isAm())return G.buildSchedule();
     const ms=allMatches();
-    $("schedBox").innerHTML=isPhone()?amBuildCards(ms):amBuildTable(ms);if(isPhone())carStart();
+    $("schedBox").innerHTML=isPhone()?amBuildCards(ms):amBuildTable(ms);if(isPhone())carStart();amBuiltRounds=ms.rounds.length;
     $("schedTools").innerHTML=`<div class="seg" role="group" aria-label="Show">${[["all","All rounds"],["now","Now & next"],["open","Not played yet"]].map(([f,l])=>`<button class="${schedFilter===f?"on":""}" onclick="setFilter('${f}')">${l}</button>`).join("")}</div><span class="amhint" data-staff>Type one side's points; the other side fills in to make ${amPoints()}.</span>`;
   };
   refreshSchedule=function(){return isAm()?amRefreshSchedule():G.refreshSchedule()};
@@ -355,5 +423,5 @@ function amSetStyle(v){
   setStyle=function(v){return amSetStyle(v)};
   fillStatic=function(){G.fillStatic();if($("ampts"))$("ampts").innerHTML=AM_POINTS.map(p=>`<option value="${p}">${p} points</option>`).join("")};
   // moving matches is a Groups + knockout tool
-  const gMove=moveMatch;moveMatch=function(id,s,c){if(isAm()){toast("In Americano the rounds are fixed; matches can't be moved.");return false}return gMove(id,s,c)};
+  const gMove=moveMatch;moveMatch=function(id,s,c){if(isAm()){toast(`In ${amLabel()} the rounds are fixed; matches can't be moved.`);return false}return gMove(id,s,c)};
 })();

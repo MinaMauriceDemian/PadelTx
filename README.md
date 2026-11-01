@@ -18,7 +18,7 @@ Live site: https://minamauricedemian.github.io/PadelTx/ (GitHub Pages; use this 
 | `js/results.js` | Standings, knockout bracket, final ranking |
 | `js/share.js` | Share dialog and WhatsApp messages |
 | `js/market.js` | Marketplace: partner search, used gear, coaches & lessons, donation gifts |
-| `js/americano.js` | Americano style: rotating partners (no repeats), points-per-match scoring, leaderboard; takes over the shared screens only for Americano tournaments |
+| `js/americano.js` | Americano style: rotating partners (no repeats), points-per-match scoring, leaderboard; takes over the shared screens only for Americano and Mexicano tournaments. Mexicano: each round after the first is drawn from the leaderboard (1st & 3rd vs 2nd & 4th per court) |
 | `js/players.js` | Players on teams: up to two per team, a linked profile or a guest name |
 | `js/register.js` | Registration: players sign up themselves (a whole team, or one player for Americano), invite links for partners, the organiser's Registrations tab |
 | `js/profile.js` | Player profile (created automatically at sign-in): level (self-reported, 0–7 with a level guide), progression, matches, statistics, preferences, partners & opponents, clubs |

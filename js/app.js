@@ -11,7 +11,7 @@ function $(id){return document.getElementById(id)}
 // viewer = read-only · editor = can enter scores · admin = everything (roles are per tournament)
 const DEFAULT_SETTINGS={start:"12:00",duration:20,date:""};
 // No "courts" here on purpose: older tournaments keep their court1/court2 names (see courtsCfg in engine.js)
-window.__defaults=(n=8,style)=>({teams:Array.from({length:n},(_,i)=>style==="americano"?"Player "+(i+1):defaultTeamName(i)),settings:{...DEFAULT_SETTINGS,date:todayStr(),courts:[{name:"Court 1"},{name:"Court 2"}]}});
+window.__defaults=(n=8,style)=>({teams:Array.from({length:n},(_,i)=>style==="americano"||style==="mexicano"?"Player "+(i+1):defaultTeamName(i)),settings:{...DEFAULT_SETTINGS,date:todayStr(),courts:[{name:"Court 1"},{name:"Court 2"}]}});
 function resetState(){state={teams:[...defaultTeams],teamPlayers:{},scores:{},bestOf:{},moves:{},style:"groups_ko",visibility:"public",settings:{...DEFAULT_SETTINGS},sfPairing:0}}
 let role=window.CLOUD_ON?"viewer":"admin", authUser=null, cloudStatus="", view="app", currentTid=null, booted=false, autoOpen=true, myReq=null, requests=[], mine=[];
 const canScore=()=>role==="editor"||role==="admin";
@@ -145,7 +145,7 @@ return t.results>0?{k:"progress",l:"In progress",o:3}:{k:"new",l:"Not started",o
 function sortTournaments(list){return list.map(t=>({...t,st:tStatus(t)})).sort((a,b)=>a.st.o-b.st.o||(a.st.k==="finished"?(b.date||"").localeCompare(a.date||""):(a.date||"").localeCompare(b.date||""))||b.createdAt-a.createdAt)}
 function tMeta(t){
 const d=t.date?new Date(t.date+"T00:00"):null;
-return [d&&!isNaN(d)?d.toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"})+(t.start?" · "+t.start:""):"",t.venue,t.style==="americano"?`Americano · ${t.teams} players`:`${t.teams} teams`].filter(Boolean).map(esc).join(" · ")
+return [d&&!isNaN(d)?d.toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"})+(t.start?" · "+t.start:""):"",t.venue,t.style==="americano"||t.style==="mexicano"?`${t.style==="mexicano"?"Mexicano":"Americano"} · ${t.teams} players`:`${t.teams} teams`].filter(Boolean).map(esc).join(" · ")
 }
 const statusChip=t=>`<span class="stchip st-${t.st.k}">${t.st.k==="live"?'<i aria-hidden="true"></i>':""}${t.st.l}</span>`;
 async function loadMine(){

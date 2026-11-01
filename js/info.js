@@ -9,7 +9,7 @@ function openInfo(kind){
   <p><b>Where it's kept.</b> Accounts and data are stored with Google Firebase. We don't sell your data or use it for advertising. This site doesn't use tracking cookies; it only remembers settings like day/night mode in your browser.</p>
   ${contact.length?`<p>${contact.join("<br>")}</p>`:""}`
   :`<h2>About Padel Tour</h2>
-  <p>Padel Tour is a free tool for running and following padel tournaments: live scores, group tables, knockout brackets, Americano, player profiles and a community marketplace.</p>
+  <p>Padel Tour is a free tool for running and following padel tournaments: live scores, group tables, knockout brackets, Americano and Mexicano, player profiles and a community marketplace.</p>
   <p>Anyone can follow a tournament without an account. Organisers sign in to create tournaments, and can give helpers edit access to enter scores at the courts.</p>
   <p><b>Contact</b><br>${contact.length?contact.join("<br>"):"Contact details will be added here soon. Meanwhile, ask your tournament organiser."}</p>`;
   $("infoDlg").showModal()
