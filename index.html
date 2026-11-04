@@ -40,7 +40,7 @@
 <div id="courtRows"></div>
 <p class="note">“From” empty = the tournament start time. “Hours” empty = available until the end. Matches are only scheduled while a court is available. Press <b>Apply settings</b> to save.</p>
 </div>
-<label style="grid-column:1/-1" id="visLabel">Visibility<select id="vis" data-admin onchange="setVisibility(this.value)"><option value="public">Public: listed on the home page for everyone</option><option value="private">Private: hidden from the list, opens only with the ID or link</option></select></label>
+<label style="grid-column:1/-1" id="visLabel">Visibility<select id="vis" data-admin onchange="setVisibility(this.value)"><option value="public">Public: listed on the home page for everyone</option><option value="private">Private: hidden from the list; anyone with the ID or link can enter scores and players</option></select></label>
 </div>
 <div class="actions">
 <button class="primary" data-admin onclick="generate()">Apply settings</button>
@@ -178,7 +178,7 @@
 <div class="newt">
 <h3>New tournament</h3>
 <label>Name<input id="newName" placeholder="e.g. Autumn Cup" maxlength="60" onkeydown="if(event.key==='Enter')createT()"></label>
-<div class="fields"><label><span id="newTeamsLbl">Number of teams</span><select id="newTeams"></select></label><label>Tournament style<select id="newStyle" onchange="onNewStyle()"></select></label><label style="grid-column:1/-1">Visibility<select id="newVis"><option value="public">Public: listed on the home page</option><option value="private">Private: only with the ID or link</option></select></label></div>
+<div class="fields"><label><span id="newTeamsLbl">Number of teams</span><select id="newTeams"></select></label><label>Tournament style<select id="newStyle" onchange="onNewStyle()"></select></label><label style="grid-column:1/-1">Visibility<select id="newVis"><option value="public">Public: listed on the home page</option><option value="private">Private: anyone with the ID or link can enter scores and players</option></select></label></div>
 <button class="primary" onclick="createT()">Create tournament</button>
 </div>
 <div class="actions" style="margin:0"><button class="secondary" onclick="openMyProfile()">My player profile</button><button class="danger" style="margin-left:0" onclick="doSignOut()">Sign out</button></div>

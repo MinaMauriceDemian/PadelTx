@@ -72,12 +72,14 @@ service cloud.firestore {
         && request.resource.data.memberUids == [request.auth.uid];
 
       // Admins can change everything (but the owner always stays admin).
-      // Editors can only change scores.
+      // Editors can change scores, team/player names and players, not the number of teams.
+      // On a private tournament everyone with the link (even without signing in) is an editor.
       allow update: if (roleIn(resource.data, ['admin'])
             && request.resource.data.ownerUid == resource.data.ownerUid
             && request.resource.data.members.get(resource.data.ownerUid, '') == 'admin')
-        || (roleIn(resource.data, ['editor'])
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scores', 'updatedAt']));
+        || ((roleIn(resource.data, ['editor']) || resource.data.get('visibility', 'public') == 'private')
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scores', 'teams', 'teamPlayers', 'playerUids', 'updatedAt'])
+            && request.resource.data.get('teams', []).size() == resource.data.get('teams', []).size());
 
       // The creator, or the site admin, can delete it
       allow delete: if signedIn() && (resource.data.ownerUid == request.auth.uid || isSiteAdmin());

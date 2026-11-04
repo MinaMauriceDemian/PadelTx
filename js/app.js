@@ -91,7 +91,8 @@ function applyRole(){
 const ed=canScore(),ad=isAdmin();
 document.querySelectorAll("input.score,.stepbtn").forEach(el=>el.disabled=!ed);
 ["start","duration","tdate","tvenue","tname"].forEach(i=>{const el=$(i);if(el)el.disabled=!ad});
-document.querySelectorAll("[data-team],[data-admin]").forEach(el=>el.disabled=!ad);
+document.querySelectorAll("[data-admin]").forEach(el=>el.disabled=!ad);
+document.querySelectorAll("[data-team]").forEach(el=>el.disabled=!ed);
 const sf=$("sfSel");if(sf)sf.disabled=!ad;
 if(typeof renderTeamPlayers==="function")renderTeamPlayers();
 if(typeof renderRegistration==="function")renderRegistration();

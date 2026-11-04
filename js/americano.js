@@ -296,7 +296,7 @@ function amRenderStandings(){
 function amRenderTeams(){
   const box=$("teams");box.classList.add("one");
   box.innerHTML=`<div class="group-box gbA am-players">${state.teams.map((_,i)=>`<div class="team"><div class="team-row"><span class="num">${i+1}</span><input data-team="${i}" value="${esc(teamName(i))}" maxlength="40" aria-label="Player name"></div><div class="tplayers" data-tp="${i}"></div></div>`).join("")}</div>`;
-  document.querySelectorAll("[data-team]").forEach(x=>x.oninput=()=>{if(!isAdmin())return;state.teams[+x.dataset.team]=x.value;save();refresh();if($("teamsSum"))$("teamsSum").textContent=teamsSummary();clearTimeout(pending.teams);pending.teams=setTimeout(()=>{pending.teams=null;cloudWrite({teams:[...state.teams]})},600)});
+  document.querySelectorAll("[data-team]").forEach(x=>x.oninput=()=>{if(!canScore())return;state.teams[+x.dataset.team]=x.value;save();refresh();if($("teamsSum"))$("teamsSum").textContent=teamsSummary();clearTimeout(pending.teams);pending.teams=setTimeout(()=>{pending.teams=null;cloudWrite({teams:[...state.teams]})},600)});
 }
 function amChangeCount(v){
   v=+v;

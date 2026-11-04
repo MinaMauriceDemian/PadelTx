@@ -11,7 +11,8 @@ if(window.CLOUD_ON){
     const genId=()=>{const a=new Uint32Array(7);crypto.getRandomValues(a);return Array.from(a,n=>ALPHA[n%ALPHA.length]).join("")};
     const err=e=>e.code||e.message||"error";
 
-    function roleNow(){const u=auth.currentUser;const r=u&&lastData&&lastData.members?lastData.members[u.uid]:null;return r==="admin"||r==="editor"?r:"viewer"}
+    // Private tournaments: anyone with the link (signed in or not) can enter scores and players
+    function roleNow(){const u=auth.currentUser;const r=u&&lastData&&lastData.members?lastData.members[u.uid]:null;return r==="admin"||r==="editor"?r:lastData&&lastData.visibility==="private"?"editor":"viewer"}
     function pushRole(){
       const u=auth.currentUser,r=roleNow(),key=r+"|"+(u?u.uid:"");
       if(key!==roleKey){roleKey=key;window.__setRole(r,u?{email:u.email,uid:u.uid}:null)}

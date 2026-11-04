@@ -12,7 +12,7 @@ function avatarHtml(p,size){
   return p&&p.photoURL?`<img class="avatar" src="${esc(p.photoURL)}" alt="" style="${st}" referrerpolicy="no-referrer">`:`<span class="avatar" style="${st}" aria-hidden="true">${esc(initials(p&&(p.displayName||p.name)))}</span>`
 }
 function playerChip(p,i,k){
-  const rm=isAdmin()?`<button type="button" class="pchip-x" onclick="removePlayer(${i},${k})" aria-label="Remove ${esc(p.name)} from this team">×</button>`:"";
+  const rm=canScore()?`<button type="button" class="pchip-x" onclick="removePlayer(${i},${k})" aria-label="Remove ${esc(p.name)} from this team">×</button>`:"";
   return p.uid
     ?`<span class="pchip"><a href="#p=${esc(p.uid)}" onclick="openProfile('${esc(p.uid)}');return false">${avatarHtml(p,22)}<span>${esc(p.name)}</span></a>${rm}</span>`
     :`<span class="pchip guest">${avatarHtml(p,22)}<span>${esc(p.name)}</span><small>guest</small>${rm}</span>`
@@ -20,12 +20,12 @@ function playerChip(p,i,k){
 function renderTeamPlayers(){
   document.querySelectorAll("[data-tp]").forEach(el=>{
     const i=+el.dataset.tp,ps=playersOf(i);
-    el.innerHTML=ps.map((p,k)=>playerChip(p,i,k)).join("")+(isAdmin()&&ps.length<maxPlayers()?`<button type="button" class="addp" onclick="openPlayerPicker(${i})">${maxPlayers()===1?"+ Link profile":"+ Player"}</button>`:"");
-    el.hidden=!ps.length&&!isAdmin();
+    el.innerHTML=ps.map((p,k)=>playerChip(p,i,k)).join("")+(canScore()&&ps.length<maxPlayers()?`<button type="button" class="addp" onclick="openPlayerPicker(${i})">${maxPlayers()===1?"+ Link profile":"+ Player"}</button>`:"");
+    el.hidden=!ps.length&&!canScore();
   })
 }
 function setTeamPlayers(i,list){
-  if(!isAdmin())return;
+  if(!canScore())return;
   const tp={...(state.teamPlayers||{})};
   if(list.length)tp[i]=list;else delete tp[i];
   state.teamPlayers=tp;save();renderTeamPlayers();if($("teamsSum"))$("teamsSum").textContent=teamsSummary();
@@ -43,7 +43,7 @@ function addPlayerToTeam(i,p){
 
 /* ---------- Picker dialog ---------- */
 async function openPlayerPicker(i){
-  if(!isAdmin())return;
+  if(!canScore())return;
   pickTeam=i;$("ppTeam").textContent=teamName(i);$("ppQ").value="";$("ppGuest").value="";$("ppMsg").textContent="";
   $("ppMe").hidden=!(window.CLOUD_ON&&authUser);
   $("playerDlg").showModal();
