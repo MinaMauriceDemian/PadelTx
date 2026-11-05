@@ -22,7 +22,7 @@ function cloudWrite(u){if(window.CLOUD_ON&&window.__cloud)window.__cloud.write(u
 let toastTimer;
 function toast(msg){const t=$("toast");t.textContent=msg;t.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.hidden=true,5000)}
 window.__toast=toast;
-function showView(v){view=v;$("loginView").hidden=v!=="login";$("landing").hidden=v!=="landing";$("appView").hidden=v!=="app";$("marketView").hidden=v!=="market";$("profileView").hidden=v!=="profile";$("toursView").hidden=v!=="tours"}
+function showView(v){view=v;$("loginView").hidden=v!=="login";$("landing").hidden=v!=="landing";$("appView").hidden=v!=="app";$("marketView").hidden=v!=="market";$("profileView").hidden=v!=="profile";$("toursView").hidden=v!=="tours";$("mineView").hidden=v!=="mine"}
 // Where "home" is: signed-in people and viewers go to the tournament list, everyone else to the login page
 // The home page is the start for everyone; signing in is optional and chosen from there
 const homeView=()=>"landing";
@@ -75,6 +75,7 @@ authUser=u;
 if(u&&view==="login"){$("loginMsg").textContent="";showView("landing");window.scrollTo(0,0)}
 if(u&&typeof ensureMyProfile==="function")ensureMyProfile();
 if(view==="landing")renderLanding();
+if(view==="mine")showMine();
 if(view==="market")renderMarket();
 if($("authDlg").open)updateAuthDlg();
 };
@@ -84,6 +85,7 @@ const id=hashId();
 const pid=profileHash();
 if(location.hash==="#market")showMarket();
 else if(location.hash==="#tours")showTours();
+else if(location.hash==="#mine")showMine();
 else if(pid)showProfile(pid);
 else if(id){enterTournament(id,"findMsg")}
 };
@@ -125,27 +127,37 @@ const r=await window.__cloud.requestAccess();
 if(r&&r.ok)toast("Request sent. Use “Message the admin on WhatsApp” to let them know.");else toast("Could not send the request.")
 }
 /* landing page */
+// Home page: four tiles, each opening its own page (Follow #tours, My tournaments #mine, Marketplace, profile)
 function renderLanding(){
-$("lOut").hidden=!!authUser;$("lIn").hidden=!authUser;$("mbMeLbl").textContent=authUser?"Me":"Sign in";
 if($("heroSignIn")){$("heroSignIn").hidden=!!authUser;$("heroSignOut").hidden=!authUser;$("heroProfile").hidden=!authUser}
+$("tileMineTitle").textContent=authUser?"My tournaments":"Create a tournament";
+$("tileMineSub").textContent=authUser?"Create a new one, or open one you run.":"Schedule, live scores and leaderboard, free in a minute.";
+$("tileMeTitle").textContent=authUser?"My profile":"Sign in";
+$("tileMeSub").textContent=authUser?"Your level, matches and results.":"Create tournaments, register and keep your player profile.";
 loadPublic();renderInstallTip();
-if(authUser){
-  $("lWho").textContent="Signed in as "+authUser.email;loadMine();
-  // "Create a tournament" was pressed before signing in: open the form now
-  let want=false;try{want=sessionStorage.getItem("padelCreate")==="1";sessionStorage.removeItem("padelCreate")}catch(e){}
-  if(want)toggleNewT(true)
+// "Create a tournament" was pressed before signing in: continue there
+let want=false;try{want=sessionStorage.getItem("padelCreate")==="1"}catch(e){}
+if(authUser&&want)location.hash="mine"
 }
+// My tournaments page (#mine)
+function showMine(){
+showView("mine");window.scrollTo(0,0);
+$("lOut").hidden=!!authUser;$("lIn").hidden=!authUser;
+if(!authUser)return;
+$("lWho").textContent="Signed in as "+authUser.email;loadMine();
+let want=false;try{want=sessionStorage.getItem("padelCreate")==="1";sessionStorage.removeItem("padelCreate")}catch(e){}
+toggleNewT(want)
 }
-/* Home page actions: Follow / Create (hero, cards and the phone bar) */
-function goFollow(){const c=$("followCard");if(c)c.scrollIntoView({behavior:"smooth",block:"start"})}
+function goFollow(){location.hash="tours"}
 function startCreate(){
-if(!authUser){try{sessionStorage.setItem("padelCreate","1")}catch(e){}toLogin();return}
-toggleNewT(true)
+try{sessionStorage.setItem("padelCreate","1")}catch(e){}
+if(!authUser){toLogin();return}
+if(view==="mine")showMine();else location.hash="mine"
 }
 function toggleNewT(on){
 const f=$("newForm");if(!f)return;
 f.hidden=on===undefined?!f.hidden:!on;$("newTBtn").hidden=!f.hidden;
-if(!f.hidden){$("lIn").scrollIntoView({behavior:"smooth",block:"start"});setTimeout(()=>$("newName").focus(),300)}
+if(!f.hidden)setTimeout(()=>$("newName").focus(),300)
 }
 // "Add to home screen": the browser's own prompt when it offers one, otherwise short instructions (phones only)
 let installEvt=null;
@@ -231,7 +243,9 @@ const regCard=t=>`<div class="tcard regcard"><span class="tc-main"><span class="
 function renderPublic(){
 const home=$("pubList"),all=$("allList"),reg=pubCache.filter(t=>t.regOpen&&t.st.k!=="finished");
 if($("regRow")){$("regRow").hidden=!reg.length;$("regList2").innerHTML=reg.map(regCard).join("")}
-if(home)home.innerHTML=pubListHtml(pubCache.slice(0,3))+(pubCache.length>3?`<button type="button" class="secondary puball" onclick="location.hash='tours'">View all ${pubCache.length} tournaments ›</button>`:"");
+if(home)home.innerHTML=pubListHtml(pubCache);
+const live=pubCache.filter(t=>t.st.k==="live").length,today=pubCache.filter(t=>t.st.k==="today").length,b=$("tileFollowBadges");
+if(b)b.innerHTML=[live?`<span class="stchip st-live"><i aria-hidden="true"></i>${live} live now</span>`:"",today?`<span class="stchip st-today">${today} today</span>`:"",reg.length?`<span class="chip regchip">${reg.length} open for registration</span>`:""].join("");
 if(all)all.innerHTML=pubListHtml(pubCache)
 }
 function showTours(){showView("tours");window.scrollTo(0,0);if(pubCache.length)renderPublic();loadPublic()}
@@ -311,7 +325,8 @@ if(!window.CLOUD_ON||!booted)return;
 captureJoin();if(joinReq&&hashId()===currentTid)renderRegistration();
 if(location.hash==="#market"){if(currentTid&&window.__cloud){window.__cloud.leave();currentTid=null}showMarket();return}
 if(location.hash==="#tours"){if(currentTid&&window.__cloud){window.__cloud.leave();currentTid=null}showTours();return}
-if(view==="tours"&&!hashId()){showView("landing");renderLanding();return}
+if(location.hash==="#mine"){if(currentTid&&window.__cloud){window.__cloud.leave();currentTid=null}showMine();return}
+if((view==="tours"||view==="mine")&&!hashId()){showView("landing");renderLanding();return}
 const pid=profileHash();if(pid){if(pid!==prof.uid||view!=="profile")showProfile(pid);return}
 if(view==="profile"&&!hashId()){showView("landing");renderLanding();return}
 const id=hashId();
@@ -368,5 +383,5 @@ try{
   msg.textContent=(e.code==="auth/popup-closed-by-user"||e.code==="auth/cancelled-popup-request")?"":(AUTH_ERR[e.code]||("Error: "+(e.message||e.code)))
 }
 }
-async function doSignOut(){try{await window.__auth.signOut()}catch(e){}if($("authDlg").open){updateAuthDlg();$("authDlg").close()}if(view==="landing")renderLanding();toast("Signed out. You can keep following tournaments as a viewer.")}
+async function doSignOut(){try{await window.__auth.signOut()}catch(e){}if($("authDlg").open){updateAuthDlg();$("authDlg").close()}if(view==="landing")renderLanding();if(view==="mine")showMine();toast("Signed out. You can keep following tournaments as a viewer.")}
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}

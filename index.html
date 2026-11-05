@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,800&family=Barlow:wght@400;500;600;700&display=swap">
-<script src="js/theme.js?v=20261105"></script>
-<link rel="stylesheet" href="css/styles.css?v=20261105">
+<script src="js/theme.js?v=20261105b"></script>
+<link rel="stylesheet" href="css/styles.css?v=20261105b">
 </head>
 <body>
 <div id="appView">
@@ -164,20 +164,24 @@
 </div>
 
 <div id="landing" class="landing" hidden>
-<div class="land-hero"><div class="hero-tools"><button type="button" class="hbtn" id="heroSignIn" onclick="toLogin()">Sign in</button><button type="button" class="hbtn" id="heroProfile" onclick="openMyProfile()" hidden>My profile</button><button type="button" class="hbtn" id="heroSignOut" onclick="doSignOut()" hidden>Sign out</button><button type="button" class="hbtn themebtn" onclick="toggleTheme()" aria-label="Switch day/night mode"><svg class="ico-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg><svg class="ico-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button></div><h1 class="brand"><a href="#" class="brandlink" onclick="brandHome();return false" title="Go to the home page"><svg class="ballmark" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E4F53B"></circle><path d="M5 6.5c3 2.5 3 8.5 0 11M19 6.5c-3 2.5-3 8.5 0 11" fill="none" stroke="#0B3D91" stroke-width="1.6"></path></svg><span>Padel Tour</span></a></h1><p class="hero-tag">Live padel tournaments: follow the scores, or run your own.</p><div class="hero-cta"><button type="button" class="cta cta-follow" onclick="goFollow()"><span aria-hidden="true">🎾</span>Follow a tournament</button><button type="button" class="cta cta-create" onclick="startCreate()"><span aria-hidden="true">🏆</span>Create a tournament</button></div></div>
+<div class="land-hero"><div class="hero-tools"><button type="button" class="hbtn" id="heroSignIn" onclick="toLogin()">Sign in</button><button type="button" class="hbtn" id="heroProfile" onclick="openMyProfile()" hidden>My profile</button><button type="button" class="hbtn" id="heroSignOut" onclick="doSignOut()" hidden>Sign out</button><button type="button" class="hbtn themebtn" onclick="toggleTheme()" aria-label="Switch day/night mode"><svg class="ico-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg><svg class="ico-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button></div><h1 class="brand"><a href="#" class="brandlink" onclick="brandHome();return false" title="Go to the home page"><svg class="ballmark" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E4F53B"></circle><path d="M5 6.5c3 2.5 3 8.5 0 11M19 6.5c-3 2.5-3 8.5 0 11" fill="none" stroke="#0B3D91" stroke-width="1.6"></path></svg><span>Padel Tour</span></a></h1><p class="hero-tag">Live padel tournaments: follow the scores, or run your own.</p></div>
 <div class="land-grid">
-<div class="card land-card mycard-box" id="lIn" style="grid-column:1/-1" hidden>
-<div class="pubhead"><div><h2>My tournaments</h2><p class="note" id="lWho" style="margin:0"></p></div><button class="primary" id="newTBtn" onclick="toggleNewT()">+ New tournament</button></div>
-<div class="newt" id="newForm" hidden>
-<h3>New tournament</h3>
-<label>Name<input id="newName" placeholder="e.g. Autumn Cup" maxlength="60" onkeydown="if(event.key==='Enter')createT()"></label>
-<div class="fields"><label><span id="newTeamsLbl">Number of teams</span><select id="newTeams"></select></label><label>Tournament style<select id="newStyle" onchange="onNewStyle()"></select></label><label style="grid-column:1/-1">Visibility<select id="newVis"><option value="public">Public: listed on the home page</option><option value="private">Private: anyone with the ID or link can enter scores and players</option></select></label></div>
-<div class="actions" style="margin:0"><button class="primary" onclick="createT()">Create tournament</button><button class="secondary" onclick="toggleNewT(false)">Cancel</button></div>
+<nav class="hometiles" aria-label="Padel Tour">
+<button type="button" class="htile ht-follow" onclick="location.hash='tours'"><span class="ht-ic" aria-hidden="true">🎾</span><span class="ht-txt"><b>Follow a tournament</b><small>Live scores, tables and brackets. No account needed.</small><span class="ht-badges" id="tileFollowBadges"></span></span><span class="ht-go" aria-hidden="true">›</span></button>
+<button type="button" class="htile ht-create" onclick="location.hash='mine'"><span class="ht-ic" aria-hidden="true">🏆</span><span class="ht-txt"><b id="tileMineTitle">Create a tournament</b><small id="tileMineSub">Schedule, live scores and leaderboard, free in a minute.</small></span><span class="ht-go" aria-hidden="true">›</span></button>
+<button type="button" class="htile ht-market" onclick="openMarket()"><span class="ht-ic" aria-hidden="true">🛒</span><span class="ht-txt"><b>Marketplace</b><small>Partners, used gear, coaches and donation gifts.</small></span><span class="ht-go" aria-hidden="true">›</span></button>
+<button type="button" class="htile ht-me" onclick="authUser?openMyProfile():toLogin()"><span class="ht-ic" aria-hidden="true">👤</span><span class="ht-txt"><b id="tileMeTitle">Sign in</b><small id="tileMeSub">Create tournaments, register and keep your player profile.</small></span><span class="ht-go" aria-hidden="true">›</span></button>
+</nav>
+<div class="card land-card installtip" id="installTip" style="grid-column:1/-1" hidden>
+<div><b>📱 Keep Padel Tour one tap away</b><p class="note" id="installHow" style="margin:4px 0 0"></p></div>
+<div class="actions" style="margin:0"><button class="primary" id="installBtn" onclick="doInstall()" hidden>Add to home screen</button><button class="secondary" onclick="hideInstallTip()">Not now</button></div>
 </div>
-<p id="lMsg" class="note" style="margin:10px 0 0" role="status"></p>
-<div id="myList" style="margin-top:12px"></div>
 </div>
-
+<footer class="sitefoot"><button type="button" onclick="openInfo('about')">About &amp; contact</button><span aria-hidden="true">·</span><button type="button" onclick="openInfo('privacy')">Privacy</button><span aria-hidden="true">·</span><span class="copyr">© 2026 Mina Maurice Demian. All rights reserved.</span></footer>
+</div>
+<div id="toursView" class="landing" hidden>
+<div class="land-hero mkt-hero"><div class="mkt-top"><a href="#" class="brandlink mini" onclick="brandHome();return false" title="Go to the home page"><svg class="ballmark" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E4F53B"></circle><path d="M5 6.5c3 2.5 3 8.5 0 11M19 6.5c-3 2.5-3 8.5 0 11" fill="none" stroke="#0B3D91" stroke-width="1.6"></path></svg><span>Padel Tour</span></a><button type="button" class="hbtn themebtn" onclick="toggleTheme()" aria-label="Switch day/night mode"><svg class="ico-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg><svg class="ico-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button></div><h1>Follow a tournament</h1><p>Live and today first. Tap one to follow it, no account needed.</p></div>
+<div class="mkt-wrap">
 <div class="card land-card joincard" id="joinCard" style="grid-column:1/-1">
 <div><h2>Join with a code</h2><p class="note">Got a tournament code on WhatsApp? Type it here.</p></div>
 <div class="idrow"><input id="findId" placeholder="e.g. K7M2QXA" maxlength="12" autocapitalize="characters" autocomplete="off" aria-label="Tournament code" onkeydown="if(event.key==='Enter')findTournament()"><button class="primary" onclick="findTournament()">Open</button></div>
@@ -190,10 +194,27 @@
 <div id="regList2" class="publist"></div>
 </div>
 
-<div class="card land-card pubcard" id="followCard" style="grid-column:1/-1">
-<div class="pubhead"><h2>Tournaments</h2><button class="secondary" onclick="loadPublic()">Refresh</button></div>
+<div class="card land-card pubcard">
+<div class="pubhead"><h2>Tournaments</h2><div class="pubtools"><button class="secondary" onclick="brandHome()">← Home</button><button class="secondary" onclick="loadPublic()">Refresh</button></div></div>
 <p class="note">Tap a tournament to follow it live. No account needed.</p>
-<div id="pubList" class="publist"></div>
+<div id="allList" class="publist"></div>
+</div>
+<footer class="sitefoot"><button type="button" onclick="openInfo('about')">About &amp; contact</button><span aria-hidden="true">·</span><button type="button" onclick="openInfo('privacy')">Privacy</button><span aria-hidden="true">·</span><span class="copyr">© 2026 Mina Maurice Demian. All rights reserved.</span></footer>
+</div>
+</div>
+<div id="mineView" class="landing" hidden>
+<div class="land-hero mkt-hero"><div class="mkt-top"><a href="#" class="brandlink mini" onclick="brandHome();return false" title="Go to the home page"><svg class="ballmark" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E4F53B"></circle><path d="M5 6.5c3 2.5 3 8.5 0 11M19 6.5c-3 2.5-3 8.5 0 11" fill="none" stroke="#0B3D91" stroke-width="1.6"></path></svg><span>Padel Tour</span></a><button type="button" class="hbtn themebtn" onclick="toggleTheme()" aria-label="Switch day/night mode"><svg class="ico-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg><svg class="ico-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button></div><h1>My tournaments</h1><p>Create a tournament, or open one you run.</p></div>
+<div class="mkt-wrap">
+<div class="card land-card mycard-box" id="lIn" hidden>
+<div class="pubhead"><div><h2>My tournaments</h2><p class="note" id="lWho" style="margin:0"></p></div><button class="primary" id="newTBtn" onclick="toggleNewT()">+ New tournament</button></div>
+<div class="newt" id="newForm" hidden>
+<h3>New tournament</h3>
+<label>Name<input id="newName" placeholder="e.g. Autumn Cup" maxlength="60" onkeydown="if(event.key==='Enter')createT()"></label>
+<div class="fields"><label><span id="newTeamsLbl">Number of teams</span><select id="newTeams"></select></label><label>Tournament style<select id="newStyle" onchange="onNewStyle()"></select></label><label>Visibility<select id="newVis"><option value="public">Public: listed on the home page</option><option value="private">Private: anyone with the ID or link can enter scores and players</option></select></label></div>
+<div class="actions" style="margin:0"><button class="primary" onclick="createT()">Create tournament</button><button class="secondary" onclick="toggleNewT(false)">Cancel</button></div>
+</div>
+<p id="lMsg" class="note" style="margin:10px 0 0" role="status"></p>
+<div id="myList" style="margin-top:12px"></div>
 </div>
 
 <div class="card land-card" id="lOut">
@@ -202,31 +223,8 @@
 <div class="actions" style="margin:0"><button class="primary" onclick="startCreate()">🏆 Create a tournament</button></div>
 </div>
 </div>
-<div class="card land-card mkt-teaser">
-<h2>Marketplace</h2>
-<p class="note">Find a partner, buy used gear, book a coach, or get a gift for a donation.</p>
-<div class="mkt-mini"><span>🤝 Partners</span><span>🎾 Used gear</span><span>🧑‍🏫 Coaches</span><span>🎁 Donation gifts</span></div>
-<button class="primary" onclick="openMarket()">Open marketplace</button>
-</div>
-
-<div class="card land-card installtip" id="installTip" style="grid-column:1/-1" hidden>
-<div><b>📱 Keep Padel Tour one tap away</b><p class="note" id="installHow" style="margin:4px 0 0"></p></div>
-<div class="actions" style="margin:0"><button class="primary" id="installBtn" onclick="doInstall()" hidden>Add to home screen</button><button class="secondary" onclick="hideInstallTip()">Not now</button></div>
-</div>
-</div>
-<nav class="mobilebar" aria-label="Quick actions"><button type="button" onclick="goFollow()"><span aria-hidden="true">🎾</span>Follow</button><button type="button" onclick="startCreate()"><span aria-hidden="true">🏆</span>Create</button><button type="button" id="mbMe" onclick="authUser?openMyProfile():toLogin()"><span aria-hidden="true">👤</span><span id="mbMeLbl">Sign in</span></button></nav>
-<footer class="sitefoot"><button type="button" onclick="openInfo('about')">About &amp; contact</button><span aria-hidden="true">·</span><button type="button" onclick="openInfo('privacy')">Privacy</button><span aria-hidden="true">·</span><span class="copyr">© 2026 Mina Maurice Demian. All rights reserved.</span></footer>
-</div>
-<div id="toursView" class="landing" hidden>
-<div class="land-hero mkt-hero"><div class="mkt-top"><a href="#" class="brandlink mini" onclick="brandHome();return false" title="Go to the home page"><svg class="ballmark" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E4F53B"></circle><path d="M5 6.5c3 2.5 3 8.5 0 11M19 6.5c-3 2.5-3 8.5 0 11" fill="none" stroke="#0B3D91" stroke-width="1.6"></path></svg><span>Padel Tour</span></a><button type="button" class="hbtn themebtn" onclick="toggleTheme()" aria-label="Switch day/night mode"><svg class="ico-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg><svg class="ico-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button></div><h1>All tournaments</h1><p>Every public tournament, live and upcoming first.</p></div>
-<div class="mkt-wrap">
-<div class="card land-card pubcard">
-<div class="pubhead"><h2>Tournaments</h2><div class="pubtools"><button class="secondary" onclick="brandHome()">← Home</button><button class="secondary" onclick="loadPublic()">Refresh</button></div></div>
-<p class="note">Tap a tournament to follow it live. No account needed.</p>
-<div id="allList" class="publist"></div>
 </div>
 <footer class="sitefoot"><button type="button" onclick="openInfo('about')">About &amp; contact</button><span aria-hidden="true">·</span><button type="button" onclick="openInfo('privacy')">Privacy</button><span aria-hidden="true">·</span><span class="copyr">© 2026 Mina Maurice Demian. All rights reserved.</span></footer>
-</div>
 </div>
 <div id="marketView" class="landing" hidden>
 <div class="land-hero mkt-hero"><div class="mkt-top"><a href="#" class="brandlink mini" onclick="brandHome();return false" title="Go to the home page"><svg class="ballmark" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E4F53B"></circle><path d="M5 6.5c3 2.5 3 8.5 0 11M19 6.5c-3 2.5-3 8.5 0 11" fill="none" stroke="#0B3D91" stroke-width="1.6"></path></svg><span>Padel Tour</span></a><button type="button" class="hbtn themebtn" onclick="toggleTheme()" aria-label="Switch day/night mode"><svg class="ico-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg><svg class="ico-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button></div><h1>Marketplace</h1><p id="mktIntro"></p></div>
@@ -348,21 +346,21 @@
 </div></dialog>
 <div id="printArea"></div>
 
-<script src="js/config.js?v=20261105"></script>
-<script src="js/app.js?v=20261105"></script>
-<script src="js/engine.js?v=20261105"></script>
-<script src="js/setup.js?v=20261105"></script>
-<script src="js/schedule.js?v=20261105"></script>
-<script src="js/results.js?v=20261105"></script>
-<script src="js/share.js?v=20261105"></script>
-<script src="js/market.js?v=20261105"></script>
-<script src="js/players.js?v=20261105"></script>
-<script src="js/register.js?v=20261105"></script>
-<script src="js/profile.js?v=20261105"></script>
-<script src="js/americano.js?v=20261105"></script>
-<script src="js/follow.js?v=20261105"></script>
-<script src="js/info.js?v=20261105"></script>
-<script src="js/main.js?v=20261105"></script>
-<script type="module" src="js/cloud.js?v=20261105"></script>
+<script src="js/config.js?v=20261105b"></script>
+<script src="js/app.js?v=20261105b"></script>
+<script src="js/engine.js?v=20261105b"></script>
+<script src="js/setup.js?v=20261105b"></script>
+<script src="js/schedule.js?v=20261105b"></script>
+<script src="js/results.js?v=20261105b"></script>
+<script src="js/share.js?v=20261105b"></script>
+<script src="js/market.js?v=20261105b"></script>
+<script src="js/players.js?v=20261105b"></script>
+<script src="js/register.js?v=20261105b"></script>
+<script src="js/profile.js?v=20261105b"></script>
+<script src="js/americano.js?v=20261105b"></script>
+<script src="js/follow.js?v=20261105b"></script>
+<script src="js/info.js?v=20261105b"></script>
+<script src="js/main.js?v=20261105b"></script>
+<script type="module" src="js/cloud.js?v=20261105b"></script>
 </body>
 </html>
