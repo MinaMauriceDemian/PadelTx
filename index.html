@@ -17,11 +17,16 @@
 <header><div class="wrap hdr"><div><h1 class="brand"><a href="#" class="brandlink" onclick="brandHome();return false" title="Go to the home page"><svg class="ballmark" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E4F53B"></circle><path d="M5 6.5c3 2.5 3 8.5 0 11M19 6.5c-3 2.5-3 8.5 0 11" fill="none" stroke="#0B3D91" stroke-width="1.6"></path></svg><span>Padel Tour</span></a></h1><p id="hdrSub">Enter the scores — standings and the knockout bracket update automatically.</p></div><div class="hdr-right"><button id="backBtn" class="hbtn" onclick="goHome()" hidden>← Home</button><button id="shareBtn" class="hbtn" onclick="shareT()" hidden>Share</button><button type="button" class="hbtn themebtn" onclick="toggleTheme()" aria-label="Switch day/night mode"><svg class="ico-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg><svg class="ico-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button><div class="pills" id="pills"></div><div class="auth"><span id="roleChip" class="rolechip"></span><button id="loginBtn" onclick="openAuth()">Sign in</button></div></div></div></header>
 <main class="wrap">
 <div id="viewBanner" class="viewbar" hidden></div>
-<div id="regBar" class="regbar" hidden></div>
 <div id="liveBar" class="livebar" hidden></div>
 <div id="followBar" class="followbar" hidden></div>
 
-<div class="top-grid">
+<nav class="parts" aria-label="Tournament"><button type="button" class="partbtn" data-part="setup" onclick="showPart('setup')"><span aria-hidden="true">⚙️</span>Setup<b class="partbadge" id="badge-setup" hidden></b></button><button type="button" class="partbtn" data-part="players" onclick="showPart('players')"><span aria-hidden="true">👥</span><span id="partPlayersLbl">Teams</span><b class="partbadge" id="badge-players" hidden></b></button><button type="button" class="partbtn on" data-part="matches" onclick="showPart('matches')"><span aria-hidden="true">🎾</span>Matches</button></nav>
+<div class="part" id="part-setup" hidden>
+<section id="tInfo" class="card tinfo" hidden>
+<h2>Tournament info</h2>
+<dl class="tinfo-grid" id="tInfoList"></dl>
+<details class="help"><summary>How the tournament works</summary><p id="tInfoHow"></p></details>
+</section>
 <details class="card setupbox" id="setupBox">
 <summary><span class="setup-title"><h2>Setup</h2><span class="setup-sum" id="setupSum"></span></span><span class="setup-chev" aria-hidden="true"></span></summary>
 <div class="setup-body">
@@ -32,7 +37,7 @@
 <label>Tournament date<input id="tdate" type="date"></label>
 <label>Venue / club<input id="tvenue" maxlength="60" placeholder="e.g. Padel Club Stuttgart"></label>
 <label><span id="nteamsLbl">Number of teams</span><select id="nteams" data-admin onchange="changeTeamCount(this.value)"></select></label>
-<label data-am>Points per match<select id="ampts" data-admin onchange="setAmPoints(this.value)"></select></label>
+<label data-am>Scoring<select id="ampts" data-admin onchange="setAmPoints(this.value)"></select></label>
 <label data-am>Rounds<input id="amrounds" type="number" min="1" max="30" data-admin onchange="setAmRounds(this.value)"></label>
 <label>Tournament style<select id="style" data-admin onchange="setStyle(this.value)"></select></label>
 <div class="courtbox">
@@ -56,21 +61,45 @@
 </div>
 </details>
 
+<section id="access" class="card access partcard" hidden>
+<h2 id="accessTab">Access</h2>
+<div class="sharebox"><span>Tournament ID</span><code id="accId"></code><button class="secondary" onclick="copyId()">Copy ID</button><button class="secondary" onclick="copyLink()">Copy link</button><button class="wa" onclick="waShare('link')">WhatsApp</button></div>
+<p class="note">Anyone with the ID or link can follow the results. Signed-in people can ask for edit access and you approve them here.</p>
+<h3>Access requests</h3><div id="reqList"></div>
+<h3>People with access</h3><div id="memList"></div>
+</section>
+</div>
+<div class="part" id="part-players" hidden>
+<div id="regBar" class="regbar" hidden></div>
 <details class="card setupbox" id="teamsBox">
 <summary><span class="setup-title"><h2 id="teamsTitle">Teams</h2><span class="setup-sum" id="teamsSum"></span></span><span class="setup-chev" aria-hidden="true"></span></summary>
 <div class="setup-body">
 <div class="team-grid" id="teams"></div>
 </div>
 </details>
+<section id="registrations" class="card access partcard" hidden>
+<h2 id="regTab">Registrations</h2>
+<div class="mrow2 regstate" id="regState"></div>
+<p class="note">When registration is open, signed-in people see a Register button on this tournament. Accepting puts them in the next free spot (a “Team N” / “Player N” without players). If you need more spots, raise the number in Setup first.</p>
+<details class="help regpayset"><summary>Entry fee &amp; payment details</summary>
+<p>Registrants see these in the form and until you mark them as paid. Anyone who opens the tournament can read them.</p>
+<div class="fields">
+<label>Amount<input id="payAmt" maxlength="30" placeholder="e.g. 20 € per team"></label>
+<label>IBAN<input id="payIban" maxlength="42" placeholder="DE89 3704 0044 0532 0130 00" autocapitalize="characters"></label>
+<label>Account holder<input id="payHolder" maxlength="60"></label>
+<label>Note (optional)<input id="payNote" maxlength="200" placeholder="e.g. Pay within 3 days, or your spot goes to the waiting list"></label>
 </div>
-
+<div class="actions" style="margin:10px 0 0"><button class="primary" onclick="saveRegPay()">Save payment details</button></div>
+</details>
+<div id="regList"></div>
+</section>
+</div>
+<div class="part" id="part-matches">
 <nav class="tabs" aria-label="Sections">
 <button class="tab active" data-tab="schedule" onclick="showTab('schedule',this)">Matches</button>
 <button class="tab" data-tab="standings" id="tabStand" onclick="showTab('standings',this)">Table</button>
 <button class="tab" data-tab="bracket" data-gk onclick="showTab('bracket',this)">Bracket</button>
 <button class="tab" data-tab="ranking" onclick="showTab('ranking',this)">Ranking</button>
-<button class="tab" data-tab="registrations" id="regTab" onclick="showTab('registrations',this)" hidden>Registrations</button>
-<button class="tab" data-tab="access" id="accessTab" onclick="showTab('access',this)" hidden>Access</button>
 </nav>
 
 <section id="schedule" class="section active">
@@ -103,31 +132,10 @@
 <table class="standings rank-table"><thead><tr><th>Place</th><th>Team</th><th>Decided by</th></tr></thead><tbody id="rankBody"></tbody></table>
 <p class="note" style="margin-top:12px">The ranking fills in as the matches are played.</p>
 </section>
-
-<section id="registrations" class="section card access">
-<h2>Registrations</h2>
-<div class="mrow2 regstate" id="regState"></div>
-<p class="note">When registration is open, signed-in people see a Register button on this tournament. Accepting puts them in the next free spot (a “Team N” / “Player N” without players). If you need more spots, raise the number in Setup first.</p>
-<details class="help regpayset"><summary>Entry fee &amp; payment details</summary>
-<p>Registrants see these in the form and until you mark them as paid. Anyone who opens the tournament can read them.</p>
-<div class="fields">
-<label>Amount<input id="payAmt" maxlength="30" placeholder="e.g. 20 € per team"></label>
-<label>IBAN<input id="payIban" maxlength="42" placeholder="DE89 3704 0044 0532 0130 00" autocapitalize="characters"></label>
-<label>Account holder<input id="payHolder" maxlength="60"></label>
-<label>Note (optional)<input id="payNote" maxlength="200" placeholder="e.g. Pay within 3 days, or your spot goes to the waiting list"></label>
 </div>
-<div class="actions" style="margin:10px 0 0"><button class="primary" onclick="saveRegPay()">Save payment details</button></div>
-</details>
-<div id="regList"></div>
-</section>
 
-<section id="access" class="section card access">
-<h2>Access</h2>
-<div class="sharebox"><span>Tournament ID</span><code id="accId"></code><button class="secondary" onclick="copyId()">Copy ID</button><button class="secondary" onclick="copyLink()">Copy link</button><button class="wa" onclick="waShare('link')">WhatsApp</button></div>
-<p class="note">Anyone with the ID or link can follow the results. Signed-in people can ask for edit access and you approve them here.</p>
-<h3>Access requests</h3><div id="reqList"></div>
-<h3>People with access</h3><div id="memList"></div>
-</section>
+
+
 
 <footer id="footNote"></footer>
 <footer class="sitefoot"><button type="button" onclick="openInfo('about')">About &amp; contact</button><span aria-hidden="true">·</span><button type="button" onclick="openInfo('privacy')">Privacy</button></footer>

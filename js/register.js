@@ -189,13 +189,13 @@ const row=e=>{
 };
 const order=["pending","waitlist","accepted","declined"],list=[...entries].sort((a,b)=>order.indexOf(a.status)-order.indexOf(b.status)||a.createdAt-b.createdAt);
 box.innerHTML=list.length?list.map(row).join(""):'<p class="note">No registrations yet.</p>';
-const waiting=entries.filter(e=>e.status==="pending").length;$("regTab").textContent=waiting?`Registrations (${waiting})`:"Registrations"
+const waiting=entries.filter(e=>e.status==="pending").length;$("regTab").textContent=waiting?`Registrations (${waiting})`:"Registrations";partBadge("players",waiting)
 }
 function renderRegistration(){
 const tab=$("regTab");if(!tab)return;
-tab.hidden=!(window.CLOUD_ON&&isAdmin());
-if(tab.hidden&&$("registrations").classList.contains("active"))document.querySelector('.tab[data-tab="schedule"]').click();
-renderRegBar();renderRegAdmin();tryJoin()
+$("registrations").hidden=!(window.CLOUD_ON&&isAdmin());
+renderRegBar();renderRegAdmin();tryJoin();
+if(!isAdmin())partBadge("players",window.CLOUD_ON&&state.regOpen&&!myEntry?"Join":0)
 }
 window.__setEntries=l=>{entries=l;applyPartnerLinks();renderRegistration()};
 window.__setMyEntry=e=>{myEntry=e;renderRegBar()};

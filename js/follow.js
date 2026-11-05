@@ -52,7 +52,7 @@ function highlightFollow(){
 }
 // Bring a slot into view: on phones slide the carousel there, on computers scroll to its row
 function goToSlot(slot){
-  showTab("schedule",document.querySelector('.tab[data-tab="schedule"]'));
+  showPart("matches");showTab("schedule",document.querySelector('.tab[data-tab="schedule"]'));
   if(document.getElementById("mcar")){carPick();return carGoSlot(slot,true)}
   const el=document.querySelector(`#schedBox [data-slot="${slot}"]`);if(el)el.scrollIntoView({behavior:"smooth",block:"center"})
 }

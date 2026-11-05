@@ -11,7 +11,7 @@ function $(id){return document.getElementById(id)}
 // viewer = read-only · editor = can enter scores · admin = everything (roles are per tournament)
 const DEFAULT_SETTINGS={start:"12:00",duration:20,date:""};
 // No "courts" here on purpose: older tournaments keep their court1/court2 names (see courtsCfg in engine.js)
-window.__defaults=(n=8,style)=>({teams:Array.from({length:n},(_,i)=>style==="americano"||style==="mexicano"?"Player "+(i+1):defaultTeamName(i)),settings:{...DEFAULT_SETTINGS,date:todayStr(),courts:[{name:"Court 1"},{name:"Court 2"}]}});
+window.__defaults=(n=8,style)=>({teams:Array.from({length:n},(_,i)=>["americano","mexicano","mexicano_time"].includes(style)?"Player "+(i+1):defaultTeamName(i)),settings:{...DEFAULT_SETTINGS,date:todayStr(),courts:[{name:"Court 1"},{name:"Court 2"}]}});
 function resetState(){state={teams:[...defaultTeams],teamPlayers:{},scores:{},bestOf:{},moves:{},style:"groups_ko",visibility:"public",settings:{...DEFAULT_SETTINGS},sfPairing:0}}
 let role=window.CLOUD_ON?"viewer":"admin", authUser=null, cloudStatus="", view="app", currentTid=null, booted=false, autoOpen=true, myReq=null, requests=[], mine=[];
 const canScore=()=>role==="editor"||role==="admin";
@@ -68,7 +68,7 @@ syncInputs();refresh();applyRole()
 window.__getInitial=()=>({teams:state.teams,settings:state.settings,sfPairing:state.sfPairing||0,scores:state.scores});
 window.__cloudStatus=s=>{cloudStatus=s;applyRole()};
 window.__setRole=function(r,u){role=r;authUser=u;applyRole();if(r==="admin"&&state._visMissing){state._visMissing=false;cloudWrite({visibility:state.visibility})}if($("authDlg").open)updateAuthDlg()};
-window.__setRequests=l=>{requests=l;renderAccess();const n=l.filter(r=>r.status==="pending"&&!(state.members||{})[r.uid]).length;$("accessTab").textContent=n?`Access (${n})`:"Access"};
+window.__setRequests=l=>{requests=l;renderAccess();const n=l.filter(r=>r.status==="pending"&&!(state.members||{})[r.uid]).length;$("accessTab").textContent=n?`Access (${n})`:"Access";partBadge("setup",n)};
 window.__setMyRequest=st=>{myReq=st;applyRole()};
 window.__authState=function(u){
 authUser=u;
@@ -94,6 +94,7 @@ document.querySelectorAll("input.score,.stepbtn").forEach(el=>el.disabled=!ed);
 document.querySelectorAll("[data-admin]").forEach(el=>el.disabled=!ad);
 document.querySelectorAll("[data-team]").forEach(el=>el.disabled=!ed);
 const sf=$("sfSel");if(sf)sf.disabled=!ad;
+showPart(curPart);renderTInfo();$("partPlayersLbl").textContent=(typeof isAm==="function"&&isAm()?"Players":"Teams");
 if(typeof renderTeamPlayers==="function")renderTeamPlayers();
 if(typeof renderRegistration==="function")renderRegistration();
 document.body.classList.toggle("can-move",ad);document.body.classList.toggle("is-admin",ad);document.body.classList.toggle("can-score",ed);
@@ -101,7 +102,7 @@ const dt=$("delTBtn");if(dt)dt.hidden=!(window.CLOUD_ON&&authUser&&((state.owner
 const chip=$("roleChip"),btn=$("loginBtn"),bar=$("viewBanner"),foot=$("footNote");
 $("tnameLabel").hidden=!window.CLOUD_ON;$("visLabel").hidden=!window.CLOUD_ON;
 if(!window.CLOUD_ON){
-  chip.textContent="Local mode";btn.hidden=true;bar.hidden=true;$("accessTab").hidden=true;
+  chip.textContent="Local mode";btn.hidden=true;bar.hidden=true;$("access").hidden=true;
   foot.textContent="Local mode: data is stored only in this browser. Add your Firebase settings to share it online."
 }else{
   chip.textContent=ad?"Admin":ed?"Editor":"Viewer";btn.textContent=authUser?"Account":"Sign in";
@@ -109,8 +110,7 @@ if(!window.CLOUD_ON){
   // header line: what viewers care about (name, day, venue); the ID is for admins
   const s=state.settings||{},d=s.date?new Date(s.date+"T00:00"):null;
   $("hdrSub").textContent=currentTid?[state.name||"Tournament",d&&!isNaN(d)?d.toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"}):"",s.venue||"",ad?"ID "+currentTid:"",state.visibility==="private"?"🔒 Private":""].filter(Boolean).join(" · "):"";
-  $("accessTab").hidden=!ad;
-  if(!ad&&$("access").classList.contains("active"))document.querySelector('.tab[data-tab="schedule"]').click();
+  $("access").hidden=!ad;
   bar.hidden=ed;
   if(!ed){
     if(!authUser)bar.innerHTML='👁 View only — scores update live. Staff: <b><a href="#" onclick="openAuth();return false">sign in</a></b> to enter scores.';
@@ -146,7 +146,7 @@ return t.results>0?{k:"progress",l:"In progress",o:3}:{k:"new",l:"Not started",o
 function sortTournaments(list){return list.map(t=>({...t,st:tStatus(t)})).sort((a,b)=>a.st.o-b.st.o||(a.st.k==="finished"?(b.date||"").localeCompare(a.date||""):(a.date||"").localeCompare(b.date||""))||b.createdAt-a.createdAt)}
 function tMeta(t){
 const d=t.date?new Date(t.date+"T00:00"):null;
-return [d&&!isNaN(d)?d.toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"})+(t.start?" · "+t.start:""):"",t.venue,t.style==="americano"||t.style==="mexicano"?`${t.style==="mexicano"?"Mexicano":"Americano"} · ${t.teams} players`:`${t.teams} teams`].filter(Boolean).map(esc).join(" · ")
+return [d&&!isNaN(d)?d.toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"})+(t.start?" · "+t.start:""):"",t.venue,["americano","mexicano","mexicano_time"].includes(t.style)?`${(STYLES.find(x=>x[0]===t.style)||[,""])[1]} · ${t.teams} players`:`${t.teams} teams`].filter(Boolean).map(esc).join(" · ")
 }
 const statusChip=t=>`<span class="stchip st-${t.st.k}">${t.st.k==="live"?'<i aria-hidden="true"></i>':""}${t.st.l}</span>`;
 async function loadMine(){

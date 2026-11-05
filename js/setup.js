@@ -17,15 +17,39 @@ box.innerHTML=gl.map(g=>`<div class="group-box gb${g}"><h3 class="group-title"><
 document.querySelectorAll("[data-team]").forEach(x=>x.oninput=()=>{if(!canScore())return;state.teams[+x.dataset.team]=x.value;save();refresh();if($("teamsSum"))$("teamsSum").textContent=teamsSummary();clearTimeout(pending.teams);pending.teams=setTimeout(()=>{pending.teams=null;cloudWrite({teams:[...state.teams]})},600)});
 }
 function init(){fillStatic();initSetupPanel();rebuild();syncInputs();applyRole()}
-// Setup is a collapsible panel; remember open/closed in this browser
-// Setup and Teams are collapsible panels; each remembers open/closed in this browser
+// Setup and Teams each fill their own part of the page (see showPart), so they always stay open
 function initSetupPanel(){
-[["setupBox","padelSetupOpen"],["teamsBox","padelTeamsOpen"]].forEach(([id,key])=>{
+["setupBox","teamsBox"].forEach(id=>{
   const box=$(id);if(!box)return;
-  try{box.open=localStorage.getItem(key)==="1"}catch(e){}
-  box.addEventListener("toggle",()=>{try{localStorage.setItem(key,box.open?"1":"0")}catch(e){}})
+  box.open=true;box.querySelector("summary").addEventListener("click",e=>e.preventDefault())
 })
 }
+// The tournament page has three parts: Setup (admins), Players & join, Matches & scores; remembered in this browser
+let curPart="matches";
+try{curPart=sessionStorage.getItem("padelPart")||"matches"}catch(e){}
+function showPart(p){
+curPart=p;try{sessionStorage.setItem("padelPart",p)}catch(e){}
+["setup","players","matches"].forEach(x=>{$("part-"+x).hidden=x!==p;document.querySelector(`.partbtn[data-part="${x}"]`).classList.toggle("on",x===p)})
+}
+// What everyone else sees under Setup: the main settings, read-only
+function renderTInfo(){
+const box=$("tInfo");if(!box)return;
+box.hidden=isAdmin();if(box.hidden)return;
+const s=state.settings||{},d=s.date?new Date(s.date+"T00:00"):null,am=typeof isAm==="function"&&isAm(),st=STYLES.find(x=>x[0]===(state.style||"groups_ko"));
+let scoring;
+if(am)scoring=amTimed()?`Timed: ${slotDur()}-minute matches, rounds won count`:`Matches to ${amPoints()} points`;
+else{
+  const ms=allMatches(),g=ms.find(m=>m.group),ko=ms.filter(m=>!m.group).map(m=>bestOf(m.id));
+  const lo=Math.min(...ko),hi=Math.max(...ko);
+  scoring=[g?`Group matches best of ${bestOf(g.id)} rounds`:"",ko.length?`knockout best of ${lo===hi?lo:lo+"–"+hi}`:""].filter(Boolean).join(" · ");
+}
+const rows=[["Tournament name",state.name||"Tournament"],["Tournament date",d&&!isNaN(d)?d.toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long",year:"numeric"}):"Not set"],
+  ["Start time",s.start||"–"],["Venue / club",s.venue||"–"],["Tournament style",st?st[1]:"–"],["Scoring",scoring||"–"]];
+if(am)rows.push(["Rounds",String(amRounds())]);
+$("tInfoList").innerHTML=rows.map(([k,v])=>`<div><dt>${k}</dt><dd dir="auto">${esc(v)}</dd></div>`).join("");
+$("tInfoHow").textContent=describeFormat();
+}
+function partBadge(p,n){const b=$("badge-"+p);if(b){b.textContent=n||"";b.hidden=!n}}
 // One-line summary shown on the closed Teams / Players panel
 function teamsSummary(){
 const n=teamCount(),am=typeof isAm==="function"&&isAm(),gl=groupLetters();
