@@ -847,7 +847,7 @@ html[data-theme="dark"] .reqbadge{background:#3A1418;color:#FF8A80}
 .findid .idrow{margin-top:6px}
 
 /* footer links: About & contact, Privacy */
-.sitefoot{display:flex;justify-content:center;align-items:center;gap:8px;padding:8px 16px 28px;color:var(--muted);font-size:13px}
+.sitefoot{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;padding:8px 16px 28px;color:var(--muted);font-size:13px}
 .sitefoot button{background:transparent;color:var(--muted);min-height:32px;padding:4px 6px;font-weight:600;text-decoration:underline;text-underline-offset:3px}
 #infoDlg .dlg{max-height:calc(100vh - 40px);overflow:auto}
 #infoBody p{margin:0 0 10px;line-height:1.55}
@@ -933,3 +933,5 @@ html[data-theme="dark"] .partbtn.on{color:#FFFFFF}
 .pv-body{display:flex;flex-direction:column;gap:10px;padding:12px}
 .pv-body img{width:100%;height:auto;border-radius:10px;display:block}
 @media(max-width:560px){.lph-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.copyr{white-space:nowrap}

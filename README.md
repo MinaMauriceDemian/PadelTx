@@ -47,3 +47,7 @@ check courts and hours, best-of settings, the phone view, the live marker and Wh
 
 GitHub Pages publishes the repository as it is (no build step). Every commit to `main` updates the live site within about a minute. The repository must stay public for GitHub Pages on the free plan.
 
+
+## License
+
+Copyright © 2026 Mina Maurice Demian. All rights reserved. This is proprietary software: no part of it may be copied, modified or reused without written permission. See [LICENSE](LICENSE).
