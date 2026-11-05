@@ -126,11 +126,41 @@ if(r&&r.ok)toast("Request sent. Use “Message the admin on WhatsApp” to let t
 }
 /* landing page */
 function renderLanding(){
-$("lOut").hidden=!!authUser;$("lIn").hidden=!authUser;
+$("lOut").hidden=!!authUser;$("lIn").hidden=!authUser;$("mbMeLbl").textContent=authUser?"Me":"Sign in";
 if($("heroSignIn")){$("heroSignIn").hidden=!!authUser;$("heroSignOut").hidden=!authUser;$("heroProfile").hidden=!authUser}
-loadPublic();
-if(authUser){$("lWho").textContent="Signed in as "+authUser.email;loadMine()}
+loadPublic();renderInstallTip();
+if(authUser){
+  $("lWho").textContent="Signed in as "+authUser.email;loadMine();
+  // "Create a tournament" was pressed before signing in: open the form now
+  let want=false;try{want=sessionStorage.getItem("padelCreate")==="1";sessionStorage.removeItem("padelCreate")}catch(e){}
+  if(want)toggleNewT(true)
 }
+}
+/* Home page actions: Follow / Create (hero, cards and the phone bar) */
+function goFollow(){const c=$("followCard");if(c)c.scrollIntoView({behavior:"smooth",block:"start"})}
+function startCreate(){
+if(!authUser){try{sessionStorage.setItem("padelCreate","1")}catch(e){}toLogin();return}
+toggleNewT(true)
+}
+function toggleNewT(on){
+const f=$("newForm");if(!f)return;
+f.hidden=on===undefined?!f.hidden:!on;$("newTBtn").hidden=!f.hidden;
+if(!f.hidden){$("lIn").scrollIntoView({behavior:"smooth",block:"start"});setTimeout(()=>$("newName").focus(),300)}
+}
+// "Add to home screen": the browser's own prompt when it offers one, otherwise short instructions (phones only)
+let installEvt=null;
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installEvt=e;renderInstallTip()});
+function renderInstallTip(){
+const box=$("installTip");if(!box)return;
+let off=false;try{off=localStorage.getItem("padelInstallTip")==="off"}catch(e){}
+const standalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone,phone=matchMedia("(max-width:700px)").matches;
+box.hidden=off||standalone||!(phone||installEvt);if(box.hidden)return;
+const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
+$("installBtn").hidden=!installEvt;
+$("installHow").textContent=installEvt?"Add it to your home screen and open live scores like an app.":ios?"In Safari, tap the Share button, then “Add to Home Screen”.":"In your browser menu (⋮), tap “Add to Home screen” or “Install app”.";
+}
+async function doInstall(){if(!installEvt)return;installEvt.prompt();try{await installEvt.userChoice}catch(e){}installEvt=null;hideInstallTip()}
+function hideInstallTip(){try{localStorage.setItem("padelInstallTip","off")}catch(e){}$("installTip").hidden=true}
 /* ---------- Tournament cards (home page) ---------- */
 // Status from the tournament's date, start time and results
 function tStatus(t){
@@ -144,19 +174,25 @@ if(t.date){
 return t.results>0?{k:"progress",l:"In progress",o:3}:{k:"new",l:"Not started",o:4};
 }
 function sortTournaments(list){return list.map(t=>({...t,st:tStatus(t)})).sort((a,b)=>a.st.o-b.st.o||(a.st.k==="finished"?(b.date||"").localeCompare(a.date||""):(a.date||"").localeCompare(b.date||""))||b.createdAt-a.createdAt)}
+// "Today", "Tomorrow" or "Sat 8 Nov"
+function dayLabel(ds){
+const d=ds?new Date(ds+"T00:00"):null;if(!d||isNaN(d))return "";
+const t=new Date(todayStr()+"T00:00"),diff=Math.round((d-t)/864e5);
+return diff===0?"Today":diff===1?"Tomorrow":diff===-1?"Yesterday":d.toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"})
+}
 function tMeta(t){
-const d=t.date?new Date(t.date+"T00:00"):null;
-return [d&&!isNaN(d)?d.toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"})+(t.start?" · "+t.start:""):"",t.venue,["americano","mexicano","mexicano_time"].includes(t.style)?`${(STYLES.find(x=>x[0]===t.style)||[,""])[1]} · ${t.teams} players`:`${t.teams} teams`].filter(Boolean).map(esc).join(" · ")
+const dl=dayLabel(t.date);
+return [dl?dl+(t.start?" · "+t.start:""):"",t.venue,t.results>0&&t.st&&t.st.k!=="finished"?`${t.results} match${t.results>1?"es":""} played`:"",["americano","mexicano","mexicano_time"].includes(t.style)?`${(STYLES.find(x=>x[0]===t.style)||[,""])[1]} · ${t.teams} players`:`${t.teams} teams`].filter(Boolean).map(esc).join(" · ")
 }
 const statusChip=t=>`<span class="stchip st-${t.st.k}">${t.st.k==="live"?'<i aria-hidden="true"></i>':""}${t.st.l}</span>`;
 async function loadMine(){
 const box=$("myList");
 if(!window.__cloud||!authUser){box.textContent="";return []}
-box.innerHTML='<p class="note">Loading…</p>';
+box.innerHTML=skeleton(2);
 const r=await window.__cloud.listMine();
 if(!r.ok){box.innerHTML='<p class="note">Could not load your tournaments.</p>';return []}
 mine=sortTournaments(r.list);
-box.innerHTML=mine.length?mine.map(t=>`<div class="tcard mycard" id="my-${esc(t.id)}"><div class="tc-main"><div class="tc-top">${statusChip(t)}<span class="chip ${t.role==="admin"?"chipF":"chipK"}">${t.role==="admin"?"Admin":"Editor"}</span>${t.visibility==="private"?'<span class="chip privchip">🔒 Private</span>':""}<span class="reqbadge" hidden></span></div><b dir="auto">${esc(t.name)}</b><p class="note">${tMeta(t)}</p></div><div class="tc-actions"><button class="primary" onclick="enterTournament('${esc(t.id)}','lMsg')">Open</button>${t.role==="admin"?`<button class="secondary" onclick="duplicateT('${esc(t.id)}')">Duplicate</button>`:""}${t.owner?`<button class="danger" onclick="deleteT('${esc(t.id)}')">Delete</button>`:""}</div></div>`).join(""):'<p class="note">You have no tournaments yet. Create one below.</p>';
+box.innerHTML=mine.length?mine.map(t=>`<div class="tcard mycard" id="my-${esc(t.id)}"><div class="tc-main"><div class="tc-top">${statusChip(t)}<span class="chip ${t.role==="admin"?"chipF":"chipK"}">${t.role==="admin"?"Admin":"Editor"}</span>${t.visibility==="private"?'<span class="chip privchip">🔒 Private</span>':""}<span class="reqbadge" hidden></span></div><b dir="auto">${esc(t.name)}</b><p class="note">${tMeta(t)}</p></div><div class="tc-actions"><button class="primary" onclick="enterTournament('${esc(t.id)}','lMsg')">Open</button>${t.role==="admin"?`<button class="secondary" onclick="duplicateT('${esc(t.id)}')">Duplicate</button>`:""}${t.owner?`<button class="danger" onclick="deleteT('${esc(t.id)}')">Delete</button>`:""}</div></div>`).join(""):'<p class="note">You have no tournaments yet. Press <b>+ New tournament</b> to create your first one.</p>';
 // pending edit-access requests, for tournaments you run
 mine.filter(t=>t.role==="admin"&&window.__cloud.pendingRequests).forEach(async t=>{
   const q=await window.__cloud.pendingRequests(t.id),b=document.querySelector(`#my-${t.id} .reqbadge`);
@@ -166,11 +202,13 @@ return mine
 }
 let pubLoading=false,pubCache=[];
 const pubBoxes=()=>[$("pubList"),$("allList")].filter(Boolean);
+// grey placeholder cards while the list loads
+const skeleton=n=>Array.from({length:n},()=>'<div class="tcard skel" aria-hidden="true"><span class="skl w30"></span><span class="skl w70"></span><span class="skl w50"></span></div>').join("");
 async function loadPublic(){
 if(!pubBoxes().length||pubLoading)return;
 const say=h=>pubBoxes().forEach(b=>b.innerHTML=h);
 if(!window.__cloud){say('<p class="note">Connecting…</p>');return}
-pubLoading=true;say('<p class="note">Loading…</p>');
+pubLoading=true;say(skeleton(2));
 const r=await window.__cloud.listPublic();pubLoading=false;
 if(!r.ok){say('<p class="note">Could not load the list ('+esc(r.error)+').</p>');return}
 pubCache=sortTournaments(r.list);renderPublic()
@@ -185,9 +223,14 @@ function pubListHtml(list){
 const active=list.filter(t=>t.st.k!=="finished"),done=list.filter(t=>t.st.k==="finished");
 return (list.length?"":'<p class="note">No public tournaments yet.</p>')+active.map(pubCard).join("")+(done.length?`<h3 class="pubsub">Finished</h3>`+done.map(pubCard).join(""):"")
 }
-// Home page: the 3 most recent (live and upcoming first, then the newest finished); the rest are on the "All tournaments" page (#tours)
+// Open a tournament straight on its Teams / Players part, where the Register button is
+async function openToRegister(id){curPart="players";try{sessionStorage.setItem("padelPart","players")}catch(e){}await enterTournament(id,"findMsg")}
+const regCard=t=>`<div class="tcard regcard"><span class="tc-main"><span class="tc-top">${statusChip(t)}<span class="chip regchip">Registration open</span></span><b dir="auto">${esc(t.name)}</b><span class="note">${tMeta(t)}</span></span><button type="button" class="primary" onclick="openToRegister('${esc(t.id)}')">Register</button></div>`;
+// Home page: tournaments open for registration get their own row; then the 3 most relevant (live and today first,
+// then upcoming, then the newest finished); the rest are on the "All tournaments" page (#tours)
 function renderPublic(){
-const home=$("pubList"),all=$("allList");
+const home=$("pubList"),all=$("allList"),reg=pubCache.filter(t=>t.regOpen&&t.st.k!=="finished");
+if($("regRow")){$("regRow").hidden=!reg.length;$("regList2").innerHTML=reg.map(regCard).join("")}
 if(home)home.innerHTML=pubListHtml(pubCache.slice(0,3))+(pubCache.length>3?`<button type="button" class="secondary puball" onclick="location.hash='tours'">View all ${pubCache.length} tournaments ›</button>`:"");
 if(all)all.innerHTML=pubListHtml(pubCache)
 }

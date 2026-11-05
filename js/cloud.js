@@ -34,7 +34,7 @@ if(window.CLOUD_ON){
 
     // What the home page needs to show a tournament card
     const summary=(id,x,u)=>({id,name:x.name||"Tournament",teams:(x.teams||[]).length,style:x.style||"groups_ko",visibility:x.visibility||"public",
-      date:(x.settings||{}).date||"",venue:(x.settings||{}).venue||"",start:(x.settings||{}).start||"",results:Object.keys(x.scores||{}).length,regOpen:!!x.regOpen,
+      date:(x.settings||{}).date||"",venue:(x.settings||{}).venue||"",start:(x.settings||{}).start||"",results:Object.keys(x.scores||{}).filter(k=>!/^mx\d+$/.test(k)).length,regOpen:!!x.regOpen,
       createdAt:x.createdAt||0,updatedAt:x.updatedAt||0,role:u?((x.members||{})[u.uid]||"editor"):null,owner:!!u&&x.ownerUid===u.uid});
     window.__cloud={
       async open(id){
@@ -134,7 +134,18 @@ if(window.CLOUD_ON){
       async dismissReport(id){
         try{await F.deleteDoc(F.doc(db,"reports",id));return {ok:true}}catch(e){return {ok:false,error:err(e)}}
       },
+      // Listing photos: one document per photo (listings/{id}/photos/0..3), each a compressed JPEG data URL
+      async listingPhotos(id){
+        try{const s=await F.getDocs(F.collection(db,"listings",id,"photos"));return {ok:true,list:s.docs.sort((a,b)=>a.id.localeCompare(b.id)).map(d=>d.data().d).filter(x=>typeof x==="string"&&x.startsWith("data:image/"))}}
+        catch(e){return {ok:false,error:err(e)}}
+      },
+      async setListingPhotos(id,list){
+        try{for(let i=0;i<4;i++){const ref=F.doc(db,"listings",id,"photos",String(i));if(list[i])await F.setDoc(ref,{d:list[i]});else await F.deleteDoc(ref)}return {ok:true}}
+        catch(e){return {ok:false,error:err(e)}}
+      },
       async deleteListing(id){
+        // photos first: their rule checks the listing's owner, which is gone once the listing is
+        for(let i=0;i<4;i++){try{await F.deleteDoc(F.doc(db,"listings",id,"photos",String(i)))}catch(e){}}
         try{await F.deleteDoc(F.doc(db,"listings",id));return {ok:true}}
         catch(e){return {ok:false,error:err(e)}}
       },

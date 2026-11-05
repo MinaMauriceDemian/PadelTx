@@ -164,34 +164,43 @@
 </div>
 
 <div id="landing" class="landing" hidden>
-<div class="land-hero"><div class="hero-tools"><button type="button" class="hbtn" id="heroSignIn" onclick="toLogin()">Sign in</button><button type="button" class="hbtn" id="heroProfile" onclick="openMyProfile()" hidden>My profile</button><button type="button" class="hbtn" id="heroSignOut" onclick="doSignOut()" hidden>Sign out</button><button type="button" class="hbtn themebtn" onclick="toggleTheme()" aria-label="Switch day/night mode"><svg class="ico-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg><svg class="ico-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button></div><h1 class="brand"><a href="#" class="brandlink" onclick="brandHome();return false" title="Go to the home page"><svg class="ballmark" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E4F53B"></circle><path d="M5 6.5c3 2.5 3 8.5 0 11M19 6.5c-3 2.5-3 8.5 0 11" fill="none" stroke="#0B3D91" stroke-width="1.6"></path></svg><span>Padel Tour</span></a></h1><p>Follow padel tournaments live, or sign in to run your own.</p></div>
+<div class="land-hero"><div class="hero-tools"><button type="button" class="hbtn" id="heroSignIn" onclick="toLogin()">Sign in</button><button type="button" class="hbtn" id="heroProfile" onclick="openMyProfile()" hidden>My profile</button><button type="button" class="hbtn" id="heroSignOut" onclick="doSignOut()" hidden>Sign out</button><button type="button" class="hbtn themebtn" onclick="toggleTheme()" aria-label="Switch day/night mode"><svg class="ico-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg><svg class="ico-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button></div><h1 class="brand"><a href="#" class="brandlink" onclick="brandHome();return false" title="Go to the home page"><svg class="ballmark" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E4F53B"></circle><path d="M5 6.5c3 2.5 3 8.5 0 11M19 6.5c-3 2.5-3 8.5 0 11" fill="none" stroke="#0B3D91" stroke-width="1.6"></path></svg><span>Padel Tour</span></a></h1><p class="hero-tag">Live padel tournaments: follow the scores, or run your own.</p><div class="hero-cta"><button type="button" class="cta cta-follow" onclick="goFollow()"><span aria-hidden="true">🎾</span>Follow a tournament</button><button type="button" class="cta cta-create" onclick="startCreate()"><span aria-hidden="true">🏆</span>Create a tournament</button></div></div>
 <div class="land-grid">
-<div class="card land-card pubcard" style="grid-column:1/-1">
-<div class="pubhead"><h2>Tournaments</h2><button class="secondary" onclick="loadPublic()">Refresh</button></div>
-<p class="note">Tap a tournament to follow it live. No account needed.</p>
-<div id="pubList" class="publist"></div>
-<details class="findid"><summary>Have a tournament ID?</summary>
-<div class="idrow"><input id="findId" placeholder="e.g. K7M2QXA" maxlength="12" autocapitalize="characters" autocomplete="off" onkeydown="if(event.key==='Enter')findTournament()"><button class="primary" onclick="findTournament()">Open</button></div>
-<p id="findMsg" class="note" style="margin-top:10px"></p>
-</details>
-</div>
-<div class="card land-card">
-<div id="lOut" class="stack">
-<div><h2>Run your own tournament</h2><p class="note" style="margin:0">You’re browsing as a viewer. Sign in or register to create tournaments, enter scores, or post in the marketplace.</p></div>
-<div class="actions" style="margin:0"><button class="primary" onclick="toLogin()">Sign in / Register</button></div>
-</div>
-<div id="lIn" class="stack" hidden>
-<div><h2>My tournaments</h2><p class="note" id="lWho" style="margin:0"></p></div>
-<div id="myList"></div>
-<div class="newt">
+<div class="card land-card mycard-box" id="lIn" style="grid-column:1/-1" hidden>
+<div class="pubhead"><div><h2>My tournaments</h2><p class="note" id="lWho" style="margin:0"></p></div><button class="primary" id="newTBtn" onclick="toggleNewT()">+ New tournament</button></div>
+<div class="newt" id="newForm" hidden>
 <h3>New tournament</h3>
 <label>Name<input id="newName" placeholder="e.g. Autumn Cup" maxlength="60" onkeydown="if(event.key==='Enter')createT()"></label>
 <div class="fields"><label><span id="newTeamsLbl">Number of teams</span><select id="newTeams"></select></label><label>Tournament style<select id="newStyle" onchange="onNewStyle()"></select></label><label style="grid-column:1/-1">Visibility<select id="newVis"><option value="public">Public: listed on the home page</option><option value="private">Private: anyone with the ID or link can enter scores and players</option></select></label></div>
-<button class="primary" onclick="createT()">Create tournament</button>
+<div class="actions" style="margin:0"><button class="primary" onclick="createT()">Create tournament</button><button class="secondary" onclick="toggleNewT(false)">Cancel</button></div>
 </div>
-<div class="actions" style="margin:0"><button class="secondary" onclick="openMyProfile()">My player profile</button><button class="danger" style="margin-left:0" onclick="doSignOut()">Sign out</button></div>
+<p id="lMsg" class="note" style="margin:10px 0 0" role="status"></p>
+<div id="myList" style="margin-top:12px"></div>
 </div>
-<p id="lMsg" class="note" style="margin-top:12px" role="status"></p>
+
+<div class="card land-card joincard" id="joinCard" style="grid-column:1/-1">
+<div><h2>Join with a code</h2><p class="note">Got a tournament code on WhatsApp? Type it here.</p></div>
+<div class="idrow"><input id="findId" placeholder="e.g. K7M2QXA" maxlength="12" autocapitalize="characters" autocomplete="off" aria-label="Tournament code" onkeydown="if(event.key==='Enter')findTournament()"><button class="primary" onclick="findTournament()">Open</button></div>
+<p id="findMsg" class="note" style="margin:6px 0 0" role="status"></p>
+</div>
+
+<div class="card land-card pubcard" id="regRow" style="grid-column:1/-1" hidden>
+<div class="pubhead"><h2>📝 Open for registration</h2></div>
+<p class="note">Sign up yourself or your team. The organizer confirms your spot.</p>
+<div id="regList2" class="publist"></div>
+</div>
+
+<div class="card land-card pubcard" id="followCard" style="grid-column:1/-1">
+<div class="pubhead"><h2>Tournaments</h2><button class="secondary" onclick="loadPublic()">Refresh</button></div>
+<p class="note">Tap a tournament to follow it live. No account needed.</p>
+<div id="pubList" class="publist"></div>
+</div>
+
+<div class="card land-card" id="lOut">
+<div class="stack">
+<div><h2>Organizing a tournament?</h2><p class="note" style="margin:0">Create one free in a minute: schedule, live scores, leaderboard and WhatsApp sharing, all done for you.</p></div>
+<div class="actions" style="margin:0"><button class="primary" onclick="startCreate()">🏆 Create a tournament</button></div>
+</div>
 </div>
 <div class="card land-card mkt-teaser">
 <h2>Marketplace</h2>
@@ -199,7 +208,13 @@
 <div class="mkt-mini"><span>🤝 Partners</span><span>🎾 Used gear</span><span>🧑‍🏫 Coaches</span><span>🎁 Donation gifts</span></div>
 <button class="primary" onclick="openMarket()">Open marketplace</button>
 </div>
+
+<div class="card land-card installtip" id="installTip" style="grid-column:1/-1" hidden>
+<div><b>📱 Keep Padel Tour one tap away</b><p class="note" id="installHow" style="margin:4px 0 0"></p></div>
+<div class="actions" style="margin:0"><button class="primary" id="installBtn" onclick="doInstall()" hidden>Add to home screen</button><button class="secondary" onclick="hideInstallTip()">Not now</button></div>
 </div>
+</div>
+<nav class="mobilebar" aria-label="Quick actions"><button type="button" onclick="goFollow()"><span aria-hidden="true">🎾</span>Follow</button><button type="button" onclick="startCreate()"><span aria-hidden="true">🏆</span>Create</button><button type="button" id="mbMe" onclick="authUser?openMyProfile():toLogin()"><span aria-hidden="true">👤</span><span id="mbMeLbl">Sign in</span></button></nav>
 <footer class="sitefoot"><button type="button" onclick="openInfo('about')">About &amp; contact</button><span aria-hidden="true">·</span><button type="button" onclick="openInfo('privacy')">Privacy</button></footer>
 </div>
 <div id="toursView" class="landing" hidden>
@@ -232,6 +247,7 @@
 <p class="note" id="lCatHint"></p>
 <label>Title<input id="lTitle" maxlength="80"></label>
 <label>Description<textarea id="lDesc" maxlength="1000" rows="4" placeholder="Condition, details, availability…"></textarea></label>
+<div class="lphotos"><span class="lph-lbl">Photos (optional, up to 4)</span><div id="lPhotos" class="lph-grid"></div><input type="file" id="lPhotoIn" accept="image/*" multiple hidden onchange="addPhotos(this.files);this.value=''"><p class="note" style="margin:0">The first photo is shown on the listing. Photos are made smaller before uploading.</p></div>
 <label><span id="lPriceLbl">Price</span><input id="lPrice" maxlength="40"></label>
 <label>Location / club (optional)<input id="lLoc" maxlength="60" placeholder="e.g. Padel Club Stuttgart"></label>
 <label>WhatsApp number<input id="lPhone" type="tel" inputmode="tel" placeholder="+49 170 1234567"></label>
@@ -239,6 +255,7 @@
 <p id="lMsgM" class="note" role="status"></p>
 <div class="actions" style="margin:0"><button type="submit" class="primary" id="lSave">Publish</button><button type="button" class="secondary" onclick="$('mktDlg').close()">Cancel</button></div>
 </form></dialog>
+<dialog id="photoDlg" class="photodlg" onclick="if(event.target===this)this.close()"><div class="pv-top"><b id="pvTitle" dir="auto"></b><button type="button" class="secondary" onclick="$('photoDlg').close()">Close</button></div><div id="pvBody" class="pv-body"></div></dialog>
 <div id="profileView" class="landing" hidden>
 <div class="land-hero prof-hero"><div class="mkt-top"><a href="#" class="brandlink mini" onclick="brandHome();return false" title="Go to the home page"><svg class="ballmark" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E4F53B"></circle><path d="M5 6.5c3 2.5 3 8.5 0 11M19 6.5c-3 2.5-3 8.5 0 11" fill="none" stroke="#0B3D91" stroke-width="1.6"></path></svg><span>Padel Tour</span></a><div class="hero-tools static"><button type="button" class="hbtn themebtn" onclick="toggleTheme()" aria-label="Switch day/night mode"><svg class="ico-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg><svg class="ico-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button></div></div></div>
 <div class="prof-wrap" id="profileBody"></div>
