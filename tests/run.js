@@ -4,7 +4,7 @@ const {JSDOM}=require("jsdom");
 const fs=require("fs"),path=require("path");
 const ROOT=path.join(__dirname,"..");
 // Script files in the same order as index.html (the Firebase module is skipped)
-const SCRIPTS=[...fs.readFileSync(path.join(ROOT,"index.html"),"utf8").matchAll(/<script src="js\/([\w-]+)\.js"><\/script>/g)].map(m=>m[1]);
+const SCRIPTS=[...fs.readFileSync(path.join(ROOT,"index.html"),"utf8").matchAll(/<script src="js\/([\w-]+)\.js(?:\?v=[\w.-]+)?"><\/script>/g)].map(m=>m[1]);
 
 function loadApp({phone=false}={}){
   const html=fs.readFileSync(path.join(ROOT,"index.html"),"utf8");

@@ -45,7 +45,7 @@ check courts and hours, best-of settings, the phone view, the live marker and Wh
 
 ## Deploy
 
-GitHub Pages publishes the repository as it is (no build step). Every commit to `main` updates the live site within about a minute. The repository must stay public for GitHub Pages on the free plan.
+GitHub Pages publishes the repository as it is (no build step). Every commit to `main` updates the live site within about a minute. Browsers keep the CSS and JavaScript files for up to 10 minutes, so `index.html` loads them with a version number (`?v=20261105`): change it (for example to today's date) whenever you deploy changed CSS or JavaScript, so every visitor gets the new files together. The repository must stay public for GitHub Pages on the free plan.
 
 
 ## License
