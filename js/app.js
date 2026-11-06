@@ -57,7 +57,7 @@ if(d){
   state.style=d.style||"groups_ko";
   state.visibility=d.visibility==="private"?"private":"public";
   state.teamPlayers=d.teamPlayers||{};
-  state.regOpen=!!d.regOpen;
+  state.regOpen=!!d.regOpen;state.finished=!!d.finished;
   state.regPay=d.regPay||null;
   state._visMissing=!d.visibility;
 }
@@ -78,6 +78,7 @@ if(view==="landing")renderLanding();
 if(view==="mine")showMine();
 if(view==="market")renderMarket();
 if($("authDlg").open)updateAuthDlg();
+if(u&&typeof runAfterAuth==="function")runAfterAuth();
 };
 window.__cloudReady=function(){
 booted=true;
@@ -96,7 +97,7 @@ document.querySelectorAll("input.score,.stepbtn").forEach(el=>el.disabled=!ed);
 document.querySelectorAll("[data-admin]").forEach(el=>el.disabled=!ad);
 document.querySelectorAll("[data-team]").forEach(el=>el.disabled=!ed);
 const sf=$("sfSel");if(sf)sf.disabled=!ad;
-showPart(curPart);renderTInfo();$("partPlayersLbl").textContent=(typeof isAm==="function"&&isAm()?"Players":"Teams");
+showPart(curPart);renderTInfo();if(typeof renderDash==="function")renderDash();$("partPlayersLbl").textContent=(typeof isAm==="function"&&isAm()?"Players":"Teams");
 if(typeof renderTeamPlayers==="function")renderTeamPlayers();
 if(typeof renderRegistration==="function")renderRegistration();
 document.body.classList.toggle("can-move",ad);document.body.classList.toggle("is-admin",ad);document.body.classList.toggle("can-score",ed);
@@ -157,7 +158,40 @@ if(view==="mine")showMine();else location.hash="mine"
 function toggleNewT(on){
 const f=$("newForm");if(!f)return;
 f.hidden=on===undefined?!f.hidden:!on;$("newTBtn").hidden=!f.hidden;
-if(!f.hidden)setTimeout(()=>$("newName").focus(),300)
+if(!f.hidden){wzReset();setTimeout(()=>$("newName").focus(),300)}
+}
+/* New tournament wizard: 1 Name & day → 2 Style & players → 3 Courts & time → Create */
+let wzStep=1;
+function wzReset(){
+if(!$("newCourts").options.length){
+  $("newCourts").innerHTML=Array.from({length:6},(_,i)=>`<option value="${i+1}">${i+1} court${i?"s":""}</option>`).join("");
+  $("newDur").innerHTML=[10,12,15,20,25,30,40,45,60].map(m=>`<option value="${m}">${m} minutes</option>`).join("");
+  $("newPts").innerHTML=AM_POINTS.map(p=>`<option value="${p}">${p} points</option>`).join("");
+}
+const n=new Date(),h=Math.min(22,n.getHours()+1);
+$("newDate").value=todayStr();$("newStart").value=String(h).padStart(2,"0")+":00";
+$("newCourts").value="2";$("newDur").value="20";$("newPts").value="24";
+wzStep=1;wzShow();wzHint()
+}
+function wzShow(){
+document.querySelectorAll("#newForm .wz").forEach(x=>x.hidden=+x.dataset.step!==wzStep);
+document.querySelectorAll("#newForm .wz-steps li").forEach(x=>{const k=+x.dataset.wz;x.className=k<wzStep?"done":k===wzStep?"on":""});
+$("wzBack").hidden=wzStep===1;$("wzNext").hidden=wzStep===3;$("wzCreate").hidden=wzStep!==3;
+}
+function wzGo(d){
+if(d>0&&wzStep===1&&!$("newName").value.trim()){$("lMsg").textContent="Give your tournament a name.";$("newName").focus();return}
+$("lMsg").textContent="";wzStep=Math.max(1,Math.min(3,wzStep+d));wzShow();wzHint();
+const first=document.querySelector(`#newForm .wz[data-step="${wzStep}"] input,#newForm .wz[data-step="${wzStep}"] select`);if(first)first.focus()
+}
+const WZ_HINT={groups_ko:"Teams of two play in groups, then the best teams go into a knockout (quarter-finals, semi-finals, final).",
+  americano:"Everyone signs up alone and gets a new partner every round. Each match is played to a fixed number of points.",
+  mexicano:"Like Americano, but after round 1 the leaderboard decides who plays together, so matches stay close.",
+  mexicano_time:"Mexicano where every match lasts a set time; the rounds you win decide your points."};
+function wzHint(){
+const st=$("newStyle").value||"groups_ko",am=AM_STYLES.includes(st),n=+$("newTeams").value||8,c=+$("newCourts").value||2,dur=+$("newDur").value||20;
+$("newPtsLbl").hidden=!(st==="americano"||st==="mexicano");
+$("newStyleHint").textContent=WZ_HINT[st]||"";
+$("newSummary").textContent=`${n} ${am?"players":"teams"} on ${c} court${c>1?"s":""}, ${dur}-minute matches from ${$("newStart").value||"12:00"}${$("newDate").value?" on "+(dayLabel($("newDate").value)||$("newDate").value):""}. You can add court hours and change anything later in Setup.`
 }
 // "Add to home screen": the browser's own prompt when it offers one, otherwise short instructions (phones only)
 let installEvt=null;
@@ -177,6 +211,7 @@ function hideInstallTip(){try{localStorage.setItem("padelInstallTip","off")}catc
 // Status from the tournament's date, start time and results
 function tStatus(t){
 const today=todayStr();
+if(t.finished)return {k:"finished",l:"Finished",o:5};
 if(t.date){
   if(t.date>today)return {k:"upcoming",l:"Upcoming",o:2};
   if(t.date<today)return {k:"finished",l:"Finished",o:5};
@@ -306,11 +341,15 @@ await enterTournament(raw,"findMsg")
 }
 async function createT(){
 const name=$("newName").value.trim()||"My tournament",m=$("lMsg"),teams=+$("newTeams").value||8,style=$("newStyle").value||"groups_ko",visibility=$("newVis").value==="private"?"private":"public";
+const nc=+$("newCourts").value||2,settings={date:$("newDate").value||todayStr(),venue:$("newVenue").value.trim().slice(0,60),start:$("newStart").value||"12:00",duration:+$("newDur").value||20,
+  courts:Array.from({length:nc},(_,i)=>({name:"Court "+(i+1)}))};
+if(style==="americano"||style==="mexicano")settings.points=+$("newPts").value||24;
 if(!window.__cloud){m.textContent="Still connecting… try again in a moment.";return}
 m.textContent="Creating…";
-const r=await window.__cloud.create(name,{teams,style,visibility});
+const r=await window.__cloud.create(name,{teams,style,visibility,settings});
 if(!r.ok){m.textContent="Could not create the tournament ("+r.error+").";return}
-$("newName").value="";
+$("newName").value="";$("newVenue").value="";toggleNewT(false);
+curPart="setup";try{sessionStorage.setItem("padelPart","setup")}catch(e){}
 await enterTournament(r.id,"lMsg")
 }
 function tournamentUrl(){return currentTid?location.origin+location.pathname+"#t="+currentTid:""}
@@ -351,7 +390,12 @@ async function setMember(uid,r){const x=await window.__cloud.setMember(uid,r);if
 async function removeMember(uid){if(confirm("Remove this person's access?")){const x=await window.__cloud.setMember(uid,null);if(!x.ok)toast("Could not remove access ("+x.error+").")}}
 async function dismissReq(uid){await window.__cloud.dismissRequest(uid)}
 /* account dialog */
-function openAuth(){updateAuthDlg();$("authMsg").textContent="";$("authDlg").showModal()}
+// why: a line saying what signing in is for (registering, joining a team…); Google is the big first option
+function openAuth(why){
+const w=typeof why==="string"?why:"";
+$("authWhy").textContent=w;$("authWhy").hidden=!w;$("authTitle").textContent=w?"Sign in":"Account";$("authEmailBox").open=false;
+updateAuthDlg();$("authMsg").textContent="";$("authDlg").showModal()
+}
 function updateAuthDlg(){
 const u=authUser;$("authOut").hidden=!!u;$("authIn").hidden=!u;
 if(u){$("authWho").textContent=u.email;$("authRole").textContent=role==="admin"?"Admin":role==="editor"?"Editor":"Viewer"}

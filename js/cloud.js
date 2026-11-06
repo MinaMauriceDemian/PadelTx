@@ -34,7 +34,7 @@ if(window.CLOUD_ON){
 
     // What the home page needs to show a tournament card
     const summary=(id,x,u)=>({id,name:x.name||"Tournament",teams:(x.teams||[]).length,style:x.style||"groups_ko",visibility:x.visibility||"public",
-      date:(x.settings||{}).date||"",venue:(x.settings||{}).venue||"",start:(x.settings||{}).start||"",results:Object.keys(x.scores||{}).filter(k=>!/^mx\d+$/.test(k)).length,regOpen:!!x.regOpen,
+      date:(x.settings||{}).date||"",venue:(x.settings||{}).venue||"",start:(x.settings||{}).start||"",results:Object.keys(x.scores||{}).filter(k=>!/^mx\d+$/.test(k)).length,regOpen:!!x.regOpen,finished:!!x.finished,
       createdAt:x.createdAt||0,updatedAt:x.updatedAt||0,role:u?((x.members||{})[u.uid]||"editor"):null,owner:!!u&&x.ownerUid===u.uid});
     window.__cloud={
       async open(id){
@@ -58,7 +58,7 @@ if(window.CLOUD_ON){
           for(let i=0;i<6;i++){
             const id=genId();
             if((await F.getDoc(T(id))).exists())continue;
-            const doc={name,ownerUid:u.uid,members:{[u.uid]:"admin"},memberUids:[u.uid],teams:d.teams,style:opts.style||"groups_ko",visibility:opts.visibility==="private"?"private":"public",bestOf:{},settings:d.settings,sfPairing:0,scores:{},createdAt:Date.now(),updatedAt:Date.now()};
+            const doc={name,ownerUid:u.uid,members:{[u.uid]:"admin"},memberUids:[u.uid],teams:d.teams,style:opts.style||"groups_ko",visibility:opts.visibility==="private"?"private":"public",bestOf:{},settings:{...d.settings,...(opts.settings||{})},sfPairing:0,scores:{},createdAt:Date.now(),updatedAt:Date.now()};
             // Duplicate: same teams, players, courts and settings; no scores, no date, only you as admin
             if(opts.copy){const c=opts.copy;Object.assign(doc,{teams:c.teams||doc.teams,style:c.style||doc.style,visibility:c.visibility||doc.visibility,bestOf:c.bestOf||{},settings:{...(c.settings||{}),date:""},teamPlayers:c.teamPlayers||{},playerUids:c.playerUids||[]})}
             await F.setDoc(T(id),doc);

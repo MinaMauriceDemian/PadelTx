@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,800&family=Barlow:wght@400;500;600;700&display=swap">
-<script src="js/theme.js?v=20261105b"></script>
-<link rel="stylesheet" href="css/styles.css?v=20261105b">
+<script src="js/theme.js?v=20261106"></script>
+<link rel="stylesheet" href="css/styles.css?v=20261106">
 </head>
 <body>
 <div id="appView">
@@ -22,6 +22,7 @@
 
 <nav class="parts" aria-label="Tournament"><button type="button" class="partbtn" data-part="setup" onclick="showPart('setup')"><span aria-hidden="true">⚙️</span>Setup<b class="partbadge" id="badge-setup" hidden></b></button><button type="button" class="partbtn" data-part="players" onclick="showPart('players')"><span aria-hidden="true">👥</span><span id="partPlayersLbl">Teams</span><b class="partbadge" id="badge-players" hidden></b></button><button type="button" class="partbtn on" data-part="matches" onclick="showPart('matches')"><span aria-hidden="true">🎾</span>Matches</button></nav>
 <div class="part" id="part-setup" hidden>
+<section id="orgDash" class="card orgdash" hidden></section>
 <section id="tInfo" class="card tinfo" hidden>
 <h2>Tournament info</h2>
 <dl class="tinfo-grid" id="tInfoList"></dl>
@@ -85,8 +86,9 @@
 <p>Registrants see these in the form and until you mark them as paid. Anyone who opens the tournament can read them.</p>
 <div class="fields">
 <label>Amount<input id="payAmt" maxlength="30" placeholder="e.g. 20 € per team"></label>
-<label>IBAN<input id="payIban" maxlength="42" placeholder="DE89 3704 0044 0532 0130 00" autocapitalize="characters"></label>
+<label>IBAN (optional with PayPal)<input id="payIban" maxlength="42" placeholder="DE89 3704 0044 0532 0130 00" autocapitalize="characters"></label>
 <label>Account holder<input id="payHolder" maxlength="60"></label>
+<label>PayPal.me name (optional)<input id="payPaypal" maxlength="40" placeholder="e.g. minademian (from paypal.me/minademian)"></label>
 <label>Note (optional)<input id="payNote" maxlength="200" placeholder="e.g. Pay within 3 days, or your spot goes to the waiting list"></label>
 </div>
 <div class="actions" style="margin:10px 0 0"><button class="primary" onclick="saveRegPay()">Save payment details</button></div>
@@ -128,7 +130,7 @@
 </section>
 
 <section id="ranking" class="section card">
-<div class="sharebar"><h2>Final ranking</h2><button class="wa" onclick="waShare('results')">Share on WhatsApp</button></div>
+<div class="sharebar"><h2>Final ranking</h2><button class="secondary" onclick="openResultsImage()">🏆 Share as image</button><button class="wa" onclick="waShare('results')">Share on WhatsApp</button></div>
 <table class="standings rank-table"><thead><tr><th>Place</th><th>Team</th><th>Decided by</th></tr></thead><tbody id="rankBody"></tbody></table>
 <p class="note" style="margin-top:12px">The ranking fills in as the matches are played.</p>
 </section>
@@ -207,11 +209,24 @@
 <div class="mkt-wrap">
 <div class="card land-card mycard-box" id="lIn" hidden>
 <div class="pubhead"><div><h2>My tournaments</h2><p class="note" id="lWho" style="margin:0"></p></div><button class="primary" id="newTBtn" onclick="toggleNewT()">+ New tournament</button></div>
-<div class="newt" id="newForm" hidden>
-<h3>New tournament</h3>
-<label>Name<input id="newName" placeholder="e.g. Autumn Cup" maxlength="60" onkeydown="if(event.key==='Enter')createT()"></label>
-<div class="fields"><label><span id="newTeamsLbl">Number of teams</span><select id="newTeams"></select></label><label>Tournament style<select id="newStyle" onchange="onNewStyle()"></select></label><label>Visibility<select id="newVis"><option value="public">Public: listed on the home page</option><option value="private">Private: anyone with the ID or link can enter scores and players</option></select></label></div>
-<div class="actions" style="margin:0"><button class="primary" onclick="createT()">Create tournament</button><button class="secondary" onclick="toggleNewT(false)">Cancel</button></div>
+<div class="newt wizard" id="newForm" hidden>
+<ol class="wz-steps"><li data-wz="1" class="on">Name &amp; day</li><li data-wz="2">Style &amp; players</li><li data-wz="3">Courts &amp; time</li></ol>
+<div class="wz" data-step="1">
+<label>Tournament name<input id="newName" placeholder="e.g. Autumn Cup" maxlength="60" onkeydown="if(event.key==='Enter')wzGo(1)"></label>
+<div class="fields"><label>Date<input id="newDate" type="date"></label><label>Venue / club (optional)<input id="newVenue" maxlength="60" placeholder="e.g. Padel Club Stuttgart"></label></div>
+</div>
+<div class="wz" data-step="2" hidden>
+<div class="fields"><label>Tournament style<select id="newStyle" onchange="onNewStyle();wzHint()"></select></label><label><span id="newTeamsLbl">Number of teams</span><select id="newTeams" onchange="wzHint()"></select></label>
+<label id="newPtsLbl" hidden>Points per match<select id="newPts"></select></label>
+<label style="grid-column:1/-1">Visibility<select id="newVis"><option value="public">Public: listed on the home page</option><option value="private">Private: anyone with the ID or link can enter scores and players</option></select></label></div>
+<p class="note wz-hint" id="newStyleHint"></p>
+</div>
+<div class="wz" data-step="3" hidden>
+<div class="fields"><label>Courts<select id="newCourts" onchange="wzHint()"></select></label><label>Start time<input id="newStart" type="time" onchange="wzHint()"></label><label>Minutes per match<select id="newDur" onchange="wzHint()"></select></label></div>
+<p class="note wz-hint" id="newSummary"></p>
+</div>
+<div class="actions" style="margin:0"><button class="secondary" id="wzBack" onclick="wzGo(-1)" hidden>← Back</button><button class="primary" id="wzNext" onclick="wzGo(1)">Next →</button><button class="primary" id="wzCreate" onclick="createT()" hidden>Create tournament</button><button class="secondary" onclick="toggleNewT(false)">Cancel</button></div>
+<p class="note" style="margin:0">Everything can be changed later in Setup.</p>
 </div>
 <p id="lMsg" class="note" style="margin:10px 0 0" role="status"></p>
 <div id="myList" style="margin-top:12px"></div>
@@ -282,15 +297,23 @@
 <p id="pfMsg" class="note" role="status"></p>
 <div class="actions" style="margin:0"><button type="submit" class="primary">Save profile</button><button type="button" class="secondary" onclick="$('profileDlg').close()">Cancel</button></div>
 </form></dialog>
+<dialog id="resultDlg" class="resdlg"><div class="dlg">
+<h2>Final ranking</h2>
+<img id="resImg" class="resimg" alt="Final ranking with podium">
+<p id="resMsg" class="note" role="status"></p>
+<div class="actions" style="margin:0"><button class="primary" id="resShare" onclick="shareResImg()" hidden>Share image</button><button class="secondary" onclick="downloadResImg()">Download image</button><button class="wa" onclick="waShare('results')">Send as text</button></div>
+<p class="note" style="margin:0">On a phone, <b>Share image</b> lets you pick WhatsApp. On a computer, download the image and send it in WhatsApp.</p>
+<div class="actions" style="margin:0"><button class="danger" id="resUnfinish" onclick="unfinishT();$('resultDlg').close()" hidden>Reopen tournament</button><button class="secondary" onclick="$('resultDlg').close()">Close</button></div>
+</div></dialog>
 <dialog id="regDlg"><form class="dlg" onsubmit="submitReg(event)">
 <h2 id="regTitle">Register</h2>
 <p class="note" id="regIntro"></p>
-<label data-rteam>Team name (optional)<input id="rTeam" maxlength="40" placeholder="e.g. Smash Brothers"></label>
 <label>Your name<input id="rMe" maxlength="40" autocomplete="name"></label>
 <label data-rteam>Partner's name<input id="rPartner" maxlength="40" placeholder="They can link their account later"></label>
+<details class="emailalt" data-rteam><summary>Team name (optional)</summary><label style="margin-top:8px">Team name<input id="rTeam" maxlength="40" placeholder="e.g. Smash Brothers"></label></details>
 <label>WhatsApp number<input id="rPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+49 170 1234567" required></label>
-<label>Email (optional)<input id="rEmail" type="email" autocomplete="email" maxlength="100"></label>
-<p class="note">Include your country code. Only the organiser sees your number and email.</p>
+<p class="note">Include your country code. Only the organizer sees your number.</p>
+<ol class="regsteps mini"><li class="done">Register</li><li id="rStepPay">Pay</li><li>Organizer confirms</li></ol>
 <div id="rPay" hidden></div>
 <p id="rMsg" class="note" role="status"></p>
 <div class="actions" style="margin:0"><button type="submit" class="primary" id="rSave">Send registration</button><button type="button" class="secondary" onclick="$('regDlg').close()">Cancel</button></div>
@@ -311,14 +334,18 @@
 </div></dialog>
 <div id="toast" class="toast" role="status" hidden></div>
 <dialog id="authDlg"><div class="dlg">
-<h2>Account</h2>
+<h2 id="authTitle">Account</h2>
 <div id="authOut" style="display:flex;flex-direction:column;gap:12px">
-<button class="gbtn" onclick="doGoogle('auth')">Continue with Google</button>
-<div class="or">or with email</div>
+<p class="authwhy" id="authWhy" hidden></p>
+<button class="gbtn gbig" onclick="doGoogle('auth')"><svg width="22" height="22" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C36.9 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Continue with Google</button>
+<p class="note" style="margin:0;text-align:center">One tap, no password to remember.</p>
+<details class="emailalt" id="authEmailBox"><summary>Use email and password instead</summary>
+<div style="display:flex;flex-direction:column;gap:12px;margin-top:10px">
 <label>Email<input id="authEmail" type="email" autocomplete="email"></label>
 <label>Password<input id="authPw" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAuth('in')"></label>
-<div class="actions" style="margin:0"><button class="primary" onclick="doAuth('in')">Sign in</button><button class="secondary" onclick="doAuth('up')">Register</button></div>
-<p class="note"><a href="#" onclick="doAuth('reset');return false">Forgot password?</a> · New here? Register, then request edit access from the tournament page.</p>
+<div class="actions" style="margin:0"><button class="primary" onclick="doAuth('in')">Sign in</button><button class="secondary" onclick="doAuth('up')">Create account</button></div>
+<p class="note" style="margin:0"><a href="#" onclick="doAuth('reset');return false">Forgot password?</a> · New here? Type your email and a password (6+ characters), then press Create account.</p>
+</div></details>
 </div>
 <div id="authIn" style="display:flex;flex-direction:column;gap:12px" hidden>
 <p>Signed in as <b id="authWho"></b></p>
@@ -346,21 +373,22 @@
 </div></dialog>
 <div id="printArea"></div>
 
-<script src="js/config.js?v=20261105b"></script>
-<script src="js/app.js?v=20261105b"></script>
-<script src="js/engine.js?v=20261105b"></script>
-<script src="js/setup.js?v=20261105b"></script>
-<script src="js/schedule.js?v=20261105b"></script>
-<script src="js/results.js?v=20261105b"></script>
-<script src="js/share.js?v=20261105b"></script>
-<script src="js/market.js?v=20261105b"></script>
-<script src="js/players.js?v=20261105b"></script>
-<script src="js/register.js?v=20261105b"></script>
-<script src="js/profile.js?v=20261105b"></script>
-<script src="js/americano.js?v=20261105b"></script>
-<script src="js/follow.js?v=20261105b"></script>
-<script src="js/info.js?v=20261105b"></script>
-<script src="js/main.js?v=20261105b"></script>
-<script type="module" src="js/cloud.js?v=20261105b"></script>
+<script src="js/config.js?v=20261106"></script>
+<script src="js/app.js?v=20261106"></script>
+<script src="js/engine.js?v=20261106"></script>
+<script src="js/setup.js?v=20261106"></script>
+<script src="js/schedule.js?v=20261106"></script>
+<script src="js/results.js?v=20261106"></script>
+<script src="js/share.js?v=20261106"></script>
+<script src="js/market.js?v=20261106"></script>
+<script src="js/players.js?v=20261106"></script>
+<script src="js/register.js?v=20261106"></script>
+<script src="js/profile.js?v=20261106"></script>
+<script src="js/americano.js?v=20261106"></script>
+<script src="js/dashboard.js?v=20261106"></script>
+<script src="js/follow.js?v=20261106"></script>
+<script src="js/info.js?v=20261106"></script>
+<script src="js/main.js?v=20261106"></script>
+<script type="module" src="js/cloud.js?v=20261106"></script>
 </body>
 </html>
