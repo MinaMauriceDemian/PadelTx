@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,800&family=Barlow:wght@400;500;600;700&display=swap">
-<script src="js/theme.js?v=20261112"></script>
-<link rel="stylesheet" href="css/styles.css?v=20261112">
+<script src="js/theme.js?v=20261115"></script>
+<link rel="stylesheet" href="css/styles.css?v=20261115">
 </head>
 <body>
 <div id="appView">
@@ -20,7 +20,7 @@
 <div id="liveBar" class="livebar" hidden></div>
 <div id="followBar" class="followbar" hidden></div>
 
-<nav class="parts" aria-label="Tournament"><button type="button" class="partbtn" data-part="setup" onclick="showPart('setup')"><span aria-hidden="true">⚙️</span>Setup<b class="partbadge" id="badge-setup" hidden></b></button><button type="button" class="partbtn" data-part="players" onclick="showPart('players')"><span aria-hidden="true">👥</span><span id="partPlayersLbl">Teams</span><b class="partbadge" id="badge-players" hidden></b></button><button type="button" class="partbtn on" data-part="matches" onclick="showPart('matches')"><span aria-hidden="true">🎾</span>Matches</button><button type="button" class="partbtn" data-part="chat" onclick="showPart('chat')"><span aria-hidden="true">💬</span>Chat<b class="partbadge" id="badge-chat" hidden></b></button></nav>
+<nav class="parts" aria-label="Tournament"><button type="button" class="partbtn" data-part="setup" onclick="showPart('setup')"><svg class="ic" aria-hidden="true"><use href="#i-sliders"></use></svg>Setup<b class="partbadge" id="badge-setup" hidden></b></button><button type="button" class="partbtn" data-part="players" onclick="showPart('players')"><svg class="ic" aria-hidden="true"><use href="#i-users"></use></svg><span id="partPlayersLbl">Teams</span><b class="partbadge" id="badge-players" hidden></b></button><button type="button" class="partbtn on" data-part="matches" onclick="showPart('matches')"><svg class="ic" aria-hidden="true"><use href="#i-court"></use></svg>Matches</button><button type="button" class="partbtn" data-part="chat" onclick="showPart('chat')"><svg class="ic" aria-hidden="true"><use href="#i-chat"></use></svg>Chat<b class="partbadge" id="badge-chat" hidden></b></button></nav>
 <div class="part" id="part-setup" hidden>
 <section id="orgDash" class="card orgdash" hidden></section>
 <section id="tInfo" class="card tinfo" hidden>
@@ -130,7 +130,7 @@
 </section>
 
 <section id="ranking" class="section card">
-<div class="sharebar"><h2>Final ranking</h2><button class="secondary" onclick="openResultsImage()">🏆 Share as image</button><button class="wa" onclick="waShare('results')">Share on WhatsApp</button></div>
+<div class="sharebar"><h2>Final ranking</h2><button class="primary" onclick="openResultsImage()">Share</button></div>
 <table class="standings rank-table"><thead><tr><th>Place</th><th>Team</th><th>Decided by</th></tr></thead><tbody id="rankBody"></tbody></table>
 <p class="note" style="margin-top:12px">The ranking fills in as the matches are played.</p>
 </section>
@@ -177,17 +177,30 @@
 </div>
 </div>
 
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-ball" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6c3.2 3 3.2 9.8 0 12.8M18.4 5.6c-3.2 3-3.2 9.8 0 12.8"/></symbol>
+<symbol id="i-court" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="1.5"/><path d="M12 3v18" stroke-dasharray="2 2.2"/><path d="M6.5 5v14M17.5 5v14" stroke-width="1.4"/><circle cx="15" cy="9.5" r="1.6" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-trophy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v1.5A3.5 3.5 0 0 0 7.5 11M17 6h3v1.5a3.5 3.5 0 0 1-3.5 3.5M12 14v3M8.5 20h7M9.5 17h5"/></symbol>
+<symbol id="i-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3.5 12.6V4.5a1 1 0 0 1 1-1h8.1l8 8a1.4 1.4 0 0 1 0 2l-7.1 7.1a1.4 1.4 0 0 1-2 0z"/><circle cx="8.3" cy="8.3" r="1.6"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c1.2-3.8 4-5.5 7.5-5.5s6.3 1.7 7.5 5.5"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8.5" r="3.5"/><path d="M2.5 20c.9-3.3 3.3-5 6.5-5s5.6 1.7 6.5 5"/><path d="M15.5 5.2a3.5 3.5 0 0 1 0 6.6M18 15.3c1.7.6 2.9 2.2 3.5 4.7"/></symbol>
+<symbol id="i-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v10a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3.5V17h0A1.5 1.5 0 0 1 4 15.5z"/></symbol>
+<symbol id="i-trend" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 17.5l5.5-5.5 4 4 7.5-8"/><path d="M15 8h5.5v5.5"/></symbol>
+<symbol id="i-bars" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V12M12 20V5M19 20v-5M3 20.5h18"/></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></symbol>
+</defs></svg>
 <div id="landing" class="landing" hidden>
-<div class="land-hero"><div class="hero-tools"><button type="button" class="hbtn" id="heroSignIn" onclick="toLogin()">Sign in</button><button type="button" class="hbtn" id="heroProfile" onclick="openMyProfile()" hidden>My profile</button><button type="button" class="hbtn" id="heroSignOut" onclick="doSignOut()" hidden>Sign out</button><button type="button" class="hbtn themebtn" onclick="toggleTheme()" aria-label="Switch day/night mode"><svg class="ico-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg><svg class="ico-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button></div><h1 class="brand"><a href="#" class="brandlink" onclick="brandHome();return false" title="Go to the home page"><svg class="ballmark" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E4F53B"></circle><path d="M5 6.5c3 2.5 3 8.5 0 11M19 6.5c-3 2.5-3 8.5 0 11" fill="none" stroke="#0B3D91" stroke-width="1.6"></path></svg><span>Padel Tour</span></a></h1><p class="hero-tag">Live padel tournaments: follow the scores, or run your own.</p></div>
+<div class="land-hero"><svg class="herocourt" viewBox="0 0 400 200" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2"><rect x="10" y="10" width="380" height="180" rx="3"/><path d="M75 10v180M325 10v180M75 100h250"/></g><path d="M200 4v192" stroke="currentColor" stroke-width="3" stroke-dasharray="2 5"/><circle class="hc-ball" cx="128" cy="162" r="7"/></svg><div class="hero-tools"><button type="button" class="hbtn" id="heroSignIn" onclick="toLogin()">Sign in</button><button type="button" class="hbtn" id="heroProfile" onclick="openMyProfile()" hidden>My profile</button><button type="button" class="hbtn" id="heroSignOut" onclick="doSignOut()" hidden>Sign out</button><button type="button" class="hbtn themebtn" onclick="toggleTheme()" aria-label="Switch day/night mode"><svg class="ico-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg><svg class="ico-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></button></div><h1 class="brand"><a href="#" class="brandlink" onclick="brandHome();return false" title="Go to the home page"><svg class="ballmark" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#E4F53B"></circle><path d="M5 6.5c3 2.5 3 8.5 0 11M19 6.5c-3 2.5-3 8.5 0 11" fill="none" stroke="#0B3D91" stroke-width="1.6"></path></svg><span>Padel Tour</span></a></h1><p class="hero-tag">Live padel tournaments: follow the scores, or run your own.</p></div>
 <div class="land-grid">
 <nav class="hometiles" aria-label="Padel Tour">
-<button type="button" class="htile ht-follow" onclick="location.hash='tours'"><span class="ht-ic" aria-hidden="true">🎾</span><span class="ht-txt"><b>Follow a tournament</b><small>Live scores, tables and brackets. No account needed.</small><span class="ht-badges" id="tileFollowBadges"></span></span><span class="ht-go" aria-hidden="true">›</span></button>
-<button type="button" class="htile ht-create" onclick="location.hash='mine'"><span class="ht-ic" aria-hidden="true">🏆</span><span class="ht-txt"><b id="tileMineTitle">Create a tournament</b><small id="tileMineSub">Schedule, live scores and leaderboard, free in a minute.</small></span><span class="ht-go" aria-hidden="true">›</span></button>
-<button type="button" class="htile ht-market" onclick="openMarket()"><span class="ht-ic" aria-hidden="true">🛒</span><span class="ht-txt"><b>Marketplace</b><small>Partners, used gear, coaches and donation gifts.</small></span><span class="ht-go" aria-hidden="true">›</span></button>
-<button type="button" class="htile ht-me" onclick="authUser?openMyProfile():toLogin()"><span class="ht-ic" aria-hidden="true">👤</span><span class="ht-txt"><b id="tileMeTitle">Sign in</b><small id="tileMeSub">Create tournaments, register and keep your player profile.</small></span><span class="ht-go" aria-hidden="true">›</span></button>
+<button type="button" class="htile ht-follow" onclick="location.hash='tours'"><span class="ht-ic"><svg class="ic" aria-hidden="true"><use href="#i-court"></use></svg></span><span class="ht-txt"><b>Follow a tournament</b><small>Live scores, tables and brackets. No account needed.</small><span class="ht-badges" id="tileFollowBadges"></span></span><span class="ht-go" aria-hidden="true">›</span></button>
+<button type="button" class="htile ht-create" onclick="location.hash='mine'"><span class="ht-ic"><svg class="ic" aria-hidden="true"><use href="#i-trophy"></use></svg></span><span class="ht-txt"><b id="tileMineTitle">Create a tournament</b><small id="tileMineSub">Schedule, live scores and leaderboard, free in a minute.</small></span><span class="ht-go" aria-hidden="true">›</span></button>
+<button type="button" class="htile ht-market" onclick="openMarket()"><span class="ht-ic"><svg class="ic" aria-hidden="true"><use href="#i-tag"></use></svg></span><span class="ht-txt"><b>Marketplace</b><small>Partners, used gear, coaches and donation gifts.</small></span><span class="ht-go" aria-hidden="true">›</span></button>
+<button type="button" class="htile ht-me" onclick="authUser?openMyProfile():toLogin()"><span class="ht-ic"><svg class="ic" aria-hidden="true"><use href="#i-user"></use></svg></span><span class="ht-txt"><b id="tileMeTitle">Sign in</b><small id="tileMeSub">Create tournaments, register and keep your player profile.</small></span><span class="ht-go" aria-hidden="true">›</span></button>
 </nav>
 <div class="card land-card installtip" id="installTip" style="grid-column:1/-1" hidden>
-<div><b>📱 Keep Padel Tour one tap away</b><p class="note" id="installHow" style="margin:4px 0 0"></p></div>
+<div><b>Keep Padel Tour one tap away</b><p class="note" id="installHow" style="margin:4px 0 0"></p></div>
 <div class="actions" style="margin:0"><button class="primary" id="installBtn" onclick="doInstall()" hidden>Add to home screen</button><button class="secondary" onclick="hideInstallTip()">Not now</button></div>
 </div>
 </div>
@@ -203,7 +216,7 @@
 </div>
 
 <div class="card land-card pubcard" id="regRow" style="grid-column:1/-1" hidden>
-<div class="pubhead"><h2>📝 Open for registration</h2></div>
+<div class="pubhead"><h2>Open for registration</h2></div>
 <p class="note">Sign up yourself or your team. The organizer confirms your spot.</p>
 <div id="regList2" class="publist"></div>
 </div>
@@ -247,7 +260,7 @@
 <div class="card land-card" id="lOut">
 <div class="stack">
 <div><h2>Organizing a tournament?</h2><p class="note" style="margin:0">Create one free in a minute: schedule, live scores, leaderboard and WhatsApp sharing, all done for you.</p></div>
-<div class="actions" style="margin:0"><button class="primary" onclick="startCreate()">🏆 Create a tournament</button></div>
+<div class="actions" style="margin:0"><button class="primary" onclick="startCreate()">Create a tournament</button></div>
 </div>
 </div>
 </div>
@@ -313,8 +326,12 @@
 <h2>Final ranking</h2>
 <img id="resImg" class="resimg" alt="Final ranking with podium">
 <p id="resMsg" class="note" role="status"></p>
-<div class="actions" style="margin:0"><button class="primary" id="resShare" onclick="shareResImg()" hidden>Share image</button><button class="secondary" onclick="downloadResImg()">Download image</button><button class="wa" onclick="waShare('results')">Send as text</button></div>
-<p class="note" style="margin:0">On a phone, <b>Share image</b> lets you pick WhatsApp. On a computer, download the image and send it in WhatsApp.</p>
+<div class="sharemenu"><button type="button" class="primary sharetoggle" id="resShareBtn" aria-expanded="false" aria-controls="resShareList" onclick="toggleShareMenu()">Share<span class="chev" aria-hidden="true">▾</span></button>
+<div class="sharelist" id="resShareList" hidden>
+<button type="button" onclick="shareResImg()"><b>Image to WhatsApp</b><small id="resHow"></small></button>
+<button type="button" onclick="waShare('results')"><b>Text to WhatsApp</b><small>The ranking as a WhatsApp message.</small></button>
+<button type="button" onclick="downloadResImg()"><b>Download image</b><small>Save the picture to post anywhere.</small></button>
+</div></div>
 <div class="actions" style="margin:0"><button class="danger" id="resUnfinish" onclick="unfinishT();$('resultDlg').close()" hidden>Reopen tournament</button><button class="secondary" onclick="$('resultDlg').close()">Close</button></div>
 </div></dialog>
 <dialog id="regDlg"><form class="dlg" onsubmit="submitReg(event)">
@@ -385,23 +402,23 @@
 </div></dialog>
 <div id="printArea"></div>
 
-<script src="js/config.js?v=20261112"></script>
-<script src="js/app.js?v=20261112"></script>
-<script src="js/engine.js?v=20261112"></script>
-<script src="js/setup.js?v=20261112"></script>
-<script src="js/schedule.js?v=20261112"></script>
-<script src="js/results.js?v=20261112"></script>
-<script src="js/share.js?v=20261112"></script>
-<script src="js/market.js?v=20261112"></script>
-<script src="js/players.js?v=20261112"></script>
-<script src="js/register.js?v=20261112"></script>
-<script src="js/profile.js?v=20261112"></script>
-<script src="js/americano.js?v=20261112"></script>
-<script src="js/dashboard.js?v=20261112"></script>
-<script src="js/chat.js?v=20261112"></script>
-<script src="js/follow.js?v=20261112"></script>
-<script src="js/info.js?v=20261112"></script>
-<script src="js/main.js?v=20261112"></script>
-<script type="module" src="js/cloud.js?v=20261112"></script>
+<script src="js/config.js?v=20261115"></script>
+<script src="js/app.js?v=20261115"></script>
+<script src="js/engine.js?v=20261115"></script>
+<script src="js/setup.js?v=20261115"></script>
+<script src="js/schedule.js?v=20261115"></script>
+<script src="js/results.js?v=20261115"></script>
+<script src="js/share.js?v=20261115"></script>
+<script src="js/market.js?v=20261115"></script>
+<script src="js/players.js?v=20261115"></script>
+<script src="js/register.js?v=20261115"></script>
+<script src="js/profile.js?v=20261115"></script>
+<script src="js/americano.js?v=20261115"></script>
+<script src="js/dashboard.js?v=20261115"></script>
+<script src="js/chat.js?v=20261115"></script>
+<script src="js/follow.js?v=20261115"></script>
+<script src="js/info.js?v=20261115"></script>
+<script src="js/main.js?v=20261115"></script>
+<script type="module" src="js/cloud.js?v=20261115"></script>
 </body>
 </html>

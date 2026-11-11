@@ -116,9 +116,9 @@ if(!window.CLOUD_ON){
   $("access").hidden=!ad;
   bar.hidden=ed;
   if(!ed){
-    if(!authUser)bar.innerHTML='👁 View only — scores update live. Staff: <b><a href="#" onclick="openAuth();return false">sign in</a></b> to enter scores.';
-    else if(myReq==="pending")bar.innerHTML='👁 Your edit-access request is waiting for the admin. <b><a href="#" onclick="nudgeAdmin();return false">Message the admin on WhatsApp</a></b>';
-    else bar.innerHTML='👁 View only. <b><a href="#" onclick="requestAccess();return false">Request edit access</a></b> from the tournament admin.';
+    if(!authUser)bar.innerHTML='View only: scores update live. Staff: <b><a href="#" onclick="openAuth();return false">sign in</a></b> to enter scores.';
+    else if(myReq==="pending")bar.innerHTML='Your edit-access request is waiting for the admin. <b><a href="#" onclick="nudgeAdmin();return false">Message the admin on WhatsApp</a></b>';
+    else bar.innerHTML='View only. <b><a href="#" onclick="requestAccess();return false">Request edit access</a></b> from the tournament admin.';
   }
   foot.textContent=cloudStatus==="live"?"● Live — changes sync automatically for everyone.":"Connecting…"
 }

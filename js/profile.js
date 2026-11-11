@@ -201,14 +201,14 @@ function renderProfile(){
     return
   }
   const last=S.matches[0],top=S.partners[0],when=[...(d.days||[]).map(k=>(DAYS.find(x=>x[0]===k)||[,""])[1]),...(d.times||[]).map(k=>(TIMES.find(x=>x[0]===k)||[,""])[1])];
-  const T=(k,ic,title,sub)=>`<button type="button" class="htile" onclick="profTab('${k}')"><span class="ht-ic" aria-hidden="true">${ic}</span><span class="ht-txt"><b>${title}</b><small>${sub}</small></span><span class="ht-go" aria-hidden="true">›</span></button>`;
+  const T=(k,ic,title,sub)=>`<button type="button" class="htile" onclick="profTab('${k}')"><span class="ht-ic"><svg class="ic" aria-hidden="true"><use href="#i-${ic}"></use></svg></span><span class="ht-txt"><b>${title}</b><small>${sub}</small></span><span class="ht-go" aria-hidden="true">›</span></button>`;
   const tiles=[
-    T("level","📈",lvNow!=null&&lvNow!==""?`Level ${fmtLevel(lvNow)} · ${levelBand(lvNow)}`:"Level",calc?`Calculated from ${C.n} match${C.n>1?"es":""}. See how it changed.`:hasLevel?"Self-reported. Calculated once a match is played.":"No level yet."),
-    T("stats","📊","Statistics",S.played?`${S.played} played · ${S.won} won · ${S.rate}% win rate`:"No matches played yet."),
-    T("matches","🎾","Matches",last?`Last: ${last.won?"won":last.draw?"draw":"lost"} ${last.us}–${last.them} vs ${esc(last.oppPlayers.length?last.oppPlayers.map(p=>p.name).join(" & "):last.opp)}`:"No finished matches yet."),
-    T("people","🤝","Partners & opponents",top?`Plays most with ${esc(top.name)}`:"None yet."),
-    T("prefs","⚙️","Preferences",esc([d.side&&SIDES[d.side],d.matchType&&MTYPES[d.matchType],when.slice(0,4).join(", ")].filter(Boolean).join(" · "))||"Not filled in yet."),
-    T("clubs","📍","Clubs",clubList.length?esc(clubList.slice(0,2).map(c=>c.name).join(", "))+(clubList.length>2?` +${clubList.length-2}`:""):"No clubs yet.")
+    T("level","trend",lvNow!=null&&lvNow!==""?`Level ${fmtLevel(lvNow)} · ${levelBand(lvNow)}`:"Level",calc?`Calculated from ${C.n} match${C.n>1?"es":""}. See how it changed.`:hasLevel?"Self-reported. Calculated once a match is played.":"No level yet."),
+    T("stats","bars","Statistics",S.played?`${S.played} played · ${S.won} won · ${S.rate}% win rate`:"No matches played yet."),
+    T("matches","court","Matches",last?`Last: ${last.won?"won":last.draw?"draw":"lost"} ${last.us}–${last.them} vs ${esc(last.oppPlayers.length?last.oppPlayers.map(p=>p.name).join(" & "):last.opp)}`:"No finished matches yet."),
+    T("people","users","Partners & opponents",top?`Plays most with ${esc(top.name)}`:"None yet."),
+    T("prefs","sliders","Preferences",esc([d.side&&SIDES[d.side],d.matchType&&MTYPES[d.matchType],when.slice(0,4).join(", ")].filter(Boolean).join(" · "))||"Not filled in yet."),
+    T("clubs","pin","Clubs",clubList.length?esc(clubList.slice(0,2).map(c=>c.name).join(", "))+(clubList.length>2?` +${clubList.length-2}`:""):"No clubs yet.")
   ].join("");
   $("profileBody").innerHTML=head+`<nav class="hometiles ptabs" aria-label="Profile">${tiles}</nav>`;
 }

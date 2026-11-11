@@ -22,7 +22,7 @@ const stats=[
   hasPay()&&reg.length?stat(`${paid}/${reg.length}`,"paid",paid<reg.length?`${reg.length-paid} still to pay`:"Everyone paid"):"",
   stat(`${played}/${total}`,"matches played",total&&played===total?"All done":"")
 ].join("");
-const nextTxt=state.finished?"🏁 This tournament is finished.":next?`⏭ Next up: <b>${esc(dashMatchLabel(next))}</b>`:total?"✅ Every match has a result.":"";
+const nextTxt=state.finished?"This tournament is finished.":next?`Next up: <b>${esc(dashMatchLabel(next))}</b>`:total?"Every match has a result.":"";
 box.innerHTML=`<div class="pubhead"><h2>Overview</h2>${state.finished?'<span class="stchip st-finished">Finished</span>':""}</div>
 <div class="dstats">${stats}</div>${nextTxt?`<p class="dnext">${nextTxt}</p>`:""}
 <div class="actions" style="margin:0"><button class="wa" onclick="waShare('link')">Share link</button><button class="secondary" onclick="printSheets()">Print court sheets</button>${waiting?`<button class="secondary" onclick="showPart('players')">Registrations (${waiting})</button>`:""}<button class="primary" onclick="${state.finished?"openResultsImage()":"finishT()"}">${state.finished?"🏆 Share results image":"🏁 Finish tournament"}</button></div>`
@@ -39,6 +39,11 @@ function unfinishT(){if(!isAdmin())return;state.finished=false;cloudWrite({finis
 
 /* ---------- Results image (1080 × 1350, made for WhatsApp / Instagram) ---------- */
 let resBlob=null;
+// One Share button; its list holds every way to share the ranking
+function toggleShareMenu(open){
+const l=$("resShareList"),on=open===undefined?l.hidden:open;
+l.hidden=!on;$("resShareBtn").setAttribute("aria-expanded",String(on))
+}
 async function openResultsImage(){
 const list=dashRanking();
 if(!list.length){toast("There's no ranking yet. Enter some results first.");return}
@@ -47,13 +52,23 @@ try{if(document.fonts)await Promise.all([document.fonts.load('800 80px "Barlow"'
 const c=drawResults(list);
 resBlob=await new Promise(r=>c.toBlob(r,"image/png"));
 $("resImg").src=URL.createObjectURL(resBlob);$("resMsg").textContent="";
-$("resShare").hidden=!(navigator.canShare&&navigator.canShare({files:[new File([resBlob],"results.png",{type:"image/png"})]}));
+$("resHow").textContent=canShareImg()?"Opens the share menu: pick WhatsApp and the chat.":"Copies the picture and opens WhatsApp: pick the chat and paste it (Ctrl+V).";toggleShareMenu(false);
 $("resUnfinish").hidden=!(isAdmin()&&state.finished)
 }
+function canShareImg(){try{return !!(navigator.canShare&&navigator.canShare({files:[new File([resBlob],"results.png",{type:"image/png"})]}))}catch(e){return false}}
+// Phones: the share menu (WhatsApp is in it). Computers: copy the image, open WhatsApp, the organiser pastes it into the chat.
 async function shareResImg(){
 if(!resBlob)return;
-const f=new File([resBlob],fileSafe(tName())+"-results.png",{type:"image/png"});
-try{await navigator.share({files:[f],title:tName(),text:resultsText()})}catch(e){}
+if(canShareImg()){
+  const f=new File([resBlob],fileSafe(tName())+"-results.png",{type:"image/png"});
+  try{await navigator.share({files:[f],title:tName(),text:tName()+": final ranking"})}catch(e){}
+  return
+}
+let copied=false;
+try{if(navigator.clipboard&&window.ClipboardItem){await navigator.clipboard.write([new ClipboardItem({"image/png":resBlob})]);copied=true}}catch(e){}
+if(!copied)downloadResImg();
+window.open("https://wa.me/?text="+encodeURIComponent(tName()+": final ranking 🏆"),"_blank","noopener");
+toast(copied?"Image copied. In WhatsApp, open the chat and paste it (Ctrl+V).":"Image downloaded. In WhatsApp, open the chat and attach it.")
 }
 function downloadResImg(){
 if(!resBlob)return;

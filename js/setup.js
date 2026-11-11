@@ -13,7 +13,7 @@ if($("newTeams"))$("newTeams").value="8";
 function renderTeams(){
 const gm=groupMembers(),gl=Object.keys(gm),box=$("teams");
 box.classList.toggle("one",gl.length===1);
-box.innerHTML=gl.map(g=>`<div class="group-box gb${g}"><h3 class="group-title"><span class="chip chip${g}">Group ${g}</span></h3>${gm[g].map((i,k)=>`<div class="team"><div class="team-row"><span class="num">${k+1}</span><input data-team="${i}" value="${esc(teamName(i))}" maxlength="40" aria-label="Team name"></div><div class="tplayers" data-tp="${i}"></div></div>`).join("")}</div>`).join("");
+box.innerHTML=gl.map(g=>`<div class="group-box gb${g}"><h3 class="group-title"><span class="chip chip${g}">Group ${g}</span></h3>${gm[g].map((i,k)=>`<div class="team"><div class="team-row"><span class="num">${k+1}</span><input data-team="${i}" value="${esc(teamName(i))}" maxlength="40" aria-label="Team name" placeholder="Free spot"></div><div class="tplayers" data-tp="${i}"></div></div>`).join("")}</div>`).join("");
 document.querySelectorAll("[data-team]").forEach(x=>x.oninput=()=>{if(!canScore())return;state.teams[+x.dataset.team]=x.value;save();refresh();if($("teamsSum"))$("teamsSum").textContent=teamsSummary();clearTimeout(pending.teams);pending.teams=setTimeout(()=>{pending.teams=null;cloudWrite({teams:[...state.teams]})},600)});
 }
 function init(){fillStatic();initSetupPanel();rebuild();syncInputs();applyRole()}

@@ -154,7 +154,7 @@ if(e){
 }
 if(!state.regOpen||(authUser&&allPlayerUids().includes(authUser.uid)))return show("");
 const n=freeSlots().length,what=isAm()?"player":"team",left=n?`${n} ${what} spot${n>1?"s":""} left`:"full, waiting list only";
-show(`📝 Registration is open (${left}). <button class="primary" onclick="openReg()">${isAm()?"Register":"Register your team"}</button>`)
+show(`Registration is open (${left}). <button class="primary" onclick="openReg()">${isAm()?"Register":"Register your team"}</button>`)
 }
 
 /* ---------- Managing registrations (organiser) ---------- */
