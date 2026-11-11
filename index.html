@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,800&family=Barlow:wght@400;500;600;700&display=swap">
-<script src="js/theme.js?v=20261106"></script>
-<link rel="stylesheet" href="css/styles.css?v=20261106">
+<script src="js/theme.js?v=20261111"></script>
+<link rel="stylesheet" href="css/styles.css?v=20261111">
 </head>
 <body>
 <div id="appView">
@@ -20,7 +20,7 @@
 <div id="liveBar" class="livebar" hidden></div>
 <div id="followBar" class="followbar" hidden></div>
 
-<nav class="parts" aria-label="Tournament"><button type="button" class="partbtn" data-part="setup" onclick="showPart('setup')"><span aria-hidden="true">⚙️</span>Setup<b class="partbadge" id="badge-setup" hidden></b></button><button type="button" class="partbtn" data-part="players" onclick="showPart('players')"><span aria-hidden="true">👥</span><span id="partPlayersLbl">Teams</span><b class="partbadge" id="badge-players" hidden></b></button><button type="button" class="partbtn on" data-part="matches" onclick="showPart('matches')"><span aria-hidden="true">🎾</span>Matches</button></nav>
+<nav class="parts" aria-label="Tournament"><button type="button" class="partbtn" data-part="setup" onclick="showPart('setup')"><span aria-hidden="true">⚙️</span>Setup<b class="partbadge" id="badge-setup" hidden></b></button><button type="button" class="partbtn" data-part="players" onclick="showPart('players')"><span aria-hidden="true">👥</span><span id="partPlayersLbl">Teams</span><b class="partbadge" id="badge-players" hidden></b></button><button type="button" class="partbtn on" data-part="matches" onclick="showPart('matches')"><span aria-hidden="true">🎾</span>Matches</button><button type="button" class="partbtn" data-part="chat" onclick="showPart('chat')"><span aria-hidden="true">💬</span>Chat<b class="partbadge" id="badge-chat" hidden></b></button></nav>
 <div class="part" id="part-setup" hidden>
 <section id="orgDash" class="card orgdash" hidden></section>
 <section id="tInfo" class="card tinfo" hidden>
@@ -133,6 +133,18 @@
 <div class="sharebar"><h2>Final ranking</h2><button class="secondary" onclick="openResultsImage()">🏆 Share as image</button><button class="wa" onclick="waShare('results')">Share on WhatsApp</button></div>
 <table class="standings rank-table"><thead><tr><th>Place</th><th>Team</th><th>Decided by</th></tr></thead><tbody id="rankBody"></tbody></table>
 <p class="note" style="margin-top:12px">The ranking fills in as the matches are played.</p>
+</section>
+</div>
+<div class="part" id="part-chat" hidden>
+<section class="card chatcard">
+<h2>Chat</h2>
+<div id="chatList" class="chatlist" aria-live="polite"></div>
+<form id="chatForm" class="chatform" onsubmit="sendChat(event)" hidden>
+<p class="note" id="chatAs"></p>
+<input id="chatNick" maxlength="30" placeholder="Your nickname" autocomplete="nickname" aria-label="Your nickname" hidden>
+<div class="chatrow"><input id="chatText" maxlength="500" placeholder="Write a message…" autocomplete="off" aria-label="Message" enterkeyhint="send"><button class="primary" id="chatSend">Send</button></div>
+</form>
+<div id="chatSignIn" class="chatsignin" hidden><p class="note">Sign in to write in the chat. Anyone can read it.</p><button class="primary" onclick="openAuth('Sign in to chat with the other players.')">Sign in</button></div>
 </section>
 </div>
 
@@ -280,7 +292,7 @@
 <div class="fields"><label>City<input id="pfCity" maxlength="40"></label><label>Home club<input id="pfClub" maxlength="60"></label></div>
 <label>About you (optional)<textarea id="pfAbout" maxlength="300" rows="2" placeholder="e.g. Playing 3 years, looking for weekend matches"></textarea></label>
 <fieldset class="pfset"><legend>Level</legend>
-<div class="lvrow"><label for="pfLevel">Your level (0–7)</label><button type="button" class="infobtn" id="pfGuideBtn" aria-expanded="false" aria-controls="pfGuide" onclick="toggleGuide(this,'pfGuide')" title="What do the levels mean?"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"></circle><path d="M12 11v6"></path><circle cx="12" cy="7.6" r=".6" fill="currentColor"></circle></svg><span>Level guide</span></button></div>
+<div class="lvrow"><label for="pfLevel">Your starting level (0–7)</label><button type="button" class="infobtn" id="pfGuideBtn" aria-expanded="false" aria-controls="pfGuide" onclick="toggleGuide(this,'pfGuide')" title="What do the levels mean?"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"></circle><path d="M12 11v6"></path><circle cx="12" cy="7.6" r=".6" fill="currentColor"></circle></svg><span>Level guide</span></button></div>
 <input id="pfLevel" inputmode="decimal" placeholder="e.g. 2.75" oninput="updateLevelHint()" aria-describedby="pfLevelHint">
 <p class="note" id="pfLevelHint" role="status"></p>
 <div id="pfGuide" class="guidebox" hidden></div>
@@ -373,22 +385,23 @@
 </div></dialog>
 <div id="printArea"></div>
 
-<script src="js/config.js?v=20261106"></script>
-<script src="js/app.js?v=20261106"></script>
-<script src="js/engine.js?v=20261106"></script>
-<script src="js/setup.js?v=20261106"></script>
-<script src="js/schedule.js?v=20261106"></script>
-<script src="js/results.js?v=20261106"></script>
-<script src="js/share.js?v=20261106"></script>
-<script src="js/market.js?v=20261106"></script>
-<script src="js/players.js?v=20261106"></script>
-<script src="js/register.js?v=20261106"></script>
-<script src="js/profile.js?v=20261106"></script>
-<script src="js/americano.js?v=20261106"></script>
-<script src="js/dashboard.js?v=20261106"></script>
-<script src="js/follow.js?v=20261106"></script>
-<script src="js/info.js?v=20261106"></script>
-<script src="js/main.js?v=20261106"></script>
-<script type="module" src="js/cloud.js?v=20261106"></script>
+<script src="js/config.js?v=20261111"></script>
+<script src="js/app.js?v=20261111"></script>
+<script src="js/engine.js?v=20261111"></script>
+<script src="js/setup.js?v=20261111"></script>
+<script src="js/schedule.js?v=20261111"></script>
+<script src="js/results.js?v=20261111"></script>
+<script src="js/share.js?v=20261111"></script>
+<script src="js/market.js?v=20261111"></script>
+<script src="js/players.js?v=20261111"></script>
+<script src="js/register.js?v=20261111"></script>
+<script src="js/profile.js?v=20261111"></script>
+<script src="js/americano.js?v=20261111"></script>
+<script src="js/dashboard.js?v=20261111"></script>
+<script src="js/chat.js?v=20261111"></script>
+<script src="js/follow.js?v=20261111"></script>
+<script src="js/info.js?v=20261111"></script>
+<script src="js/main.js?v=20261111"></script>
+<script type="module" src="js/cloud.js?v=20261111"></script>
 </body>
 </html>

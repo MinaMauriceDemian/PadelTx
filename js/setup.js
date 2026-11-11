@@ -29,7 +29,8 @@ let curPart="matches";
 try{curPart=sessionStorage.getItem("padelPart")||"matches"}catch(e){}
 function showPart(p){
 curPart=p;try{sessionStorage.setItem("padelPart",p)}catch(e){}
-["setup","players","matches"].forEach(x=>{$("part-"+x).hidden=x!==p;document.querySelector(`.partbtn[data-part="${x}"]`).classList.toggle("on",x===p)})
+["setup","players","matches","chat"].forEach(x=>{$("part-"+x).hidden=x!==p;document.querySelector(`.partbtn[data-part="${x}"]`).classList.toggle("on",x===p)});
+if(p==="chat")showChat()
 }
 // What everyone else sees under Setup: the main settings, read-only
 function renderTInfo(){

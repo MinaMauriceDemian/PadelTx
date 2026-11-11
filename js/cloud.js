@@ -6,7 +6,7 @@ if(window.CLOUD_ON){
     const [{initializeApp},A,F]=await Promise.all([import(base+"firebase-app.js"),import(base+"firebase-auth.js"),import(base+"firebase-firestore.js")]);
     const app=initializeApp(window.FIREBASE_CONFIG), auth=A.getAuth(app), db=F.getFirestore(app);
     const T=id=>F.doc(db,"tournaments",id);
-    let tid=null,unsubT=null,unsubAux=null,unsubReg=null,unsubMyReg=null,lastData=null,roleKey=null,auxKey=null,firstAuth=true;
+    let tid=null,unsubT=null,unsubChat=null,unsubAux=null,unsubReg=null,unsubMyReg=null,lastData=null,roleKey=null,auxKey=null,firstAuth=true;
     const ALPHA="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const genId=()=>{const a=new Uint32Array(7);crypto.getRandomValues(a);return Array.from(a,n=>ALPHA[n%ALPHA.length]).join("")};
     const err=e=>e.code||e.message||"error";
@@ -30,7 +30,7 @@ if(window.CLOUD_ON){
         else window.__setMyEntry(null);
       }
     }
-    function leave(){if(unsubT){unsubT();unsubT=null}if(unsubAux){unsubAux();unsubAux=null}if(unsubReg){unsubReg();unsubReg=null}if(unsubMyReg){unsubMyReg();unsubMyReg=null}tid=null;lastData=null;roleKey=null;auxKey=null}
+    function leave(){if(unsubT){unsubT();unsubT=null}if(unsubChat){unsubChat();unsubChat=null;window.__setChat([])}if(unsubAux){unsubAux();unsubAux=null}if(unsubReg){unsubReg();unsubReg=null}if(unsubMyReg){unsubMyReg();unsubMyReg=null}tid=null;lastData=null;roleKey=null;auxKey=null}
 
     // What the home page needs to show a tournament card
     const summary=(id,x,u)=>({id,name:x.name||"Tournament",teams:(x.teams||[]).length,style:x.style||"groups_ko",visibility:x.visibility||"public",
@@ -47,6 +47,9 @@ if(window.CLOUD_ON){
             if(!s.exists()){window.__toast("This tournament no longer exists.");return}
             lastData=s.data();window.__applyRemote(lastData);pushRole();window.__cloudStatus("live");
           },e=>window.__toast("Lost connection to the tournament ("+err(e)+")"));
+          // the chat: the newest 200 messages, oldest first
+          unsubChat=F.onSnapshot(F.query(F.collection(db,"tournaments",id,"chat"),F.orderBy("at"),F.limitToLast(200)),s=>window.__setChat(s.docs.map(d=>{
+            const x=d.data({serverTimestamps:"estimate"});return {id:d.id,uid:x.uid||null,name:String(x.name||""),text:String(x.text||""),at:x.at&&x.at.toMillis?x.at.toMillis():Date.now()}})),()=>window.__setChat([]));
           return {ok:true}
         }catch(e){return {ok:false,error:err(e)}}
       },
@@ -204,6 +207,16 @@ if(window.CLOUD_ON){
       async claimPartner(regUid,partner){
         if(!tid)return {ok:false,error:"no tournament"};
         try{await F.updateDoc(F.doc(db,"tournaments",tid,"entries",regUid),{partner,updatedAt:Date.now()});return {ok:true}}catch(e){return {ok:false,error:err(e)}}
+      },
+      // Tournament chat (tournaments/{tid}/chat); see js/chat.js
+      async sendChat({name,text}){
+        if(!tid)return {ok:false,error:"no tournament"};
+        const u=auth.currentUser;
+        try{await F.addDoc(F.collection(db,"tournaments",tid,"chat"),{uid:u?u.uid:null,name,text,at:F.serverTimestamp()});return {ok:true}}catch(e){return {ok:false,error:err(e)}}
+      },
+      async deleteChat(id){
+        if(!tid)return {ok:false,error:"no tournament"};
+        try{await F.deleteDoc(F.doc(db,"tournaments",tid,"chat",id));return {ok:true}}catch(e){return {ok:false,error:err(e)}}
       },
       async dismissRequest(uid){try{await F.deleteDoc(F.doc(db,"tournaments",tid,"requests",uid))}catch(e){window.__toast("Could not dismiss ("+err(e)+")")}}
     };

@@ -67,7 +67,7 @@ syncInputs();refresh();applyRole()
 };
 window.__getInitial=()=>({teams:state.teams,settings:state.settings,sfPairing:state.sfPairing||0,scores:state.scores});
 window.__cloudStatus=s=>{cloudStatus=s;applyRole()};
-window.__setRole=function(r,u){role=r;authUser=u;applyRole();if(r==="admin"&&state._visMissing){state._visMissing=false;cloudWrite({visibility:state.visibility})}if($("authDlg").open)updateAuthDlg()};
+window.__setRole=function(r,u){role=r;authUser=u?(authUser&&authUser.uid===u.uid?{...authUser,...u}:u):null;applyRole();if(r==="admin"&&state._visMissing){state._visMissing=false;cloudWrite({visibility:state.visibility})}if($("authDlg").open)updateAuthDlg()};
 window.__setRequests=l=>{requests=l;renderAccess();const n=l.filter(r=>r.status==="pending"&&!(state.members||{})[r.uid]).length;$("accessTab").textContent=n?`Access (${n})`:"Access";partBadge("setup",n)};
 window.__setMyRequest=st=>{myReq=st;applyRole()};
 window.__authState=function(u){

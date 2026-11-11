@@ -132,6 +132,21 @@ service cloud.firestore {
           || (signedIn() && request.auth.uid == uid && resource.data.status in ['pending','waitlist','declined']);
       }
 
+      // Chat: everyone reads. Public tournaments: signed-in people write under their own uid.
+      // Private tournaments: anyone with the link writes, also without signing in (uid null, a nickname).
+      // The writer (if signed in), the tournament admins and the site admin can delete a message.
+      match /chat/{mid} {
+        allow read: if true;
+        allow create: if request.resource.data.keys().hasOnly(['uid','name','text','at'])
+          && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 30
+          && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 500
+          && request.resource.data.at == request.time
+          && ((signedIn() && request.resource.data.uid == request.auth.uid)
+              || (request.resource.data.uid == null
+                  && get(/databases/$(database)/documents/tournaments/$(tid)).data.get('visibility', 'public') == 'private'));
+        allow delete: if (signedIn() && resource.data.uid == request.auth.uid) || tRole(tid, ['admin']) || isSiteAdmin();
+      }
+
       // Edit-access requests: you manage your own, admins manage all
       match /requests/{uid} {
         allow read, delete: if (signedIn() && request.auth.uid == uid) || tRole(tid, ['admin']);
