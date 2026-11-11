@@ -6,7 +6,7 @@ const TIMES=[["morning","Morning"],["afternoon","Afternoon"],["evening","Evening
 const HANDS={right:"Right-handed",left:"Left-handed"};
 const SIDES={right:"Right side",left:"Left side",both:"Both sides"};
 const MTYPES={competitive:"Competitive",friendly:"Friendly",both:"Competitive & friendly"};
-let prof={uid:null,data:null,stats:null,showAll:false};
+let prof={uid:null,data:null,stats:null,showAll:false,tab:null};
 
 function fmtLevel(v){return (Math.round(+v*100)/100).toFixed(2)}
 // Level guide on the 0–7 scale: [from, to, name, description]
@@ -55,7 +55,7 @@ function openMyProfile(){
 }
 async function showProfile(uid){
   if(currentTid&&window.__cloud){window.__cloud.leave();currentTid=null}
-  prof={uid,data:null,stats:null,showAll:false};
+  prof={uid,data:null,stats:null,showAll:false,tab:null};
   showView("profile");window.scrollTo(0,0);
   $("profileBody").innerHTML='<div class="card"><p class="note">Loading profile…</p></div>';
   if(!window.CLOUD_ON||!window.__cloud){$("profileBody").innerHTML='<div class="card"><p class="note">Player profiles work on the online site.</p></div>';return}
@@ -194,8 +194,25 @@ function renderProfile(){
   const people=section("Players I play most with",`<div class="pcols"><div><h3>Partners</h3>${plist(S.partners,p=>`${p.w} won together`)}</div><div><h3>Opponents</h3>${plist(S.opponents,p=>`${p.w} won against`)}</div></div>`);
   const clubList=[...(d.homeClub?[{name:d.homeClub,home:true}]:[]),...S.clubs.filter(c=>c.name!==d.homeClub)];
   const clubs=section("Clubs",clubList.length?`<ul class="pclubs">${clubList.map(c=>`<li><b dir="auto">${esc(c.name)}</b><span class="note">${c.home?"Home club":c.n+" tournament"+(c.n>1?"s":"")+(c.last?" · last "+esc(new Date(c.last+"T00:00").toLocaleDateString(undefined,{month:"short",year:"numeric"})):"")}</span></li>`).join("")}</ul>`:'<p class="note">No clubs yet. Tournament venues appear here once the admin sets one in Setup.</p>');
-  $("profileBody").innerHTML=head+`<div class="pgrid">${level}${stats}</div>`+progression+matches+`<div class="pgrid">${prefs}${clubs}</div>`+people;
+  // Like the home page: the header, then one tile per part; a tile opens that part on its own
+  const parts={level:level+progression,stats,matches,people,prefs,clubs};
+  if(prof.tab&&parts[prof.tab]){
+    $("profileBody").innerHTML=head+`<button type="button" class="secondary pback" onclick="profTab(null)">‹ All of ${esc(d.displayName)}'s profile</button>`+parts[prof.tab];
+    return
+  }
+  const last=S.matches[0],top=S.partners[0],when=[...(d.days||[]).map(k=>(DAYS.find(x=>x[0]===k)||[,""])[1]),...(d.times||[]).map(k=>(TIMES.find(x=>x[0]===k)||[,""])[1])];
+  const T=(k,ic,title,sub)=>`<button type="button" class="htile" onclick="profTab('${k}')"><span class="ht-ic" aria-hidden="true">${ic}</span><span class="ht-txt"><b>${title}</b><small>${sub}</small></span><span class="ht-go" aria-hidden="true">›</span></button>`;
+  const tiles=[
+    T("level","📈",lvNow!=null&&lvNow!==""?`Level ${fmtLevel(lvNow)} · ${levelBand(lvNow)}`:"Level",calc?`Calculated from ${C.n} match${C.n>1?"es":""}. See how it changed.`:hasLevel?"Self-reported. Calculated once a match is played.":"No level yet."),
+    T("stats","📊","Statistics",S.played?`${S.played} played · ${S.won} won · ${S.rate}% win rate`:"No matches played yet."),
+    T("matches","🎾","Matches",last?`Last: ${last.won?"won":last.draw?"draw":"lost"} ${last.us}–${last.them} vs ${esc(last.oppPlayers.length?last.oppPlayers.map(p=>p.name).join(" & "):last.opp)}`:"No finished matches yet."),
+    T("people","🤝","Partners & opponents",top?`Plays most with ${esc(top.name)}`:"None yet."),
+    T("prefs","⚙️","Preferences",esc([d.side&&SIDES[d.side],d.matchType&&MTYPES[d.matchType],when.slice(0,4).join(", ")].filter(Boolean).join(" · "))||"Not filled in yet."),
+    T("clubs","📍","Clubs",clubList.length?esc(clubList.slice(0,2).map(c=>c.name).join(", "))+(clubList.length>2?` +${clubList.length-2}`:""):"No clubs yet.")
+  ].join("");
+  $("profileBody").innerHTML=head+`<nav class="hometiles ptabs" aria-label="Profile">${tiles}</nav>`;
 }
+function profTab(k){prof.tab=k;renderProfile();window.scrollTo(0,0)}
 function levelChart(hist){
   // drawn at the real width so the labels stay readable on phones
   const pts=[...hist].sort((a,b)=>a.at-b.at).slice(-30),W=Math.max(280,Math.min(900,(($("profileBody")||{}).clientWidth||640)-48)),H=W<500?170:200,pl=36,pr=16,pt=16,pb=30;

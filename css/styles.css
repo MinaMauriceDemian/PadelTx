@@ -1013,3 +1013,6 @@ html[data-theme="dark"] .partbtn.on{color:#FFFFFF}
 .chatrow input{flex:1;min-width:0}
 .chatsignin{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .chatsignin .note{margin:0}
+/* Profile: tiles like the home page, each opening one part */
+.ptabs{margin-top:16px}
+.pback{margin:16px 0 12px}
