@@ -22,7 +22,7 @@ function cloudWrite(u){if(window.CLOUD_ON&&window.__cloud)window.__cloud.write(u
 let toastTimer;
 function toast(msg){const t=$("toast");t.textContent=msg;t.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.hidden=true,5000)}
 window.__toast=toast;
-function showView(v){view=v;$("loginView").hidden=v!=="login";$("landing").hidden=v!=="landing";$("appView").hidden=v!=="app";$("marketView").hidden=v!=="market";$("profileView").hidden=v!=="profile";$("toursView").hidden=v!=="tours";$("mineView").hidden=v!=="mine"}
+function showView(v){view=v;$("loginView").hidden=v!=="login";$("landing").hidden=v!=="landing";$("appView").hidden=v!=="app";$("marketView").hidden=v!=="market";$("profileView").hidden=v!=="profile";$("toursView").hidden=v!=="tours";$("mineView").hidden=v!=="mine";$("gymView").hidden=v!=="gym"}
 // Where "home" is: signed-in people and viewers go to the tournament list, everyone else to the login page
 // The home page is the start for everyone; signing in is optional and chosen from there
 const homeView=()=>"landing";
@@ -77,6 +77,7 @@ if(u&&typeof ensureMyProfile==="function")ensureMyProfile();
 if(view==="landing")renderLanding();
 if(view==="mine")showMine();
 if(view==="market")renderMarket();
+if(view==="gym"&&typeof gymAuthChanged==="function")gymAuthChanged();
 if($("authDlg").open)updateAuthDlg();
 if(u&&typeof runAfterAuth==="function")runAfterAuth();
 };
@@ -87,6 +88,7 @@ const pid=profileHash();
 if(location.hash==="#market")showMarket();
 else if(location.hash==="#tours")showTours();
 else if(location.hash==="#mine")showMine();
+else if(location.hash==="#gym")showGym();
 else if(pid)showProfile(pid);
 else if(id){enterTournament(id,"findMsg")}
 };
@@ -365,7 +367,8 @@ captureJoin();if(joinReq&&hashId()===currentTid)renderRegistration();
 if(location.hash==="#market"){if(currentTid&&window.__cloud){window.__cloud.leave();currentTid=null}showMarket();return}
 if(location.hash==="#tours"){if(currentTid&&window.__cloud){window.__cloud.leave();currentTid=null}showTours();return}
 if(location.hash==="#mine"){if(currentTid&&window.__cloud){window.__cloud.leave();currentTid=null}showMine();return}
-if((view==="tours"||view==="mine")&&!hashId()){showView("landing");renderLanding();return}
+if(location.hash==="#gym"){if(currentTid&&window.__cloud){window.__cloud.leave();currentTid=null}showGym();return}
+if((view==="tours"||view==="mine"||view==="gym")&&!hashId()){showView("landing");renderLanding();return}
 const pid=profileHash();if(pid){if(pid!==prof.uid||view!=="profile")showProfile(pid);return}
 if(view==="profile"&&!hashId()){showView("landing");renderLanding();return}
 const id=hashId();

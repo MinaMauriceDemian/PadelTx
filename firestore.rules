@@ -74,6 +74,38 @@ service cloud.firestore {
       allow delete: if signedIn() && request.auth.uid == uid;
     }
 
+    // Friendly matches: logged by one player, confirmed or rejected by an opponent. Confirmed ones are public.
+    function validMatch(d) {
+      return d.keys().hasOnly(['createdBy','uids','a','b','sets','date','venue','status','confirmedBy','createdAt','updatedAt'])
+        && d.createdBy == request.auth.uid
+        && d.uids is list && d.uids.size() == 4 && request.auth.uid in d.uids
+        && d.a is list && d.a.size() == 2 && d.b is list && d.b.size() == 2
+        && d.a[0].uid == request.auth.uid
+        && d.sets is list && d.sets.size() >= 1 && d.sets.size() <= 5
+        && d.date is string && d.date.size() == 10 && d.venue is string && d.venue.size() <= 60
+        && d.status == 'pending' && d.confirmedBy == null
+        && d.createdAt is number && d.updatedAt is number;
+    }
+    match /matches/{mid} {
+      allow read: if resource.data.status == 'confirmed' || (signedIn() && request.auth.uid in resource.data.uids);
+      allow create: if signedIn() && validMatch(request.resource.data);
+      // only an opponent answers, and only once
+      allow update: if signedIn() && resource.data.status == 'pending'
+        && (request.auth.uid == resource.data.b[0].uid || request.auth.uid == resource.data.b[1].uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','confirmedBy','updatedAt'])
+        && request.resource.data.status in ['confirmed', 'rejected']
+        && request.resource.data.confirmedBy == request.auth.uid;
+      allow delete: if signedIn() && ((resource.data.createdBy == request.auth.uid && resource.data.status != 'confirmed') || isSiteAdmin());
+    }
+
+    // Training plans and logs: private, only the owner reads and writes them
+    match /gym/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+      match /log/{lid} {
+        allow read, write: if signedIn() && request.auth.uid == uid;
+      }
+    }
+
     match /tournaments/{tid} {
       // Anyone can follow results (viewers don't need an account)
       allow read: if true;

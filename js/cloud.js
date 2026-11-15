@@ -218,6 +218,43 @@ if(window.CLOUD_ON){
         if(!tid)return {ok:false,error:"no tournament"};
         try{await F.deleteDoc(F.doc(db,"tournaments",tid,"chat",id));return {ok:true}}catch(e){return {ok:false,error:err(e)}}
       },
+      // Friendly matches (matches/{mid}); see js/friendly.js. Confirmed ones are public, pending ones only for the four players.
+      async matchesOfPlayer(uid){
+        const u=auth.currentUser,col=F.collection(db,"matches");
+        try{
+          const q=u&&u.uid===uid?F.query(col,F.where("uids","array-contains",uid),F.limit(300)):F.query(col,F.where("uids","array-contains",uid),F.where("status","==","confirmed"),F.limit(300));
+          const s=await F.getDocs(q);return {ok:true,list:s.docs.map(d=>({id:d.id,...d.data()}))}
+        }catch(e){return {ok:false,error:err(e)}}
+      },
+      async createMatch(m){
+        if(!auth.currentUser)return {ok:false,error:"not signed in"};
+        try{const r=await F.addDoc(F.collection(db,"matches"),m);return {ok:true,id:r.id}}catch(e){return {ok:false,error:err(e)}}
+      },
+      async answerMatch(id,status){
+        const u=auth.currentUser;if(!u)return {ok:false,error:"not signed in"};
+        try{await F.updateDoc(F.doc(db,"matches",id),{status,confirmedBy:u.uid,updatedAt:Date.now()});return {ok:true}}catch(e){return {ok:false,error:err(e)}}
+      },
+      async deleteMatch(id){
+        try{await F.deleteDoc(F.doc(db,"matches",id));return {ok:true}}catch(e){return {ok:false,error:err(e)}}
+      },
+      // Training (gym/{uid}: plan and routines; gym/{uid}/log: workouts and padel sessions). Only the owner can read it.
+      async getGym(){
+        const u=auth.currentUser;if(!u)return {ok:false,error:"not signed in"};
+        try{const [p,l]=await Promise.all([F.getDoc(F.doc(db,"gym",u.uid)),F.getDocs(F.collection(db,"gym",u.uid,"log"))]);
+          return {ok:true,plan:p.exists()?p.data():null,log:l.docs.map(d=>({...d.data(),id:d.id}))}}catch(e){return {ok:false,error:err(e)}}
+      },
+      async saveGym(plan){
+        const u=auth.currentUser;if(!u)return {ok:false,error:"not signed in"};
+        try{await F.setDoc(F.doc(db,"gym",u.uid),plan);return {ok:true}}catch(e){return {ok:false,error:err(e)}}
+      },
+      async putGymLog(e){
+        const u=auth.currentUser;if(!u)return {ok:false,error:"not signed in"};
+        try{await F.setDoc(F.doc(db,"gym",u.uid,"log",e.id),e);return {ok:true}}catch(x){return {ok:false,error:err(x)}}
+      },
+      async delGymLog(id){
+        const u=auth.currentUser;if(!u)return {ok:false,error:"not signed in"};
+        try{await F.deleteDoc(F.doc(db,"gym",u.uid,"log",id));return {ok:true}}catch(e){return {ok:false,error:err(e)}}
+      },
       async dismissRequest(uid){try{await F.deleteDoc(F.doc(db,"tournaments",tid,"requests",uid))}catch(e){window.__toast("Could not dismiss ("+err(e)+")")}}
     };
     const google=new A.GoogleAuthProvider();
