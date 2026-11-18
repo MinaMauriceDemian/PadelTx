@@ -18,13 +18,27 @@ service cloud.firestore {
         && request.auth.token.email in ['minamorise@gmail.com'];
     }
     function validListing(d) {
-      return d.keys().hasOnly(['category','title','description','price','location','phone','ownerUid','createdAt','updatedAt'])
+      return d.keys().hasOnly(['category','title','description','price','location','phone','ownerUid','createdAt','updatedAt','thumb','photoCount'])
         && d.category in ['partner','gear','coach','gift']
         && d.title is string && d.title.size() > 0 && d.title.size() <= 80
         && d.description is string && d.description.size() <= 1000
         && d.price is string && d.price.size() <= 40
         && d.location is string && d.location.size() <= 60
-        && d.phone is string && d.phone.matches('^[0-9]{7,15}$');
+        && d.phone is string && d.phone.matches('^[0-9]{7,15}$')
+        && (!d.keys().hasAny(['thumb']) || (d.thumb is string && d.thumb.size() <= 60000))
+        && (!d.keys().hasAny(['photoCount']) || (d.photoCount is int && d.photoCount >= 0 && d.photoCount <= 4));
+    }
+    function listingOwner(lid) {
+      return get(/databases/$(database)/documents/listings/$(lid)).data.ownerUid;
+    }
+    // Listing photos (up to 4, one compressed JPEG data URL per document); see js/market.js
+    match /listings/{lid}/photos/{pid} {
+      allow read: if true;
+      allow create, update: if signedIn() && listingOwner(lid) == request.auth.uid
+        && pid in ['0','1','2','3']
+        && request.resource.data.keys().hasOnly(['d'])
+        && request.resource.data.d is string && request.resource.data.d.size() <= 900000;
+      allow delete: if signedIn() && (listingOwner(lid) == request.auth.uid || isSiteAdmin());
     }
     match /listings/{lid} {
       allow read: if true;
@@ -58,6 +72,38 @@ service cloud.firestore {
       allow read: if (signedIn() && request.auth.uid == uid) || resource.data.visibility == 'public';
       allow create, update: if signedIn() && request.auth.uid == uid && validProfile(request.resource.data);
       allow delete: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Friendly matches: logged by one player, confirmed or rejected by an opponent. Confirmed ones are public.
+    function validMatch(d) {
+      return d.keys().hasOnly(['createdBy','uids','a','b','sets','date','venue','status','confirmedBy','createdAt','updatedAt'])
+        && d.createdBy == request.auth.uid
+        && d.uids is list && d.uids.size() == 4 && request.auth.uid in d.uids
+        && d.a is list && d.a.size() == 2 && d.b is list && d.b.size() == 2
+        && d.a[0].uid == request.auth.uid
+        && d.sets is list && d.sets.size() >= 1 && d.sets.size() <= 5
+        && d.date is string && d.date.size() == 10 && d.venue is string && d.venue.size() <= 60
+        && d.status == 'pending' && d.confirmedBy == null
+        && d.createdAt is number && d.updatedAt is number;
+    }
+    match /matches/{mid} {
+      allow read: if resource.data.status == 'confirmed' || (signedIn() && request.auth.uid in resource.data.uids);
+      allow create: if signedIn() && validMatch(request.resource.data);
+      // only an opponent answers, and only once
+      allow update: if signedIn() && resource.data.status == 'pending'
+        && (request.auth.uid == resource.data.b[0].uid || request.auth.uid == resource.data.b[1].uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','confirmedBy','updatedAt'])
+        && request.resource.data.status in ['confirmed', 'rejected']
+        && request.resource.data.confirmedBy == request.auth.uid;
+      allow delete: if signedIn() && ((resource.data.createdBy == request.auth.uid && resource.data.status != 'confirmed') || isSiteAdmin());
+    }
+
+    // Training plans and logs: private, only the owner reads and writes them
+    match /gym/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+      match /log/{lid} {
+        allow read, write: if signedIn() && request.auth.uid == uid;
+      }
     }
 
     match /tournaments/{tid} {
@@ -116,6 +162,21 @@ service cloud.firestore {
               && request.resource.data.partner.name.size() > 0 && request.resource.data.partner.name.size() <= 40);
         allow delete: if tRole(tid, ['admin'])
           || (signedIn() && request.auth.uid == uid && resource.data.status in ['pending','waitlist','declined']);
+      }
+
+      // Chat: everyone reads. Public tournaments: signed-in people write under their own uid.
+      // Private tournaments: anyone with the link writes, also without signing in (uid null, a nickname).
+      // The writer (if signed in), the tournament admins and the site admin can delete a message.
+      match /chat/{mid} {
+        allow read: if true;
+        allow create: if request.resource.data.keys().hasOnly(['uid','name','text','at'])
+          && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 30
+          && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 500
+          && request.resource.data.at == request.time
+          && ((signedIn() && request.resource.data.uid == request.auth.uid)
+              || (request.resource.data.uid == null
+                  && get(/databases/$(database)/documents/tournaments/$(tid)).data.get('visibility', 'public') == 'private'));
+        allow delete: if (signedIn() && resource.data.uid == request.auth.uid) || tRole(tid, ['admin']) || isSiteAdmin();
       }
 
       // Edit-access requests: you manage your own, admins manage all

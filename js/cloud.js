@@ -6,7 +6,7 @@ if(window.CLOUD_ON){
     const [{initializeApp},A,F]=await Promise.all([import(base+"firebase-app.js"),import(base+"firebase-auth.js"),import(base+"firebase-firestore.js")]);
     const app=initializeApp(window.FIREBASE_CONFIG), auth=A.getAuth(app), db=F.getFirestore(app);
     const T=id=>F.doc(db,"tournaments",id);
-    let tid=null,unsubT=null,unsubAux=null,unsubReg=null,unsubMyReg=null,lastData=null,roleKey=null,auxKey=null,firstAuth=true;
+    let tid=null,unsubT=null,unsubChat=null,unsubAux=null,unsubReg=null,unsubMyReg=null,lastData=null,roleKey=null,auxKey=null,firstAuth=true;
     const ALPHA="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const genId=()=>{const a=new Uint32Array(7);crypto.getRandomValues(a);return Array.from(a,n=>ALPHA[n%ALPHA.length]).join("")};
     const err=e=>e.code||e.message||"error";
@@ -30,11 +30,11 @@ if(window.CLOUD_ON){
         else window.__setMyEntry(null);
       }
     }
-    function leave(){if(unsubT){unsubT();unsubT=null}if(unsubAux){unsubAux();unsubAux=null}if(unsubReg){unsubReg();unsubReg=null}if(unsubMyReg){unsubMyReg();unsubMyReg=null}tid=null;lastData=null;roleKey=null;auxKey=null}
+    function leave(){if(unsubT){unsubT();unsubT=null}if(unsubChat){unsubChat();unsubChat=null;window.__setChat([])}if(unsubAux){unsubAux();unsubAux=null}if(unsubReg){unsubReg();unsubReg=null}if(unsubMyReg){unsubMyReg();unsubMyReg=null}tid=null;lastData=null;roleKey=null;auxKey=null}
 
     // What the home page needs to show a tournament card
     const summary=(id,x,u)=>({id,name:x.name||"Tournament",teams:(x.teams||[]).length,style:x.style||"groups_ko",visibility:x.visibility||"public",
-      date:(x.settings||{}).date||"",venue:(x.settings||{}).venue||"",start:(x.settings||{}).start||"",results:Object.keys(x.scores||{}).length,regOpen:!!x.regOpen,
+      date:(x.settings||{}).date||"",venue:(x.settings||{}).venue||"",start:(x.settings||{}).start||"",results:Object.keys(x.scores||{}).filter(k=>!/^mx\d+$/.test(k)).length,regOpen:!!x.regOpen,finished:!!x.finished,
       createdAt:x.createdAt||0,updatedAt:x.updatedAt||0,role:u?((x.members||{})[u.uid]||"editor"):null,owner:!!u&&x.ownerUid===u.uid});
     window.__cloud={
       async open(id){
@@ -47,6 +47,9 @@ if(window.CLOUD_ON){
             if(!s.exists()){window.__toast("This tournament no longer exists.");return}
             lastData=s.data();window.__applyRemote(lastData);pushRole();window.__cloudStatus("live");
           },e=>window.__toast("Lost connection to the tournament ("+err(e)+")"));
+          // the chat: the newest 200 messages, oldest first
+          unsubChat=F.onSnapshot(F.query(F.collection(db,"tournaments",id,"chat"),F.orderBy("at"),F.limitToLast(200)),s=>window.__setChat(s.docs.map(d=>{
+            const x=d.data({serverTimestamps:"estimate"});return {id:d.id,uid:x.uid||null,name:String(x.name||""),text:String(x.text||""),at:x.at&&x.at.toMillis?x.at.toMillis():Date.now()}})),()=>window.__setChat([]));
           return {ok:true}
         }catch(e){return {ok:false,error:err(e)}}
       },
@@ -58,7 +61,7 @@ if(window.CLOUD_ON){
           for(let i=0;i<6;i++){
             const id=genId();
             if((await F.getDoc(T(id))).exists())continue;
-            const doc={name,ownerUid:u.uid,members:{[u.uid]:"admin"},memberUids:[u.uid],teams:d.teams,style:opts.style||"groups_ko",visibility:opts.visibility==="private"?"private":"public",bestOf:{},settings:d.settings,sfPairing:0,scores:{},createdAt:Date.now(),updatedAt:Date.now()};
+            const doc={name,ownerUid:u.uid,members:{[u.uid]:"admin"},memberUids:[u.uid],teams:d.teams,style:opts.style||"groups_ko",visibility:opts.visibility==="private"?"private":"public",bestOf:{},settings:{...d.settings,...(opts.settings||{})},sfPairing:0,scores:{},createdAt:Date.now(),updatedAt:Date.now()};
             // Duplicate: same teams, players, courts and settings; no scores, no date, only you as admin
             if(opts.copy){const c=opts.copy;Object.assign(doc,{teams:c.teams||doc.teams,style:c.style||doc.style,visibility:c.visibility||doc.visibility,bestOf:c.bestOf||{},settings:{...(c.settings||{}),date:""},teamPlayers:c.teamPlayers||{},playerUids:c.playerUids||[]})}
             await F.setDoc(T(id),doc);
@@ -134,7 +137,18 @@ if(window.CLOUD_ON){
       async dismissReport(id){
         try{await F.deleteDoc(F.doc(db,"reports",id));return {ok:true}}catch(e){return {ok:false,error:err(e)}}
       },
+      // Listing photos: one document per photo (listings/{id}/photos/0..3), each a compressed JPEG data URL
+      async listingPhotos(id){
+        try{const s=await F.getDocs(F.collection(db,"listings",id,"photos"));return {ok:true,list:s.docs.sort((a,b)=>a.id.localeCompare(b.id)).map(d=>d.data().d).filter(x=>typeof x==="string"&&x.startsWith("data:image/"))}}
+        catch(e){return {ok:false,error:err(e)}}
+      },
+      async setListingPhotos(id,list){
+        try{for(let i=0;i<4;i++){const ref=F.doc(db,"listings",id,"photos",String(i));if(list[i])await F.setDoc(ref,{d:list[i]});else await F.deleteDoc(ref)}return {ok:true}}
+        catch(e){return {ok:false,error:err(e)}}
+      },
       async deleteListing(id){
+        // photos first: their rule checks the listing's owner, which is gone once the listing is
+        for(let i=0;i<4;i++){try{await F.deleteDoc(F.doc(db,"listings",id,"photos",String(i)))}catch(e){}}
         try{await F.deleteDoc(F.doc(db,"listings",id));return {ok:true}}
         catch(e){return {ok:false,error:err(e)}}
       },
@@ -193,6 +207,53 @@ if(window.CLOUD_ON){
       async claimPartner(regUid,partner){
         if(!tid)return {ok:false,error:"no tournament"};
         try{await F.updateDoc(F.doc(db,"tournaments",tid,"entries",regUid),{partner,updatedAt:Date.now()});return {ok:true}}catch(e){return {ok:false,error:err(e)}}
+      },
+      // Tournament chat (tournaments/{tid}/chat); see js/chat.js
+      async sendChat({name,text}){
+        if(!tid)return {ok:false,error:"no tournament"};
+        const u=auth.currentUser;
+        try{await F.addDoc(F.collection(db,"tournaments",tid,"chat"),{uid:u?u.uid:null,name,text,at:F.serverTimestamp()});return {ok:true}}catch(e){return {ok:false,error:err(e)}}
+      },
+      async deleteChat(id){
+        if(!tid)return {ok:false,error:"no tournament"};
+        try{await F.deleteDoc(F.doc(db,"tournaments",tid,"chat",id));return {ok:true}}catch(e){return {ok:false,error:err(e)}}
+      },
+      // Friendly matches (matches/{mid}); see js/friendly.js. Confirmed ones are public, pending ones only for the four players.
+      async matchesOfPlayer(uid){
+        const u=auth.currentUser,col=F.collection(db,"matches");
+        try{
+          const q=u&&u.uid===uid?F.query(col,F.where("uids","array-contains",uid),F.limit(300)):F.query(col,F.where("uids","array-contains",uid),F.where("status","==","confirmed"),F.limit(300));
+          const s=await F.getDocs(q);return {ok:true,list:s.docs.map(d=>({id:d.id,...d.data()}))}
+        }catch(e){return {ok:false,error:err(e)}}
+      },
+      async createMatch(m){
+        if(!auth.currentUser)return {ok:false,error:"not signed in"};
+        try{const r=await F.addDoc(F.collection(db,"matches"),m);return {ok:true,id:r.id}}catch(e){return {ok:false,error:err(e)}}
+      },
+      async answerMatch(id,status){
+        const u=auth.currentUser;if(!u)return {ok:false,error:"not signed in"};
+        try{await F.updateDoc(F.doc(db,"matches",id),{status,confirmedBy:u.uid,updatedAt:Date.now()});return {ok:true}}catch(e){return {ok:false,error:err(e)}}
+      },
+      async deleteMatch(id){
+        try{await F.deleteDoc(F.doc(db,"matches",id));return {ok:true}}catch(e){return {ok:false,error:err(e)}}
+      },
+      // Training (gym/{uid}: plan and routines; gym/{uid}/log: workouts and padel sessions). Only the owner can read it.
+      async getGym(){
+        const u=auth.currentUser;if(!u)return {ok:false,error:"not signed in"};
+        try{const [p,l]=await Promise.all([F.getDoc(F.doc(db,"gym",u.uid)),F.getDocs(F.collection(db,"gym",u.uid,"log"))]);
+          return {ok:true,plan:p.exists()?p.data():null,log:l.docs.map(d=>({...d.data(),id:d.id}))}}catch(e){return {ok:false,error:err(e)}}
+      },
+      async saveGym(plan){
+        const u=auth.currentUser;if(!u)return {ok:false,error:"not signed in"};
+        try{await F.setDoc(F.doc(db,"gym",u.uid),plan);return {ok:true}}catch(e){return {ok:false,error:err(e)}}
+      },
+      async putGymLog(e){
+        const u=auth.currentUser;if(!u)return {ok:false,error:"not signed in"};
+        try{await F.setDoc(F.doc(db,"gym",u.uid,"log",e.id),e);return {ok:true}}catch(x){return {ok:false,error:err(x)}}
+      },
+      async delGymLog(id){
+        const u=auth.currentUser;if(!u)return {ok:false,error:"not signed in"};
+        try{await F.deleteDoc(F.doc(db,"gym",u.uid,"log",id));return {ok:true}}catch(e){return {ok:false,error:err(e)}}
       },
       async dismissRequest(uid){try{await F.deleteDoc(F.doc(db,"tournaments",tid,"requests",uid))}catch(e){window.__toast("Could not dismiss ("+err(e)+")")}}
     };

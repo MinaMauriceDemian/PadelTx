@@ -22,7 +22,7 @@ function cloudWrite(u){if(window.CLOUD_ON&&window.__cloud)window.__cloud.write(u
 let toastTimer;
 function toast(msg){const t=$("toast");t.textContent=msg;t.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.hidden=true,5000)}
 window.__toast=toast;
-function showView(v){view=v;$("loginView").hidden=v!=="login";$("landing").hidden=v!=="landing";$("appView").hidden=v!=="app";$("marketView").hidden=v!=="market";$("profileView").hidden=v!=="profile";$("toursView").hidden=v!=="tours"}
+function showView(v){view=v;$("loginView").hidden=v!=="login";$("landing").hidden=v!=="landing";$("appView").hidden=v!=="app";$("marketView").hidden=v!=="market";$("profileView").hidden=v!=="profile";$("toursView").hidden=v!=="tours";$("mineView").hidden=v!=="mine";$("gymView").hidden=v!=="gym"}
 // Where "home" is: signed-in people and viewers go to the tournament list, everyone else to the login page
 // The home page is the start for everyone; signing in is optional and chosen from there
 const homeView=()=>"landing";
@@ -57,7 +57,7 @@ if(d){
   state.style=d.style||"groups_ko";
   state.visibility=d.visibility==="private"?"private":"public";
   state.teamPlayers=d.teamPlayers||{};
-  state.regOpen=!!d.regOpen;
+  state.regOpen=!!d.regOpen;state.finished=!!d.finished;
   state.regPay=d.regPay||null;
   state._visMissing=!d.visibility;
 }
@@ -67,7 +67,7 @@ syncInputs();refresh();applyRole()
 };
 window.__getInitial=()=>({teams:state.teams,settings:state.settings,sfPairing:state.sfPairing||0,scores:state.scores});
 window.__cloudStatus=s=>{cloudStatus=s;applyRole()};
-window.__setRole=function(r,u){role=r;authUser=u;applyRole();if(r==="admin"&&state._visMissing){state._visMissing=false;cloudWrite({visibility:state.visibility})}if($("authDlg").open)updateAuthDlg()};
+window.__setRole=function(r,u){role=r;authUser=u?(authUser&&authUser.uid===u.uid?{...authUser,...u}:u):null;applyRole();if(r==="admin"&&state._visMissing){state._visMissing=false;cloudWrite({visibility:state.visibility})}if($("authDlg").open)updateAuthDlg()};
 window.__setRequests=l=>{requests=l;renderAccess();const n=l.filter(r=>r.status==="pending"&&!(state.members||{})[r.uid]).length;$("accessTab").textContent=n?`Access (${n})`:"Access";partBadge("setup",n)};
 window.__setMyRequest=st=>{myReq=st;applyRole()};
 window.__authState=function(u){
@@ -75,8 +75,11 @@ authUser=u;
 if(u&&view==="login"){$("loginMsg").textContent="";showView("landing");window.scrollTo(0,0)}
 if(u&&typeof ensureMyProfile==="function")ensureMyProfile();
 if(view==="landing")renderLanding();
+if(view==="mine")showMine();
 if(view==="market")renderMarket();
+if(view==="gym"&&typeof gymAuthChanged==="function")gymAuthChanged();
 if($("authDlg").open)updateAuthDlg();
+if(u&&typeof runAfterAuth==="function")runAfterAuth();
 };
 window.__cloudReady=function(){
 booted=true;
@@ -84,6 +87,8 @@ const id=hashId();
 const pid=profileHash();
 if(location.hash==="#market")showMarket();
 else if(location.hash==="#tours")showTours();
+else if(location.hash==="#mine")showMine();
+else if(location.hash==="#gym")showGym();
 else if(pid)showProfile(pid);
 else if(id){enterTournament(id,"findMsg")}
 };
@@ -94,7 +99,7 @@ document.querySelectorAll("input.score,.stepbtn").forEach(el=>el.disabled=!ed);
 document.querySelectorAll("[data-admin]").forEach(el=>el.disabled=!ad);
 document.querySelectorAll("[data-team]").forEach(el=>el.disabled=!ed);
 const sf=$("sfSel");if(sf)sf.disabled=!ad;
-showPart(curPart);renderTInfo();$("partPlayersLbl").textContent=(typeof isAm==="function"&&isAm()?"Players":"Teams");
+showPart(curPart);renderTInfo();if(typeof renderDash==="function")renderDash();$("partPlayersLbl").textContent=(typeof isAm==="function"&&isAm()?"Players":"Teams");
 if(typeof renderTeamPlayers==="function")renderTeamPlayers();
 if(typeof renderRegistration==="function")renderRegistration();
 document.body.classList.toggle("can-move",ad);document.body.classList.toggle("is-admin",ad);document.body.classList.toggle("can-score",ed);
@@ -113,9 +118,9 @@ if(!window.CLOUD_ON){
   $("access").hidden=!ad;
   bar.hidden=ed;
   if(!ed){
-    if(!authUser)bar.innerHTML='👁 View only — scores update live. Staff: <b><a href="#" onclick="openAuth();return false">sign in</a></b> to enter scores.';
-    else if(myReq==="pending")bar.innerHTML='👁 Your edit-access request is waiting for the admin. <b><a href="#" onclick="nudgeAdmin();return false">Message the admin on WhatsApp</a></b>';
-    else bar.innerHTML='👁 View only. <b><a href="#" onclick="requestAccess();return false">Request edit access</a></b> from the tournament admin.';
+    if(!authUser)bar.innerHTML='View only: scores update live. Staff: <b><a href="#" onclick="openAuth();return false">sign in</a></b> to enter scores.';
+    else if(myReq==="pending")bar.innerHTML='Your edit-access request is waiting for the admin. <b><a href="#" onclick="nudgeAdmin();return false">Message the admin on WhatsApp</a></b>';
+    else bar.innerHTML='View only. <b><a href="#" onclick="requestAccess();return false">Request edit access</a></b> from the tournament admin.';
   }
   foot.textContent=cloudStatus==="live"?"● Live — changes sync automatically for everyone.":"Connecting…"
 }
@@ -125,16 +130,90 @@ const r=await window.__cloud.requestAccess();
 if(r&&r.ok)toast("Request sent. Use “Message the admin on WhatsApp” to let them know.");else toast("Could not send the request.")
 }
 /* landing page */
+// Home page: four tiles, each opening its own page (Follow #tours, My tournaments #mine, Marketplace, profile)
 function renderLanding(){
-$("lOut").hidden=!!authUser;$("lIn").hidden=!authUser;
 if($("heroSignIn")){$("heroSignIn").hidden=!!authUser;$("heroSignOut").hidden=!authUser;$("heroProfile").hidden=!authUser}
-loadPublic();
-if(authUser){$("lWho").textContent="Signed in as "+authUser.email;loadMine()}
+$("tileMineTitle").textContent=authUser?"My tournaments":"Create a tournament";
+$("tileMineSub").textContent=authUser?"Create a new one, or open one you run.":"Schedule, live scores and leaderboard, free in a minute.";
+$("tileMeTitle").textContent=authUser?"My profile":"Sign in";
+$("tileMeSub").textContent=authUser?"Your level, matches and results.":"Create tournaments, register and keep your player profile.";
+loadPublic();renderInstallTip();
+// "Create a tournament" was pressed before signing in: continue there
+let want=false;try{want=sessionStorage.getItem("padelCreate")==="1"}catch(e){}
+if(authUser&&want)location.hash="mine"
 }
+// My tournaments page (#mine)
+function showMine(){
+showView("mine");window.scrollTo(0,0);
+$("lOut").hidden=!!authUser;$("lIn").hidden=!authUser;
+if(!authUser)return;
+$("lWho").textContent="Signed in as "+authUser.email;loadMine();if(typeof loadMyMatches==="function")loadMyMatches();
+let want=false;try{want=sessionStorage.getItem("padelCreate")==="1";sessionStorage.removeItem("padelCreate")}catch(e){}
+toggleNewT(want)
+}
+function goFollow(){location.hash="tours"}
+function startCreate(){
+try{sessionStorage.setItem("padelCreate","1")}catch(e){}
+if(!authUser){toLogin();return}
+if(view==="mine")showMine();else location.hash="mine"
+}
+function toggleNewT(on){
+const f=$("newForm");if(!f)return;
+f.hidden=on===undefined?!f.hidden:!on;$("newTBtn").hidden=!f.hidden;
+if(!f.hidden){wzReset();setTimeout(()=>$("newName").focus(),300)}
+}
+/* New tournament wizard: 1 Name & day → 2 Style & players → 3 Courts & time → Create */
+let wzStep=1;
+function wzReset(){
+if(!$("newCourts").options.length){
+  $("newCourts").innerHTML=Array.from({length:6},(_,i)=>`<option value="${i+1}">${i+1} court${i?"s":""}</option>`).join("");
+  $("newDur").innerHTML=[10,12,15,20,25,30,40,45,60].map(m=>`<option value="${m}">${m} minutes</option>`).join("");
+  $("newPts").innerHTML=AM_POINTS.map(p=>`<option value="${p}">${p} points</option>`).join("");
+}
+const n=new Date(),h=Math.min(22,n.getHours()+1);
+$("newDate").value=todayStr();$("newStart").value=String(h).padStart(2,"0")+":00";
+$("newCourts").value="2";$("newDur").value="20";$("newPts").value="24";
+wzStep=1;wzShow();wzHint()
+}
+function wzShow(){
+document.querySelectorAll("#newForm .wz").forEach(x=>x.hidden=+x.dataset.step!==wzStep);
+document.querySelectorAll("#newForm .wz-steps li").forEach(x=>{const k=+x.dataset.wz;x.className=k<wzStep?"done":k===wzStep?"on":""});
+$("wzBack").hidden=wzStep===1;$("wzNext").hidden=wzStep===3;$("wzCreate").hidden=wzStep!==3;
+}
+function wzGo(d){
+if(d>0&&wzStep===1&&!$("newName").value.trim()){$("lMsg").textContent="Give your tournament a name.";$("newName").focus();return}
+$("lMsg").textContent="";wzStep=Math.max(1,Math.min(3,wzStep+d));wzShow();wzHint();
+const first=document.querySelector(`#newForm .wz[data-step="${wzStep}"] input,#newForm .wz[data-step="${wzStep}"] select`);if(first)first.focus()
+}
+const WZ_HINT={groups_ko:"Teams of two play in groups, then the best teams go into a knockout (quarter-finals, semi-finals, final).",
+  americano:"Everyone signs up alone and gets a new partner every round. Each match is played to a fixed number of points.",
+  mexicano:"Like Americano, but after round 1 the leaderboard decides who plays together, so matches stay close.",
+  mexicano_time:"Mexicano where every match lasts a set time; the rounds you win decide your points."};
+function wzHint(){
+const st=$("newStyle").value||"groups_ko",am=AM_STYLES.includes(st),n=+$("newTeams").value||8,c=+$("newCourts").value||2,dur=+$("newDur").value||20;
+$("newPtsLbl").hidden=!(st==="americano"||st==="mexicano");
+$("newStyleHint").textContent=WZ_HINT[st]||"";
+$("newSummary").textContent=`${n} ${am?"players":"teams"} on ${c} court${c>1?"s":""}, ${dur}-minute matches from ${$("newStart").value||"12:00"}${$("newDate").value?" on "+(dayLabel($("newDate").value)||$("newDate").value):""}. You can add court hours and change anything later in Setup.`
+}
+// "Add to home screen": the browser's own prompt when it offers one, otherwise short instructions (phones only)
+let installEvt=null;
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installEvt=e;renderInstallTip()});
+function renderInstallTip(){
+const box=$("installTip");if(!box)return;
+let off=false;try{off=localStorage.getItem("padelInstallTip")==="off"}catch(e){}
+const standalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone,phone=matchMedia("(max-width:700px)").matches;
+box.hidden=off||standalone||!(phone||installEvt);if(box.hidden)return;
+const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
+$("installBtn").hidden=!installEvt;
+$("installHow").textContent=installEvt?"Add it to your home screen and open live scores like an app.":ios?"In Safari, tap the Share button, then “Add to Home Screen”.":"In your browser menu (⋮), tap “Add to Home screen” or “Install app”.";
+}
+async function doInstall(){if(!installEvt)return;installEvt.prompt();try{await installEvt.userChoice}catch(e){}installEvt=null;hideInstallTip()}
+function hideInstallTip(){try{localStorage.setItem("padelInstallTip","off")}catch(e){}$("installTip").hidden=true}
 /* ---------- Tournament cards (home page) ---------- */
 // Status from the tournament's date, start time and results
 function tStatus(t){
 const today=todayStr();
+if(t.finished)return {k:"finished",l:"Finished",o:5};
 if(t.date){
   if(t.date>today)return {k:"upcoming",l:"Upcoming",o:2};
   if(t.date<today)return {k:"finished",l:"Finished",o:5};
@@ -144,19 +223,25 @@ if(t.date){
 return t.results>0?{k:"progress",l:"In progress",o:3}:{k:"new",l:"Not started",o:4};
 }
 function sortTournaments(list){return list.map(t=>({...t,st:tStatus(t)})).sort((a,b)=>a.st.o-b.st.o||(a.st.k==="finished"?(b.date||"").localeCompare(a.date||""):(a.date||"").localeCompare(b.date||""))||b.createdAt-a.createdAt)}
+// "Today", "Tomorrow" or "Sat 8 Nov"
+function dayLabel(ds){
+const d=ds?new Date(ds+"T00:00"):null;if(!d||isNaN(d))return "";
+const t=new Date(todayStr()+"T00:00"),diff=Math.round((d-t)/864e5);
+return diff===0?"Today":diff===1?"Tomorrow":diff===-1?"Yesterday":d.toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"})
+}
 function tMeta(t){
-const d=t.date?new Date(t.date+"T00:00"):null;
-return [d&&!isNaN(d)?d.toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"})+(t.start?" · "+t.start:""):"",t.venue,["americano","mexicano","mexicano_time"].includes(t.style)?`${(STYLES.find(x=>x[0]===t.style)||[,""])[1]} · ${t.teams} players`:`${t.teams} teams`].filter(Boolean).map(esc).join(" · ")
+const dl=dayLabel(t.date);
+return [dl?dl+(t.start?" · "+t.start:""):"",t.venue,t.results>0&&t.st&&t.st.k!=="finished"?`${t.results} match${t.results>1?"es":""} played`:"",["americano","mexicano","mexicano_time"].includes(t.style)?`${(STYLES.find(x=>x[0]===t.style)||[,""])[1]} · ${t.teams} players`:`${t.teams} teams`].filter(Boolean).map(esc).join(" · ")
 }
 const statusChip=t=>`<span class="stchip st-${t.st.k}">${t.st.k==="live"?'<i aria-hidden="true"></i>':""}${t.st.l}</span>`;
 async function loadMine(){
 const box=$("myList");
 if(!window.__cloud||!authUser){box.textContent="";return []}
-box.innerHTML='<p class="note">Loading…</p>';
+box.innerHTML=skeleton(2);
 const r=await window.__cloud.listMine();
 if(!r.ok){box.innerHTML='<p class="note">Could not load your tournaments.</p>';return []}
 mine=sortTournaments(r.list);
-box.innerHTML=mine.length?mine.map(t=>`<div class="tcard mycard" id="my-${esc(t.id)}"><div class="tc-main"><div class="tc-top">${statusChip(t)}<span class="chip ${t.role==="admin"?"chipF":"chipK"}">${t.role==="admin"?"Admin":"Editor"}</span>${t.visibility==="private"?'<span class="chip privchip">🔒 Private</span>':""}<span class="reqbadge" hidden></span></div><b dir="auto">${esc(t.name)}</b><p class="note">${tMeta(t)}</p></div><div class="tc-actions"><button class="primary" onclick="enterTournament('${esc(t.id)}','lMsg')">Open</button>${t.role==="admin"?`<button class="secondary" onclick="duplicateT('${esc(t.id)}')">Duplicate</button>`:""}${t.owner?`<button class="danger" onclick="deleteT('${esc(t.id)}')">Delete</button>`:""}</div></div>`).join(""):'<p class="note">You have no tournaments yet. Create one below.</p>';
+box.innerHTML=mine.length?mine.map(t=>`<div class="tcard mycard" id="my-${esc(t.id)}"><div class="tc-main"><div class="tc-top">${statusChip(t)}<span class="chip ${t.role==="admin"?"chipF":"chipK"}">${t.role==="admin"?"Admin":"Editor"}</span>${t.visibility==="private"?'<span class="chip privchip">🔒 Private</span>':""}<span class="reqbadge" hidden></span></div><b dir="auto">${esc(t.name)}</b><p class="note">${tMeta(t)}</p></div><div class="tc-actions"><button class="primary" onclick="enterTournament('${esc(t.id)}','lMsg')">Open</button>${t.role==="admin"?`<button class="secondary" onclick="duplicateT('${esc(t.id)}')">Duplicate</button>`:""}${t.owner?`<button class="danger" onclick="deleteT('${esc(t.id)}')">Delete</button>`:""}</div></div>`).join(""):'<p class="note">You have no tournaments yet. Press <b>+ New tournament</b> to create your first one.</p>';
 // pending edit-access requests, for tournaments you run
 mine.filter(t=>t.role==="admin"&&window.__cloud.pendingRequests).forEach(async t=>{
   const q=await window.__cloud.pendingRequests(t.id),b=document.querySelector(`#my-${t.id} .reqbadge`);
@@ -166,11 +251,13 @@ return mine
 }
 let pubLoading=false,pubCache=[];
 const pubBoxes=()=>[$("pubList"),$("allList")].filter(Boolean);
+// grey placeholder cards while the list loads
+const skeleton=n=>Array.from({length:n},()=>'<div class="tcard skel" aria-hidden="true"><span class="skl w30"></span><span class="skl w70"></span><span class="skl w50"></span></div>').join("");
 async function loadPublic(){
 if(!pubBoxes().length||pubLoading)return;
 const say=h=>pubBoxes().forEach(b=>b.innerHTML=h);
 if(!window.__cloud){say('<p class="note">Connecting…</p>');return}
-pubLoading=true;say('<p class="note">Loading…</p>');
+pubLoading=true;say(skeleton(2));
 const r=await window.__cloud.listPublic();pubLoading=false;
 if(!r.ok){say('<p class="note">Could not load the list ('+esc(r.error)+').</p>');return}
 pubCache=sortTournaments(r.list);renderPublic()
@@ -185,10 +272,17 @@ function pubListHtml(list){
 const active=list.filter(t=>t.st.k!=="finished"),done=list.filter(t=>t.st.k==="finished");
 return (list.length?"":'<p class="note">No public tournaments yet.</p>')+active.map(pubCard).join("")+(done.length?`<h3 class="pubsub">Finished</h3>`+done.map(pubCard).join(""):"")
 }
-// Home page: the 3 most recent (live and upcoming first, then the newest finished); the rest are on the "All tournaments" page (#tours)
+// Open a tournament straight on its Teams / Players part, where the Register button is
+async function openToRegister(id){curPart="players";try{sessionStorage.setItem("padelPart","players")}catch(e){}await enterTournament(id,"findMsg")}
+const regCard=t=>`<div class="tcard regcard"><span class="tc-main"><span class="tc-top">${statusChip(t)}<span class="chip regchip">Registration open</span></span><b dir="auto">${esc(t.name)}</b><span class="note">${tMeta(t)}</span></span><button type="button" class="primary" onclick="openToRegister('${esc(t.id)}')">Register</button></div>`;
+// Home page: tournaments open for registration get their own row; then the 3 most relevant (live and today first,
+// then upcoming, then the newest finished); the rest are on the "All tournaments" page (#tours)
 function renderPublic(){
-const home=$("pubList"),all=$("allList");
-if(home)home.innerHTML=pubListHtml(pubCache.slice(0,3))+(pubCache.length>3?`<button type="button" class="secondary puball" onclick="location.hash='tours'">View all ${pubCache.length} tournaments ›</button>`:"");
+const home=$("pubList"),all=$("allList"),reg=pubCache.filter(t=>t.regOpen&&t.st.k!=="finished");
+if($("regRow")){$("regRow").hidden=!reg.length;$("regList2").innerHTML=reg.map(regCard).join("")}
+if(home)home.innerHTML=pubListHtml(pubCache);
+const live=pubCache.filter(t=>t.st.k==="live").length,today=pubCache.filter(t=>t.st.k==="today").length,b=$("tileFollowBadges");
+if(b)b.innerHTML=[live?`<span class="stchip st-live"><i aria-hidden="true"></i>${live} live now</span>`:"",today?`<span class="stchip st-today">${today} today</span>`:"",reg.length?`<span class="chip regchip">${reg.length} open for registration</span>`:""].join("");
 if(all)all.innerHTML=pubListHtml(pubCache)
 }
 function showTours(){showView("tours");window.scrollTo(0,0);if(pubCache.length)renderPublic();loadPublic()}
@@ -249,11 +343,15 @@ await enterTournament(raw,"findMsg")
 }
 async function createT(){
 const name=$("newName").value.trim()||"My tournament",m=$("lMsg"),teams=+$("newTeams").value||8,style=$("newStyle").value||"groups_ko",visibility=$("newVis").value==="private"?"private":"public";
+const nc=+$("newCourts").value||2,settings={date:$("newDate").value||todayStr(),venue:$("newVenue").value.trim().slice(0,60),start:$("newStart").value||"12:00",duration:+$("newDur").value||20,
+  courts:Array.from({length:nc},(_,i)=>({name:"Court "+(i+1)}))};
+if(style==="americano"||style==="mexicano")settings.points=+$("newPts").value||24;
 if(!window.__cloud){m.textContent="Still connecting… try again in a moment.";return}
 m.textContent="Creating…";
-const r=await window.__cloud.create(name,{teams,style,visibility});
+const r=await window.__cloud.create(name,{teams,style,visibility,settings});
 if(!r.ok){m.textContent="Could not create the tournament ("+r.error+").";return}
-$("newName").value="";
+$("newName").value="";$("newVenue").value="";toggleNewT(false);
+curPart="setup";try{sessionStorage.setItem("padelPart","setup")}catch(e){}
 await enterTournament(r.id,"lMsg")
 }
 function tournamentUrl(){return currentTid?location.origin+location.pathname+"#t="+currentTid:""}
@@ -268,7 +366,9 @@ if(!window.CLOUD_ON||!booted)return;
 captureJoin();if(joinReq&&hashId()===currentTid)renderRegistration();
 if(location.hash==="#market"){if(currentTid&&window.__cloud){window.__cloud.leave();currentTid=null}showMarket();return}
 if(location.hash==="#tours"){if(currentTid&&window.__cloud){window.__cloud.leave();currentTid=null}showTours();return}
-if(view==="tours"&&!hashId()){showView("landing");renderLanding();return}
+if(location.hash==="#mine"){if(currentTid&&window.__cloud){window.__cloud.leave();currentTid=null}showMine();return}
+if(location.hash==="#gym"){if(currentTid&&window.__cloud){window.__cloud.leave();currentTid=null}showGym();return}
+if((view==="tours"||view==="mine"||view==="gym")&&!hashId()){showView("landing");renderLanding();return}
 const pid=profileHash();if(pid){if(pid!==prof.uid||view!=="profile")showProfile(pid);return}
 if(view==="profile"&&!hashId()){showView("landing");renderLanding();return}
 const id=hashId();
@@ -293,7 +393,12 @@ async function setMember(uid,r){const x=await window.__cloud.setMember(uid,r);if
 async function removeMember(uid){if(confirm("Remove this person's access?")){const x=await window.__cloud.setMember(uid,null);if(!x.ok)toast("Could not remove access ("+x.error+").")}}
 async function dismissReq(uid){await window.__cloud.dismissRequest(uid)}
 /* account dialog */
-function openAuth(){updateAuthDlg();$("authMsg").textContent="";$("authDlg").showModal()}
+// why: a line saying what signing in is for (registering, joining a team…); Google is the big first option
+function openAuth(why){
+const w=typeof why==="string"?why:"";
+$("authWhy").textContent=w;$("authWhy").hidden=!w;$("authTitle").textContent=w?"Sign in":"Account";$("authEmailBox").open=false;
+updateAuthDlg();$("authMsg").textContent="";$("authDlg").showModal()
+}
 function updateAuthDlg(){
 const u=authUser;$("authOut").hidden=!!u;$("authIn").hidden=!u;
 if(u){$("authWho").textContent=u.email;$("authRole").textContent=role==="admin"?"Admin":role==="editor"?"Editor":"Viewer"}
@@ -325,5 +430,5 @@ try{
   msg.textContent=(e.code==="auth/popup-closed-by-user"||e.code==="auth/cancelled-popup-request")?"":(AUTH_ERR[e.code]||("Error: "+(e.message||e.code)))
 }
 }
-async function doSignOut(){try{await window.__auth.signOut()}catch(e){}if($("authDlg").open){updateAuthDlg();$("authDlg").close()}if(view==="landing")renderLanding();toast("Signed out. You can keep following tournaments as a viewer.")}
+async function doSignOut(){try{await window.__auth.signOut()}catch(e){}if($("authDlg").open){updateAuthDlg();$("authDlg").close()}if(view==="landing")renderLanding();if(view==="mine")showMine();toast("Signed out. You can keep following tournaments as a viewer.")}
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}

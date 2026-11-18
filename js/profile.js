@@ -1,12 +1,12 @@
 // Player profile: level, level progression, matches, statistics, preferences, partners & opponents, clubs.
-// Built from the player's own entries plus their Padel Tour results. The level is typed in by the player and labelled "self-reported".
+// Built from the player's own entries plus their Padel Tour results. The level starts from what the player typed in and is then calculated from their results (calcLevel).
 // Every signed-in person gets a profile automatically (ensureMyProfile).
 const DAYS=[["mon","Mon"],["tue","Tue"],["wed","Wed"],["thu","Thu"],["fri","Fri"],["sat","Sat"],["sun","Sun"]];
 const TIMES=[["morning","Morning"],["afternoon","Afternoon"],["evening","Evening"]];
 const HANDS={right:"Right-handed",left:"Left-handed"};
 const SIDES={right:"Right side",left:"Left side",both:"Both sides"};
 const MTYPES={competitive:"Competitive",friendly:"Friendly",both:"Competitive & friendly"};
-let prof={uid:null,data:null,stats:null,showAll:false};
+let prof={uid:null,data:null,stats:null,showAll:false,tab:null,friendly:[]};
 
 function fmtLevel(v){return (Math.round(+v*100)/100).toFixed(2)}
 // Level guide on the 0–7 scale: [from, to, name, description]
@@ -55,11 +55,11 @@ function openMyProfile(){
 }
 async function showProfile(uid){
   if(currentTid&&window.__cloud){window.__cloud.leave();currentTid=null}
-  prof={uid,data:null,stats:null,showAll:false};
+  prof={uid,data:null,stats:null,showAll:false,tab:null,friendly:[]};
   showView("profile");window.scrollTo(0,0);
   $("profileBody").innerHTML='<div class="card"><p class="note">Loading profile…</p></div>';
   if(!window.CLOUD_ON||!window.__cloud){$("profileBody").innerHTML='<div class="card"><p class="note">Player profiles work on the online site.</p></div>';return}
-  const [p,t]=await Promise.all([window.__cloud.getProfile(uid),window.__cloud.tournamentsOfPlayer(uid)]);
+  const [p,t,f]=await Promise.all([window.__cloud.getProfile(uid),window.__cloud.tournamentsOfPlayer(uid),window.__cloud.matchesOfPlayer(uid)]);
   if(prof.uid!==uid)return;
   const own=!!authUser&&authUser.uid===uid;
   if(!p.ok){$("profileBody").innerHTML=`<div class="card"><p class="note">Could not load this profile (${esc(p.error)}).</p></div>`;return}
@@ -70,14 +70,53 @@ async function showProfile(uid){
     return
   }
   prof.data=p.profile;
-  prof.stats=computePlayerStats(uid,t.ok?t.list:[]);
+  prof.friendly=f.ok?f.list.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)):[];
+  prof.stats=computePlayerStats(uid,t.ok?t.list:[],prof.friendly.filter(m=>m.status==="confirmed"));
+  prof.calc=calcLevel(prof.data,prof.stats.matches,await otherLevels(uid,prof.stats.matches));
+  if(prof.uid!==uid)return;
   renderProfile()
+}
+
+/* ---------- Calculated level (Elo on the 0–7 scale) ---------- */
+// Expected result E = 1/(1+10^((them−us)/1.5)), us/them = the average level of each pair.
+// After each match: level + K×(share of the points won − E); K is 0.15 at first and 0.05 after 20 matches,
+// and one match moves the level by at most ±0.10. Starts from the self-reported level (or 1.5).
+const LV_START=1.5,LV_SCALE=1.5,LV_MAX_STEP=0.1;
+function lvExpected(us,them){return 1/(1+Math.pow(10,(them-us)/LV_SCALE))}
+function lvK(n){return Math.max(0.05,0.15-0.005*n)}
+// The self-reported levels of partners and opponents (public profiles only)
+async function otherLevels(uid,matches){
+  const ids=new Set();
+  matches.forEach(m=>[m.partner,...m.oppPlayers].forEach(p=>{if(p&&p.uid&&p.uid!==uid)ids.add(p.uid)}));
+  const out={};
+  await Promise.all([...ids].slice(0,80).map(async id=>{const r=await window.__cloud.getProfile(id);const l=r.ok&&r.profile?r.profile.level:null;if(l!=null&&l!=="")out[id]=+l}));
+  return out
+}
+function calcLevel(d,matches,levels){
+  const list=[...matches].filter(m=>m.us+m.them>0).sort((a,b)=>a.at-b.at||a.slot-b.slot);
+  // the level the player gave before their first match counts as the start, so editing it later doesn't rewrite the past
+  const hist=(d.levelHistory||[]).filter(h=>h&&h.level!=null).sort((a,b)=>a.at-b.at);
+  const before=list.length?hist.filter(h=>h.at<=list[0].at).pop():null;
+  const start=before?+before.level:hist.length?+hist[0].level:d.level!=null&&d.level!==""?+d.level:LV_START;
+  let lv=start;const steps=[];
+  const known=p=>p&&p.uid&&levels[p.uid]!=null?levels[p.uid]:null;
+  const avg=a=>a.reduce((x,y)=>x+y,0)/a.length;
+  list.forEach((m,n)=>{
+    // players without a level count as the average of the known ones in the match (or as this player)
+    const k=[known(m.partner),...m.oppPlayers.map(known)].filter(v=>v!=null),fill=k.length?avg(k):lv;
+    const or=p=>{const v=known(p);return v==null?fill:v};
+    const us=m.partner?(lv+or(m.partner))/2:lv,them=m.oppPlayers.length?avg(m.oppPlayers.map(or)):fill;
+    const step=Math.max(-LV_MAX_STEP,Math.min(LV_MAX_STEP,lvK(n)*(m.us/(m.us+m.them)-lvExpected(us,them))));
+    lv=Math.max(0,Math.min(7,lv+step));m.lvStep=step;
+    steps.push({level:lv,at:m.at});
+  });
+  return {start,level:lv,n:list.length,hist:list.length?[{level:start,at:list[0].at-1},...steps]:[]}
 }
 
 /* ---------- Statistics from Padel Tour tournaments ---------- */
 function withState(tmp,fn){const saved=state;state=tmp;try{return fn()}finally{state=saved}}
 function stateFromDoc(d){return {teams:(d.teams||[]).map(String),teamPlayers:d.teamPlayers||{},scores:d.scores||{},bestOf:d.bestOf||{},moves:d.moves||{},sfPairing:+d.sfPairing||0,settings:{...DEFAULT_SETTINGS,...(d.settings||{})},style:d.style||"groups_ko",visibility:d.visibility||"public"}}
-function computePlayerStats(uid,list){
+function computePlayerStats(uid,list,friendly){
   const matches=[],partners={},opponents={},clubs={},places=[];
   const bump=(o,p,extra)=>{const k=p.uid||("g:"+p.name.toLowerCase());o[k]=o[k]||{uid:p.uid||null,name:p.name,photoURL:p.photoURL||"",n:0,w:0};o[k].n++;if(extra)o[k].w++};
   list.forEach(t=>{
@@ -100,7 +139,12 @@ function computePlayerStats(uid,list){
       if(pi>=0)places.push({tid:t.id,tname:t.name||"Tournament",place:pi+1,of:P.length,date});
     });
   });
-  matches.sort((a,b)=>(b.date||"").localeCompare(a.date||"")||b.slot-a.slot);
+  // when it was played: the tournament date and the match time, or when the tournament was made
+  const made={};list.forEach(t=>made[t.id]=t.createdAt||0);
+  matches.forEach(m=>{const t=m.date?Date.parse(m.date+"T"+(/^\d\d:\d\d$/.test(m.time)?m.time:"00:00")):NaN;m.at=isNaN(t)?made[m.tid]+m.slot:t});
+  // confirmed friendly matches count like tournament matches
+  (friendly||[]).forEach(x=>{const m=friendlyToMatch(uid,x);const t=Date.parse(m.date+"T12:00");m.at=isNaN(t)?m.createdAt:t;matches.push(m);if(m.partner)bump(partners,m.partner,m.won);m.oppPlayers.forEach(p=>bump(opponents,p,!m.won))});
+  matches.sort((a,b)=>b.at-a.at||b.slot-a.slot);
   const won=matches.filter(m=>m.won).length,drawn=matches.filter(m=>m.draw).length,top=o=>Object.values(o).sort((a,b)=>b.n-a.n||a.name.localeCompare(b.name)).slice(0,5);
   return {matches,played:matches.length,won,lost:matches.length-won-drawn,drawn,rate:matches.length?Math.round(won/matches.length*100):null,
     tournaments:new Set(list.filter(t=>(t.teams||[]).some((_,i)=>((t.teamPlayers||{})[i]||[]).some(p=>p.uid===uid))).map(t=>t.id)).size,
@@ -124,18 +168,23 @@ function renderProfile(){
       <div class="actions" style="margin:0">
         ${d.whatsapp?`<a class="btn wa" href="https://wa.me/${esc(d.whatsapp)}" target="_blank" rel="noopener">Message on WhatsApp</a>`:""}
         <button class="secondary" onclick="copyProfileLink()">Share profile</button>
-        ${own?`<button class="primary" onclick="editProfile()">Edit profile</button>`:""}
+        ${own?`<button class="secondary" onclick="openMatchDlg()">Add a match</button><button class="primary" onclick="editProfile()">Edit profile</button>`:""}
       </div>
     </div>
   </section>`;
   const guideBtn=`<button type="button" class="infobtn" aria-expanded="false" aria-controls="lvGuide" onclick="toggleGuide(this,'lvGuide')" title="What do the levels mean?">${INFO_ICON}<span>Level guide</span></button>`;
-  const level=section("Level",(hasLevel?`<div class="plevel"><div class="plevel-n">${fmtLevel(d.level)}</div><div><b>${levelBand(d.level)}</b><p class="note">${esc(levelInfo(d.level)[3])}</p></div></div><p class="selfrep">Self-reported by the player</p>`
-    :`<p class="note">${own?"Add your level in Edit profile.":"No level added yet."}</p>`)+guideBtn+`<div id="lvGuide" class="guidebox" hidden></div>`);
-  const hist=(d.levelHistory||[]).filter(h=>h&&h.level!=null);
-  const progression=section("Level progression",hist.length>1?levelChart(hist):`<p class="note">${hist.length?"The graph appears after the level has been updated at least twice.":"No level history yet."}</p>`,"Based on the levels entered over time. Padel Tour doesn't calculate a level itself.");
+  const C=prof.calc||{n:0},calc=C.n>0,lvNow=calc?C.level:d.level;
+  const bigLevel=v=>`<div class="plevel"><div class="plevel-n">${fmtLevel(v)}</div><div><b>${levelBand(v)}</b><p class="note">${esc(levelInfo(v)[3])}</p></div></div>`;
+  const level=section("Level",(calc?bigLevel(lvNow)+`<p class="calcrep">Calculated from ${C.n} match${C.n>1?"es":""}</p>${hasLevel?`<p class="note">Self-reported: ${fmtLevel(d.level)}</p>`:""}`
+    :hasLevel?bigLevel(d.level)+`<p class="selfrep">Self-reported by the player</p><p class="note">It's calculated from the results once a match has been played.</p>`
+    :`<p class="note">${own?"Add your level in Edit profile. After that it's calculated from your results.":"No level added yet."}</p>`)+guideBtn+`<div id="lvGuide" class="guidebox" hidden></div>`);
+  const hist=calc?C.hist:(d.levelHistory||[]).filter(h=>h&&h.level!=null);
+  const progression=section("Level progression",hist.length>1?levelChart(hist):`<p class="note">${hist.length?"The graph appears after the level has been updated at least twice.":"No level history yet."}</p>`,
+    calc?`Updated after every match: beating stronger players or winning by a lot raises it more. It started at ${fmtLevel(C.start)}.`:"Based on the levels entered over time.");
   const rows=prof.showAll?S.matches:S.matches.slice(0,8);
-  const matches=section("Matches",S.matches.length?`<ol class="pmatches">${rows.map(m=>`<li><span class="res ${m.won?"w":m.draw?"d":"l"}">${m.won?"W":m.draw?"D":"L"}</span><div class="pm-main"><b><a href="#t=${esc(m.tid)}">${esc(m.tname)}</a> · ${esc(m.stage)}</b><small>${m.date?esc(new Date(m.date+"T00:00").toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"}))+" · ":""}${esc(m.time)} · ${m.partner?"with "+personLink(m.partner)+" ":""}vs ${m.oppPlayers.length?m.oppPlayers.map(personLink).join(" &amp; "):esc(m.opp)}</small></div><span class="pm-score">${m.us}–${m.them}</span></li>`).join("")}</ol>${S.matches.length>8?`<button class="secondary" onclick="prof.showAll=!prof.showAll;renderProfile()">${prof.showAll?"Show fewer":"Show all "+S.matches.length+" matches"}</button>`:""}`
-    :`<p class="note">No finished matches yet. Matches appear when a tournament admin adds this player to a team.</p>`,"Finished matches in Padel Tour tournaments.");
+  const matches=section("Matches",S.matches.length?`<ol class="pmatches">${rows.map(m=>`<li><span class="res ${m.won?"w":m.draw?"d":"l"}">${m.won?"W":m.draw?"D":"L"}</span><div class="pm-main"><b>${m.fid?"Friendly match"+(m.venue?" · "+esc(m.venue):""):`<a href="#t=${esc(m.tid)}">${esc(m.tname)}</a> · ${esc(m.stage)}`}</b><small>${m.date?esc(new Date(m.date+"T00:00").toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"}))+" · ":""}${m.time?esc(m.time)+" · ":""}${m.partner?"with "+personLink(m.partner)+" ":""}vs ${m.oppPlayers.length?m.oppPlayers.map(personLink).join(" &amp; "):esc(m.opp)}</small></div><span class="pm-score">${m.sets?`<span class="pm-sets" title="${m.us}–${m.them} games">${esc(fmSetsStr(m.sets))}</span>`:`${m.us}–${m.them}`}${m.lvStep!=null?`<small class="lvstep ${m.lvStep>=0?"up":"down"}" title="Level change">${m.lvStep>=0?"+":"−"}${Math.abs(m.lvStep).toFixed(2)}</small>`:""}</span></li>`).join("")}</ol>${S.matches.length>8?`<button class="secondary" onclick="prof.showAll=!prof.showAll;renderProfile()">${prof.showAll?"Show fewer":"Show all "+S.matches.length+" matches"}</button>`:""}`
+    :`<p class="note">No finished matches yet. Matches appear when a tournament admin adds this player to a team${own?", or when you log a friendly match and an opponent confirms it":""}.</p>`,"Finished matches in Padel Tour tournaments and confirmed friendly matches.");
+  const pendingM=pendingMatchesHtml(prof.friendly);
   const tile=(n,l)=>`<div class="ptile"><b>${n}</b><span>${l}</span></div>`;
   const stats=section("Statistics",`<div class="ptiles">${tile(S.played,"Played")}${tile(S.won,"Won")}${tile(S.lost,"Lost")}${tile(S.rate==null?"–":S.rate+"%","Win rate")}${tile(S.tournaments,"Tournaments")}${tile(S.titles,"Titles")}${tile(S.podiums,"Podiums")}</div>`);
   const prefs=section("Player preferences",`<dl class="pprefs">
@@ -149,11 +198,28 @@ function renderProfile(){
   const people=section("Players I play most with",`<div class="pcols"><div><h3>Partners</h3>${plist(S.partners,p=>`${p.w} won together`)}</div><div><h3>Opponents</h3>${plist(S.opponents,p=>`${p.w} won against`)}</div></div>`);
   const clubList=[...(d.homeClub?[{name:d.homeClub,home:true}]:[]),...S.clubs.filter(c=>c.name!==d.homeClub)];
   const clubs=section("Clubs",clubList.length?`<ul class="pclubs">${clubList.map(c=>`<li><b dir="auto">${esc(c.name)}</b><span class="note">${c.home?"Home club":c.n+" tournament"+(c.n>1?"s":"")+(c.last?" · last "+esc(new Date(c.last+"T00:00").toLocaleDateString(undefined,{month:"short",year:"numeric"})):"")}</span></li>`).join("")}</ul>`:'<p class="note">No clubs yet. Tournament venues appear here once the admin sets one in Setup.</p>');
-  $("profileBody").innerHTML=head+`<div class="pgrid">${level}${stats}</div>`+progression+matches+`<div class="pgrid">${prefs}${clubs}</div>`+people;
+  // Like the home page: the header, then one tile per part; a tile opens that part on its own
+  const parts={level:level+progression,stats,matches:pendingM+matches,people,prefs,clubs};
+  if(prof.tab&&parts[prof.tab]){
+    $("profileBody").innerHTML=head+`<button type="button" class="secondary pback" onclick="profTab(null)">‹ All of ${esc(d.displayName)}'s profile</button>`+parts[prof.tab];
+    return
+  }
+  const last=S.matches[0],top=S.partners[0],when=[...(d.days||[]).map(k=>(DAYS.find(x=>x[0]===k)||[,""])[1]),...(d.times||[]).map(k=>(TIMES.find(x=>x[0]===k)||[,""])[1])];
+  const T=(k,ic,title,sub)=>`<button type="button" class="htile" onclick="profTab('${k}')"><span class="ht-ic"><svg class="ic" aria-hidden="true"><use href="#i-${ic}"></use></svg></span><span class="ht-txt"><b>${title}</b><small>${sub}</small></span><span class="ht-go" aria-hidden="true">›</span></button>`;
+  const tiles=[
+    T("level","trend",lvNow!=null&&lvNow!==""?`Level ${fmtLevel(lvNow)} · ${levelBand(lvNow)}`:"Level",calc?`Calculated from ${C.n} match${C.n>1?"es":""}. See how it changed.`:hasLevel?"Self-reported. Calculated once a match is played.":"No level yet."),
+    T("stats","bars","Statistics",S.played?`${S.played} played · ${S.won} won · ${S.rate}% win rate`:"No matches played yet."),
+    T("matches","court","Matches",last?`Last: ${last.won?"won":last.draw?"draw":"lost"} ${last.sets?esc(fmSetsStr(last.sets)):last.us+"–"+last.them} vs ${esc(last.oppPlayers.length?last.oppPlayers.map(p=>p.name).join(" & "):last.opp)}`:"No finished matches yet."),
+    T("people","users","Partners & opponents",top?`Plays most with ${esc(top.name)}`:"None yet."),
+    T("prefs","sliders","Preferences",esc([d.side&&SIDES[d.side],d.matchType&&MTYPES[d.matchType],when.slice(0,4).join(", ")].filter(Boolean).join(" · "))||"Not filled in yet."),
+    T("clubs","pin","Clubs",clubList.length?esc(clubList.slice(0,2).map(c=>c.name).join(", "))+(clubList.length>2?` +${clubList.length-2}`:""):"No clubs yet.")
+  ].join("");
+  $("profileBody").innerHTML=head+pendingM+`<nav class="hometiles ptabs" aria-label="Profile">${tiles}</nav>`;
 }
+function profTab(k){prof.tab=k;renderProfile();window.scrollTo(0,0)}
 function levelChart(hist){
   // drawn at the real width so the labels stay readable on phones
-  const pts=[...hist].sort((a,b)=>a.at-b.at).slice(-20),W=Math.max(280,Math.min(900,(($("profileBody")||{}).clientWidth||640)-48)),H=W<500?170:200,pl=36,pr=16,pt=16,pb=30;
+  const pts=[...hist].sort((a,b)=>a.at-b.at).slice(-30),W=Math.max(280,Math.min(900,(($("profileBody")||{}).clientWidth||640)-48)),H=W<500?170:200,pl=36,pr=16,pt=16,pb=30;
   const vals=pts.map(p=>+p.level),lo=Math.max(0,Math.floor(Math.min(...vals)-.5)),hi=Math.min(7,Math.ceil(Math.max(...vals)+.5));
   const x=i=>pl+(pts.length===1?0:i*(W-pl-pr)/(pts.length-1)),y=v=>pt+(hi-v)*(H-pt-pb)/((hi-lo)||1);
   let g="";for(let v=lo;v<=hi;v++)g+=`<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" class="cgrid"></line><text x="${pl-8}" y="${y(v)+4}" text-anchor="end" class="ctext">${v}</text>`;

@@ -21,6 +21,6 @@ function renderRanking(){
 const med=["🥇 ","🥈 ","🥉 "],cls=["gold","silver","bronze"];
 $("rankBody").innerHTML=placements().map((p,i)=>`<tr class="${i<3?"medal "+cls[i]:""}"><td class="rank">${med[i]||""}${ord(i+1)}</td><td dir="auto">${p.t!=null?esc(teamName(p.t)):"–"}</td><td class="by">${esc(p.by)}</td></tr>`).join("")
 }
-function refresh(){renderSFPicker();refreshSchedule();renderStandings();renderBracket();renderRanking()}
+function refresh(){renderSFPicker();refreshSchedule();renderStandings();renderBracket();renderRanking();if(typeof renderDash==="function")renderDash()}
 function renderAll(){buildSchedule();renderFormatInfo();refresh();applyRole();lastBuiltN=teamCount()}
 function showTab(id,btn){document.querySelectorAll(".section").forEach(x=>x.classList.remove("active"));$(id).classList.add("active");document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));btn.classList.add("active");const nav=btn.parentElement;if(nav&&nav.scrollWidth>nav.clientWidth)nav.scrollTo({left:btn.offsetLeft-(nav.clientWidth-btn.offsetWidth)/2,behavior:"smooth"})}
