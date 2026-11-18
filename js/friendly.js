@@ -17,14 +17,15 @@ function friendlyToMatch(uid,m){
 /* ---------- logging a match ---------- */
 async function openMatchDlg(){
   if(!authUser){toLogin();return}
-  fm={date:new Date().toISOString().slice(0,10),venue:(prof.data&&prof.uid===authUser.uid&&prof.data.homeClub)||"",slots:{p:null,o1:null,o2:null},sets:[["",""],["",""],["",""]],pick:null,q:"",msg:""};
+  const own=prof.data&&prof.uid===authUser.uid?prof.data:null;
+  fm={date:new Date().toISOString().slice(0,10),venue:(own&&own.homeClub)||"",me:own?fmPerson({...own,uid:authUser.uid}):null,slots:{p:null,o1:null,o2:null},sets:[["",""],["",""],["",""]],pick:null,q:"",msg:""};
   $("matchDlg").showModal();renderMatchDlg();
-  if(!profileCache){
-    const r=await window.__cloud.listPublicProfiles();
-    if(r.ok)profileCache=r.list.sort((a,b)=>String(a.displayName).localeCompare(String(b.displayName)));
-    if(fm)renderMatchDlg();
-  }
+  const f=fm,jobs=[];
+  if(!profileCache)jobs.push(window.__cloud.listPublicProfiles().then(r=>{if(r.ok)profileCache=r.list.sort((a,b)=>String(a.displayName).localeCompare(String(b.displayName)))}));
+  if(!own)jobs.push(window.__cloud.getProfile(authUser.uid).then(r=>{if(r.ok&&r.profile){f.me=fmPerson(r.profile);if(!f.venue&&r.profile.homeClub)f.venue=r.profile.homeClub}}));
+  if(jobs.length){await Promise.all(jobs);if(fm===f)renderMatchDlg()}
 }
+function fmMe(){return fm&&fm.me||{uid:authUser.uid,name:authUser.displayName||authUser.email.split("@")[0],photoURL:authUser.photoURL||""}}
 function fmPerson(p){return {uid:p.uid,name:p.displayName||p.name,photoURL:p.photoURL||""}}
 function renderMatchDlg(){
   const f=fm;if(!f)return;
@@ -37,9 +38,9 @@ function renderMatchDlg(){
       <div class="pplist">${profileCache?all.length?all.slice(0,40).map(p=>`<button type="button" class="pprow" onclick="fmChoose('${esc(p.uid)}')">${avatarHtml(p,34)}<span class="pp-main"><b dir="auto">${esc(p.displayName)}</b><small>${[p.level!=null&&p.level!==""?"Level "+fmtLevel(p.level):"",p.city,p.homeClub].filter(Boolean).map(esc).join(" · ")}</small></span></button>`).join(""):'<p class="note">No public player matches that search. Players need a public Padel Tour profile to be part of a logged match.</p>':'<p class="note">Loading players…</p>'}</div></div>`;
   }
   const setRow=(s,i)=>`<div class="fm-set"><span>Set ${i+1}</span><input inputmode="numeric" maxlength="2" value="${esc(s[0])}" aria-label="Set ${i+1}, your games" oninput="fm.sets[${i}][0]=this.value"><i>–</i><input inputmode="numeric" maxlength="2" value="${esc(s[1])}" aria-label="Set ${i+1}, their games" oninput="fm.sets[${i}][1]=this.value"></div>`;
-  $("matchDlgBody").innerHTML=`<h2>Log a match</h2>
+  $("matchDlgBody").innerHTML=`<h2>Add a match</h2>
     <p class="note">The result counts on all four profiles once one of your opponents confirms it.</p>
-    <div class="fm-teams"><div><h3>You</h3><div class="fm-slot me">${avatarHtml({displayName:authUser.displayName||authUser.email},28)}<b>You</b></div>${slot("p","Your partner")}</div>
+    <div class="fm-teams"><div><h3>You</h3><div class="fm-slot me">${avatarHtml({displayName:fmMe().name,photoURL:fmMe().photoURL},28)}<b>You</b></div>${slot("p","Your partner")}</div>
     <div><h3>Opponents</h3>${slot("o1","Opponent 1")}${slot("o2","Opponent 2")}</div></div>${list}
     <div class="fm-score"><h3>Score <small class="note">your games first</small></h3>${f.sets.map(setRow).join("")}</div>
     <div class="fm-row"><label>Date<input type="date" value="${esc(f.date)}" max="${new Date().toISOString().slice(0,10)}" onchange="fm.date=this.value"></label><label>Club or venue (optional)<input maxlength="60" value="${esc(f.venue)}" oninput="fm.venue=this.value"></label></div>
@@ -59,38 +60,63 @@ async function saveMatch(){
   if(!sets.length)return fail("Enter at least one set.");
   const g=fmGames(sets);if(g.su===g.st)return fail("One pair has to win more sets than the other.");
   if(!/^\d{4}-\d\d-\d\d$/.test(f.date))return fail("Pick the date.");
-  const me=prof.data&&prof.uid===authUser.uid?fmPerson({...prof.data,uid:authUser.uid}):{uid:authUser.uid,name:authUser.displayName||authUser.email.split("@")[0],photoURL:authUser.photoURL||""};
+  const me=fmMe();
   const m={createdBy:authUser.uid,uids:[me.uid,f.slots.p.uid,f.slots.o1.uid,f.slots.o2.uid],a:[me,f.slots.p],b:[f.slots.o1,f.slots.o2],sets,date:f.date,venue:f.venue.trim().slice(0,60),status:"pending",confirmedBy:null,createdAt:Date.now(),updatedAt:Date.now()};
   f.msg="Saving…";renderMatchDlg();
   const r=await window.__cloud.createMatch(m);
   if(!r.ok)return fail("Could not save the match ("+r.error+").");
   fm=null;$("matchDlg").close();toast("Match sent. It counts once "+f.slots.o1.name+" or "+f.slots.o2.name+" confirms it.");
-  if(view==="profile"&&prof.uid===authUser.uid)showProfile(authUser.uid);
+  fmRefresh();
+}
+// after a change: reload whichever page shows the matches
+function fmRefresh(){
+  if(view==="profile"&&prof.uid)showProfile(prof.uid);
+  else if(view==="mine")loadMyMatches();
 }
 async function answerMatch(id,status){
   if(status==="rejected"&&!confirm("Reject this result? The player who logged it will see that you did."))return;
   const r=await window.__cloud.answerMatch(id,status);
   if(!r.ok){toast("Could not update the match ("+r.error+").");return}
   toast(status==="confirmed"?"Match confirmed. It now counts on all four profiles.":"Match rejected.");
-  if(view==="profile")showProfile(prof.uid);
+  fmRefresh();
 }
 async function deleteMatch(id){
   if(!confirm("Delete this match?"))return;
   const r=await window.__cloud.deleteMatch(id);
   if(!r.ok){toast("Could not delete the match ("+r.error+").");return}
-  if(view==="profile")showProfile(prof.uid);
+  fmRefresh();
 }
 // The own profile: matches waiting for an answer, and the ones this player logged that are still open
 function pendingMatchesHtml(list){
   if(!authUser||prof.uid!==authUser.uid)return "";
-  const me=authUser.uid,open=list.filter(m=>m.status!=="confirmed");if(!open.length)return "";
-  const names=t=>t.map(p=>personLink(p)).join(" &amp; ");
-  const rows=open.map(m=>{
+  const open=list.filter(m=>m.status!=="confirmed");if(!open.length)return "";
+  return `<section class="card psec fm-pending"><h2>Matches to confirm</h2><ul class="pmatches fm-list">${fmRows(open)}</ul></section>`;
+}
+// one row per match, seen from the signed-in player's side
+function fmRows(list){
+  const me=authUser.uid,names=t=>t.map(p=>personLink(p)).join(" &amp; ");
+  return list.map(m=>{
     const isOpp=m.b.some(p=>p.uid===me),mineSide=isOpp?m.b:m.a,g=fmGames(m.sets),won=isOpp?g.st>g.su:g.su>g.st;
-    const what=`<b>${names(m.a)}</b> ${g.su>g.st?"beat":"lost to"} <b>${names(m.b)}</b> ${esc(fmSetsStr(m.sets))}${m.date?" · "+esc(fmDate(m.date)):""}${m.venue?" · "+esc(m.venue):""}`;
+    const what=`<b>${names(m.a)}</b> ${g.su>g.st?"beat":"lost to"} <b>${names(m.b)}</b> <span class="pm-sets">${esc(fmSetsStr(m.sets))}</span>${m.date?" · "+esc(fmDate(m.date)):""}${m.venue?" · "+esc(m.venue):""}`;
     if(m.status==="rejected")return `<li><div class="pm-main"><small class="fm-tag bad">Rejected${m.confirmedBy?" by "+esc((m.b.find(p=>p.uid===m.confirmedBy)||{}).name||"an opponent"):""}</small><span>${what}</span></div>${m.createdBy===me?`<button type="button" class="secondary" onclick="deleteMatch('${esc(m.id)}')">Delete</button>`:""}</li>`;
+    if(m.status==="confirmed")return `<li><div class="pm-main"><small class="fm-tag ${won?"win":"loss"}">${won?"Won":"Lost"}${m.confirmedBy?" · confirmed by "+(m.confirmedBy===me?"you":esc((m.b.find(p=>p.uid===m.confirmedBy)||{}).name||"an opponent")):""}</small><span>${what}</span></div></li>`;
     if(isOpp)return `<li><div class="pm-main"><small class="fm-tag">Is this right? You ${won?"won":"lost"}</small><span>${what}</span></div><span class="fm-btns"><button type="button" class="primary" onclick="answerMatch('${esc(m.id)}','confirmed')">Confirm</button><button type="button" class="secondary" onclick="answerMatch('${esc(m.id)}','rejected')">Reject</button></span></li>`;
     return `<li><div class="pm-main"><small class="fm-tag">Waiting for ${esc(m.b[0].name)} or ${esc(m.b[1].name)} to confirm</small><span>${what}</span></div>${m.createdBy===me?`<button type="button" class="secondary" onclick="deleteMatch('${esc(m.id)}')">Delete</button>`:""}</li>`;
   }).join("");
-  return `<section class="card psec fm-pending"><h2>Matches to confirm</h2><ul class="pmatches fm-list">${rows}</ul></section>`;
+}
+
+/* ---------- "My matches" card on the My tournaments page ---------- */
+let myMatchesReq=0;
+async function loadMyMatches(){
+  const box=$("myMatches");if(!box)return;
+  if(!authUser||!window.__cloud){box.hidden=true;return}
+  box.hidden=false;const req=++myMatchesReq;
+  if(!box.innerHTML)box.innerHTML='<div class="pubhead"><h2>My matches</h2></div><p class="note">Loading…</p>';
+  const r=await window.__cloud.matchesOfPlayer(authUser.uid);if(req!==myMatchesReq)return;
+  const list=r.ok?r.list.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)):[];
+  const open=list.filter(m=>m.status!=="confirmed"),done=list.filter(m=>m.status==="confirmed");
+  box.innerHTML=`<div class="pubhead"><div><h2>My matches</h2><p class="note" style="margin:0">Single matches outside tournaments. They count on all four profiles once an opponent confirms them.</p></div><button class="primary" onclick="openMatchDlg()">+ Add a match</button></div>
+    ${!r.ok?'<p class="note">Could not load your matches ('+esc(r.error)+').</p>':!list.length?'<p class="note">No matches yet. Press <b>+ Add a match</b> to log a match you played with three other Padel Tour players, with up to five sets.</p>':""}
+    ${open.length?`<section class="card psec fm-pending fm-inner"><h2>To confirm</h2><ul class="pmatches fm-list">${fmRows(open)}</ul></section>`:""}
+    ${done.length?`<section class="psec fm-inner"><h2>Confirmed</h2><ul class="pmatches fm-list">${fmRows(done.slice(0,20))}</ul>${done.length>20?`<p class="note">All ${done.length} matches are on <a href="#p=${esc(authUser.uid)}" onclick="openProfile('${esc(authUser.uid)}');return false">your profile</a>.</p>`:""}</section>`:""}`;
 }

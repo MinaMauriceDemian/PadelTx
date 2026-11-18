@@ -147,7 +147,7 @@ function showMine(){
 showView("mine");window.scrollTo(0,0);
 $("lOut").hidden=!!authUser;$("lIn").hidden=!authUser;
 if(!authUser)return;
-$("lWho").textContent="Signed in as "+authUser.email;loadMine();
+$("lWho").textContent="Signed in as "+authUser.email;loadMine();if(typeof loadMyMatches==="function")loadMyMatches();
 let want=false;try{want=sessionStorage.getItem("padelCreate")==="1";sessionStorage.removeItem("padelCreate")}catch(e){}
 toggleNewT(want)
 }

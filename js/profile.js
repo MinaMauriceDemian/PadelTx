@@ -168,7 +168,7 @@ function renderProfile(){
       <div class="actions" style="margin:0">
         ${d.whatsapp?`<a class="btn wa" href="https://wa.me/${esc(d.whatsapp)}" target="_blank" rel="noopener">Message on WhatsApp</a>`:""}
         <button class="secondary" onclick="copyProfileLink()">Share profile</button>
-        ${own?`<button class="secondary" onclick="openMatchDlg()">Log a match</button><button class="primary" onclick="editProfile()">Edit profile</button>`:""}
+        ${own?`<button class="secondary" onclick="openMatchDlg()">Add a match</button><button class="primary" onclick="editProfile()">Edit profile</button>`:""}
       </div>
     </div>
   </section>`;

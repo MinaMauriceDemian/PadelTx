@@ -1252,3 +1252,8 @@ dialog .gx-kpi{background:var(--soft)}
 .fm-btns button,.fm-list>li>button{min-height:36px;padding:6px 12px}
 .pm-sets{white-space:nowrap}
 @media(max-width:520px){.fm-teams,.fm-row{grid-template-columns:1fr}}
+.fm-tag.win{color:var(--good);background:var(--soft2)}
+.fm-tag.loss{color:var(--muted);background:var(--soft2)}
+.fm-inner{margin-top:12px}
+.fm-inner h2{font-size:18px}
+#myMatches .pubhead{align-items:flex-start}
